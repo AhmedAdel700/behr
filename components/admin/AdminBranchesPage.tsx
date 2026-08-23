@@ -6,11 +6,13 @@ import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { CreateBranchModal } from "@/components/admin/CreateBranchModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
+import { BranchMapPicker } from "@/components/shared/BranchMapPicker";
 import { MainButton } from "@/components/shared/MainButton";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
+import { DEFAULT_BRANCH_LOCATION } from "@/lib/admin/branchLocations";
 import { buildBranchOverviews } from "@/lib/admin/buildBranchOverviews";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import {
@@ -81,6 +83,8 @@ export function AdminBranchesPage(): ReactElement {
       address: branch.address,
       phone: branch.phone,
       email: branch.email,
+      latitude: branch.latitude,
+      longitude: branch.longitude,
     });
   };
 
@@ -250,6 +254,7 @@ export function AdminBranchesPage(): ReactElement {
           onClose={closeEdit}
           triggerRef={editBranchTriggerRef}
           backdropAriaLabel={t("cancel")}
+          panelClassName="max-w-xl"
         >
           <EditBranchDialog
             draft={draft}
@@ -259,10 +264,15 @@ export function AdminBranchesPage(): ReactElement {
             cancelLabel={t("cancel")}
             saveLabel={t("save")}
             title={t("editTitle")}
+            locationLabel={t("fields.location")}
+            locationHint={t("locationHint")}
+            findingAddressLabel={t("findingAddress")}
+            searchPlaceholder={t("searchPlaceholder")}
+            searchingLabel={t("searching")}
+            searchNoResultsLabel={t("searchNoResults")}
             fieldLabels={{
               name: t("fields.name"),
               city: t("fields.city"),
-              address: t("fields.address"),
               phone: t("fields.phone"),
               email: t("fields.email"),
             }}
@@ -300,6 +310,8 @@ interface UpdateBranchDraft {
   address: string;
   phone: string;
   email: string;
+  latitude: number;
+  longitude: number;
 }
 
 interface EditBranchDialogProps {
@@ -310,10 +322,15 @@ interface EditBranchDialogProps {
   title: string;
   cancelLabel: string;
   saveLabel: string;
+  locationLabel: string;
+  locationHint: string;
+  findingAddressLabel: string;
+  searchPlaceholder: string;
+  searchingLabel: string;
+  searchNoResultsLabel: string;
   fieldLabels: {
     name: string;
     city: string;
-    address: string;
     phone: string;
     email: string;
   };
@@ -327,6 +344,12 @@ function EditBranchDialog({
   title,
   cancelLabel,
   saveLabel,
+  locationLabel,
+  locationHint,
+  findingAddressLabel,
+  searchPlaceholder,
+  searchingLabel,
+  searchNoResultsLabel,
   fieldLabels,
 }: EditBranchDialogProps): ReactElement {
   const closeModal = useGenieModalClose(onClose);
@@ -340,42 +363,72 @@ function EditBranchDialog({
     <>
       <h2 className="text-base font-semibold text-ink">{title}</h2>
       <div className="mt-4 flex flex-col gap-3">
-        <MainInput
-          label={fieldLabels.name}
-          value={draft.name}
-          onChange={(event) =>
-            setDraft((prev) => ({ ...prev, name: event.target.value }))
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={fieldLabels.name}
+            value={draft.name}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, name: event.target.value }))
+            }
+          />
+          <MainInput
+            label={fieldLabels.city}
+            value={draft.city}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, city: event.target.value }))
+            }
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={fieldLabels.phone}
+            type="tel"
+            value={draft.phone}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, phone: event.target.value }))
+            }
+          />
+          <MainInput
+            label={fieldLabels.email}
+            type="email"
+            value={draft.email}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, email: event.target.value }))
+            }
+          />
+        </div>
+        <BranchMapPicker
+          active
+          label={locationLabel}
+          hint={locationHint}
+          findingAddressLabel={findingAddressLabel}
+          searchPlaceholder={searchPlaceholder}
+          searchingLabel={searchingLabel}
+          searchNoResultsLabel={searchNoResultsLabel}
+          title={
+            [draft.name.trim(), draft.city.trim()].filter(Boolean).join(" · ") ||
+            undefined
           }
-        />
-        <MainInput
-          label={fieldLabels.city}
-          value={draft.city}
-          onChange={(event) =>
-            setDraft((prev) => ({ ...prev, city: event.target.value }))
+          value={{
+            latitude: draft.latitude,
+            longitude: draft.longitude,
+          }}
+          onChange={(location) =>
+            setDraft((prev) => ({
+              ...prev,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }))
           }
-        />
-        <MainInput
-          as="textarea"
-          label={fieldLabels.address}
-          value={draft.address}
-          onChange={(event) =>
-            setDraft((prev) => ({ ...prev, address: event.target.value }))
+          onPlaceSelect={(place) =>
+            setDraft((prev) => ({
+              ...prev,
+              latitude: place.location.latitude,
+              longitude: place.location.longitude,
+            }))
           }
-        />
-        <MainInput
-          label={fieldLabels.phone}
-          type="tel"
-          value={draft.phone}
-          onChange={(event) =>
-            setDraft((prev) => ({ ...prev, phone: event.target.value }))
-          }
-        />
-        <MainInput
-          label={fieldLabels.email}
-          type="email"
-          value={draft.email}
-          onChange={(event) =>
-            setDraft((prev) => ({ ...prev, email: event.target.value }))
+          onResolvedAddress={(nextAddress) =>
+            setDraft((prev) => ({ ...prev, address: nextAddress }))
           }
         />
       </div>
@@ -398,5 +451,7 @@ function emptyDraft(): UpdateBranchDraft {
     address: "",
     phone: "",
     email: "",
+    latitude: DEFAULT_BRANCH_LOCATION.latitude,
+    longitude: DEFAULT_BRANCH_LOCATION.longitude,
   };
 }

@@ -286,9 +286,15 @@
       "name": "Branch name",
       "city": "City",
       "address": "Address",
-      "phone": "Phone",
-      "email": "Email"
-    }
+      "phone": "Phone (optional)",
+      "email": "Email (optional)",
+      "location": "Map location"
+    },
+    "locationHint": "Search for a place, or click the map / drag the marker.",
+    "findingAddress": "Finding address…",
+    "searchPlaceholder": "Search for a place or address…",
+    "searching": "Searching…",
+    "searchNoResults": "No places found."
   },
   "createBranch": {
     "title": "Create branch",
@@ -296,12 +302,18 @@
     "submit": "Create branch",
     "cancel": "Cancel",
     "success": "Branch created successfully.",
+    "locationHint": "Search for a place, or click the map / drag the marker.",
+    "findingAddress": "Finding address…",
+    "searchPlaceholder": "Search for a place or address…",
+    "searching": "Searching…",
+    "searchNoResults": "No places found.",
     "fields": {
       "name": "Branch name",
       "city": "City",
       "address": "Address",
-      "phone": "Phone",
-      "email": "Email"
+      "phone": "Phone (optional)",
+      "email": "Email (optional)",
+      "location": "Map location"
     },
     "placeholders": {
       "name": "e.g. Riyadh Office",
@@ -315,9 +327,8 @@
       "nameMin": "Branch name must be at least 2 characters.",
       "cityRequired": "City is required.",
       "addressRequired": "Address is required.",
-      "phoneRequired": "Phone is required.",
-      "emailRequired": "Email is required.",
-      "emailInvalid": "Enter a valid email address."
+      "emailInvalid": "Enter a valid email address.",
+      "locationRequired": "Pick a location on the map."
     }
   },
   "createDepartment": {
@@ -484,6 +495,7 @@
   "branchDetailPage": {
     "backToBranches": "Back to branches",
     "subtitle": "{city} · {departments, plural, =0 {No departments} =1 {1 department} other {# departments}} · {employees, plural, =0 {no employees} =1 {1 employee} other {# employees}}",
+    "locationTitle": "Branch location",
     "departmentsTitle": "Departments ({count})",
     "searchPlaceholder": "Search departments…",
     "emptyDepartments": "No departments are assigned to this branch yet.",

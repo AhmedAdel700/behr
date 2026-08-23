@@ -15,6 +15,8 @@ export const MOCK_BRANCHES: AdminBranchRecord[] = [
     address: "King Fahd Road, Al Olaya",
     phone: "0112345678",
     email: "riyadh@behr.com",
+    latitude: 24.7136,
+    longitude: 46.6753,
     createdAt: "2024-01-01",
   },
   {
@@ -25,6 +27,8 @@ export const MOCK_BRANCHES: AdminBranchRecord[] = [
     address: "Prince Sultan Street, Al Rawdah",
     phone: "0123456789",
     email: "jeddah@behr.com",
+    latitude: 21.4858,
+    longitude: 39.1925,
     createdAt: "2024-01-01",
   },
   {
@@ -35,6 +39,8 @@ export const MOCK_BRANCHES: AdminBranchRecord[] = [
     address: "King Saud Street, Al Faisaliyah",
     phone: "0134567890",
     email: "dammam@behr.com",
+    latitude: 26.4207,
+    longitude: 50.0888,
     createdAt: "2024-01-01",
   },
   {
@@ -45,6 +51,8 @@ export const MOCK_BRANCHES: AdminBranchRecord[] = [
     address: "Prince Turki Street, Al Khobar",
     phone: "0135678901",
     email: "khobar@behr.com",
+    latitude: 26.2172,
+    longitude: 50.1971,
     createdAt: "2024-01-01",
   },
 ];

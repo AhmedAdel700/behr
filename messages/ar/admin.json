@@ -286,9 +286,15 @@
       "name": "اسم الفرع",
       "city": "المدينة",
       "address": "العنوان",
-      "phone": "الهاتف",
-      "email": "البريد الإلكتروني"
-    }
+      "phone": "الهاتف (اختياري)",
+      "email": "البريد الإلكتروني (اختياري)",
+      "location": "موقع الخريطة"
+    },
+    "locationHint": "ابحث عن مكان، أو انقر على الخريطة / اسحب العلامة.",
+    "findingAddress": "جاري تحديد العنوان…",
+    "searchPlaceholder": "ابحث عن مكان أو عنوان…",
+    "searching": "جاري البحث…",
+    "searchNoResults": "لا توجد نتائج."
   },
   "createBranch": {
     "title": "إنشاء فرع",
@@ -296,12 +302,18 @@
     "submit": "إنشاء الفرع",
     "cancel": "إلغاء",
     "success": "تم إنشاء الفرع بنجاح.",
+    "locationHint": "ابحث عن مكان، أو انقر على الخريطة / اسحب العلامة.",
+    "findingAddress": "جاري تحديد العنوان…",
+    "searchPlaceholder": "ابحث عن مكان أو عنوان…",
+    "searching": "جاري البحث…",
+    "searchNoResults": "لا توجد نتائج.",
     "fields": {
       "name": "اسم الفرع",
       "city": "المدينة",
       "address": "العنوان",
-      "phone": "الهاتف",
-      "email": "البريد الإلكتروني"
+      "phone": "الهاتف (اختياري)",
+      "email": "البريد الإلكتروني (اختياري)",
+      "location": "موقع الخريطة"
     },
     "placeholders": {
       "name": "مثال: مكتب الرياض",
@@ -315,9 +327,8 @@
       "nameMin": "يجب أن يكون اسم الفرع حرفين على الأقل.",
       "cityRequired": "المدينة مطلوبة.",
       "addressRequired": "العنوان مطلوب.",
-      "phoneRequired": "الهاتف مطلوب.",
-      "emailRequired": "البريد الإلكتروني مطلوب.",
-      "emailInvalid": "أدخل بريداً إلكترونياً صالحاً."
+      "emailInvalid": "أدخل بريداً إلكترونياً صالحاً.",
+      "locationRequired": "اختر موقعاً على الخريطة."
     }
   },
   "createDepartment": {
@@ -484,6 +495,7 @@
   "branchDetailPage": {
     "backToBranches": "العودة إلى الفروع",
     "subtitle": "{city} · {departments, plural, =0 {لا توجد أقسام} =1 {قسم واحد} other {# أقسام}} · {employees, plural, =0 {لا يوجد موظفون} =1 {موظف واحد} other {# موظفين}}",
+    "locationTitle": "موقع الفرع",
     "departmentsTitle": "الأقسام ({count})",
     "searchPlaceholder": "البحث في الأقسام…",
     "emptyDepartments": "لا توجد أقسام معيّنة لهذا الفرع بعد.",

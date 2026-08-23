@@ -7,6 +7,7 @@ import { ArrowLeft, Eye, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
+import { BranchMapPicker } from "@/components/shared/BranchMapPicker";
 import { getBranchOverview } from "@/lib/admin/buildBranchOverviews";
 import {
   getEmployeesSnapshot,
@@ -78,6 +79,23 @@ export function AdminBranchDetailPage(): ReactElement {
             })}
           </p>
         </div>
+      </section>
+
+      <section className="space-y-2 rounded-2xl border border-border bg-surface p-4 shadow-xs">
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-ink">{t("locationTitle")}</h2>
+          <p className="text-sm text-text-secondary">{branch.address}</p>
+        </div>
+        <BranchMapPicker
+          active
+          readOnly
+          title={branch.name}
+          address={branch.address}
+          value={{
+            latitude: branch.latitude,
+            longitude: branch.longitude,
+          }}
+        />
       </section>
 
       <section className="space-y-3">

@@ -17,6 +17,8 @@ export interface CreateBranchInput {
   address: string;
   phone: string;
   email: string;
+  latitude: number;
+  longitude: number;
 }
 
 export type UpdateBranchInput = CreateBranchInput;
@@ -102,6 +104,8 @@ export function createBranch(input: CreateBranchInput): AdminBranchRecord {
     address: input.address.trim(),
     phone: input.phone.trim(),
     email: input.email.trim(),
+    latitude: input.latitude,
+    longitude: input.longitude,
     createdAt: new Date().toISOString().slice(0, 10),
   };
 
@@ -127,6 +131,8 @@ export function updateBranch(
     address: input.address.trim(),
     phone: input.phone.trim(),
     email: input.email.trim(),
+    latitude: input.latitude,
+    longitude: input.longitude,
   };
 
   branches = [
