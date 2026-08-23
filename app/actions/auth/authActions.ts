@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { z } from "zod";
 import { auth, signIn, signOut } from "@/auth";
 import { LoginFailedError } from "@/lib/auth/authErrors";
+import { AuthNetworkError, isFetchNetworkFailure } from "@services/auth/fetchFailure";
 import { getPostLoginPath } from "@/lib/auth/routeAccess";
 import { resolveAppRole, resolvePrimaryRole } from "@/lib/auth/roles";
 import { logout } from "@services/auth/logoutService";
@@ -55,7 +56,31 @@ export async function loginAction(values: {
       return { success: false, message: error.message };
     }
 
-    if (error instanceof Error && error.message.includes("fetch failed")) {
+    if (error instanceof AuthNetworkError) {
+      console.error("[loginAction] Auth network error", {
+        code: error.code,
+        url: error.url,
+        message: error.message,
+      });
+      return {
+        success: false,
+        message: "Could not reach the authentication server.",
+      };
+    }
+
+    if (
+      error instanceof Error &&
+      error.message.includes("NEXT_PUBLIC_BACKEND_BASE_URL is not configured")
+    ) {
+      console.error("[loginAction] Missing NEXT_PUBLIC_BACKEND_BASE_URL on server");
+      return {
+        success: false,
+        message: "Server configuration error. Contact support.",
+      };
+    }
+
+    if (isFetchNetworkFailure(error)) {
+      console.error("[loginAction] Fetch network failure", error);
       return {
         success: false,
         message: "Could not reach the authentication server.",

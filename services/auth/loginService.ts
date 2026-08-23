@@ -1,4 +1,8 @@
 import { authApiPaths, buildAuthApiUrl, buildJsonHeaders } from "@services/auth/shared";
+import {
+  AuthNetworkError,
+  getFetchFailureDetails,
+} from "@services/auth/fetchFailure";
 import { normalizeLoginData } from "@services/auth/normalizeLoginData";
 import { LoginFailedError } from "@/lib/auth/authErrors";
 import type { LoginData, LoginResponse } from "@/types/AuthTypes";
@@ -27,14 +31,23 @@ export async function loginWithCredentials(
   password: string,
   lang: string,
 ): Promise<LoginData> {
-  const response = await fetch(buildAuthApiUrl(authApiPaths.login), {
-    method: "POST",
-    headers: buildJsonHeaders(lang),
-    body: JSON.stringify({
-      email: email.trim(),
-      password,
-    }),
-  });
+  const url = buildAuthApiUrl(authApiPaths.login);
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: buildJsonHeaders(lang),
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+      }),
+    });
+  } catch (error) {
+    const details = getFetchFailureDetails(error, url);
+    console.error("[auth/login] Could not reach API", details);
+    throw new AuthNetworkError(details);
+  }
 
   const payload: unknown = await response.json().catch(() => null);
 
