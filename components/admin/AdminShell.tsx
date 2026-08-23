@@ -16,7 +16,6 @@ import {
 import { getAdminPageTitleKey } from "@/lib/admin/adminNav";
 import {
   getAdminSessionSnapshot,
-  isAdminLoggingOut,
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { cn } from "@/lib/utils";
@@ -71,25 +70,9 @@ export function AdminShell({
   children: ReactNode;
   className?: string;
 }) {
-  const t = useTranslations("admin");
-  useSyncExternalStore(subscribeAdminSession, isAdminLoggingOut, () => false);
-  const signingOut = isAdminLoggingOut();
-
   return (
     <AdminMobileNavProvider>
       <div className={cn("relative min-h-dvh bg-surface-sunken", className)}>
-        {signingOut ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-surface/85 backdrop-blur-xs"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <p className="text-sm font-medium text-text-secondary">
-              {t("signingOut")}
-            </p>
-          </div>
-        ) : null}
-
         <AdminShellHeader />
 
         <div className="flex w-full items-start">

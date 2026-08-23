@@ -84,6 +84,7 @@ export function seedAdminSession(user: AdminUser): void {
     return;
   }
 
+  loggingOut = false;
   adminUser = {
     ...user,
     permissions: user.permissions ?? [],
@@ -91,6 +92,7 @@ export function seedAdminSession(user: AdminUser): void {
 }
 
 export function setAdminSession(user: AdminUser): void {
+  loggingOut = false;
   adminUser = user;
   writeStoredUser(user);
   emit();

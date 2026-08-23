@@ -13,7 +13,7 @@ export function AdminSessionSync(): ReactElement | null {
   const { data: session, status } = useSession();
 
   useLayoutEffect(() => {
-    if (status === "loading" || isAdminLoggingOut()) {
+    if (status === "loading") {
       return;
     }
 
@@ -21,6 +21,10 @@ export function AdminSessionSync(): ReactElement | null {
 
     if (sessionUser?.appRole === "admin") {
       setAdminSession(mapSessionUserToAdminUser(sessionUser));
+      return;
+    }
+
+    if (isAdminLoggingOut()) {
       return;
     }
 

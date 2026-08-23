@@ -16,6 +16,7 @@ import {
 import { MainButton } from "@/components/shared/MainButton";
 import {
   getAdminSessionSnapshot,
+  isAdminLoggingOut,
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
@@ -119,7 +120,9 @@ export function AdminSidebar(): ReactElement {
   }, [drawerOpen]);
 
   useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
+  useSyncExternalStore(subscribeAdminSession, isAdminLoggingOut, () => false);
   const admin = getAdminSessionSnapshot();
+  const signingOut = isAdminLoggingOut();
   useSyncExternalStore(subscribeRegistrations, getRegistrationsSnapshot, getRegistrationsSnapshot);
   useSyncExternalStore(subscribeRequests, getRequestsSnapshot, getRequestsSnapshot);
   const pendingRegistrationCount = filterRegistrationsForAdmin(
@@ -210,22 +213,26 @@ export function AdminSidebar(): ReactElement {
       </nav>
 
       <div className={cn("mt-auto px-1", showLabels ? "pt-2" : "border-t border-border pt-3")}>
-        <button
+        <MainButton
           type="button"
+          variant="ghost-delete"
+          block
+          iconOnly={!showLabels}
+          loading={signingOut}
           onClick={() => {
             setDrawerOpen(false);
             runAdminLogout(locale);
           }}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            "h-auto rounded-xl px-3 py-2.5 text-sm font-medium",
             showLabels ? "justify-start" : "justify-center lg:px-2",
-            "text-danger-700 hover:bg-danger-50",
           )}
+          startIcon={<LogOut className="size-5" strokeWidth={1.75} />}
           title={showLabels ? undefined : t("signOut")}
+          aria-label={t("signOut")}
         >
-          <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
-          {showLabels ? <span>{t("signOut")}</span> : null}
-        </button>
+          {showLabels ? (signingOut ? t("signingOut") : t("signOut")) : null}
+        </MainButton>
       </div>
     </div>
   );
