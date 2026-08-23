@@ -1,6 +1,7 @@
 {
   "brand": "Admin Dashboard",
   "signOut": "Sign out",
+  "signingOut": "Signing out…",
   "roles": {
     "superAdmin": "Super Admin",
     "departmentManager": "Department Manager"

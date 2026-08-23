@@ -13,6 +13,7 @@ const EMPTY_ADMIN_USER: AdminUser = {
 };
 
 let adminUser: AdminUser = EMPTY_ADMIN_USER;
+let loggingOut = false;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -57,6 +58,19 @@ export function getAdminSessionSnapshot(): AdminUser {
   return adminUser;
 }
 
+export function isAdminLoggingOut(): boolean {
+  return loggingOut;
+}
+
+export function beginAdminLogout(): void {
+  if (loggingOut) {
+    return;
+  }
+
+  loggingOut = true;
+  emit();
+}
+
 export function hydrateAdminSession(): AdminUser {
   const stored = readStoredUser();
   if (stored?.id) {
@@ -84,6 +98,7 @@ export function setAdminSession(user: AdminUser): void {
 
 export function clearAdminSession(): void {
   adminUser = EMPTY_ADMIN_USER;
+  loggingOut = false;
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(STORAGE_KEY);
   }

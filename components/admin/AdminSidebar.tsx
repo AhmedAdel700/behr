@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  logoutAction,
-} from "@/app/actions/auth/authActions";
+import { runAdminLogout } from "@/lib/admin/runAdminLogout";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -19,7 +17,6 @@ import { MainButton } from "@/components/shared/MainButton";
 import {
   getAdminSessionSnapshot,
   subscribeAdminSession,
-  clearAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
 import {
@@ -217,8 +214,7 @@ export function AdminSidebar(): ReactElement {
           type="button"
           onClick={() => {
             setDrawerOpen(false);
-            clearAdminSession();
-            void logoutAction(locale);
+            runAdminLogout(locale);
           }}
           className={cn(
             "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",

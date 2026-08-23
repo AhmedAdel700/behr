@@ -1,6 +1,7 @@
 {
   "brand": "لوحة الإدارة",
   "signOut": "تسجيل الخروج",
+  "signingOut": "جاري تسجيل الخروج…",
   "roles": {
     "superAdmin": "مدير النظام",
     "departmentManager": "مدير القسم"
