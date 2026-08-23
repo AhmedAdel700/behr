@@ -1,7 +1,6 @@
 {
   "brand": "لوحة الإدارة",
   "signOut": "تسجيل الخروج",
-  "demoRoleSwitch": "دور تجريبي (بدّل لاختبار الصلاحيات)",
   "roles": {
     "superAdmin": "مدير النظام",
     "departmentManager": "مدير القسم"
@@ -22,7 +21,8 @@
     "leaveTypes": "أنواع الإجازات",
     "leaveRequests": "طلبات الإجازة",
     "departments": "الأقسام",
-    "fingerprintImport": "استيراد البصمة"
+    "fingerprintImport": "استيراد البصمة",
+    "positions": "المناصب"
   },
   "sidebar": {
     "expand": "توسيع الشريط الجانبي",
@@ -243,6 +243,11 @@
     "searchPlaceholder": "البحث في الفروع…",
     "emptySearch": "لا توجد فروع تطابق بحثك.",
     "emptyBranches": "لا توجد فروع بعد. أنشئ فرعك الأول للبدء.",
+    "loading": "جاري تحميل الفروع…",
+    "updateSuccess": "تم تحديث الفرع بنجاح.",
+    "updateError": "تعذر تحديث الفرع.",
+    "deleteSuccess": "تم حذف الفرع بنجاح.",
+    "deleteError": "تعذر حذف الفرع.",
     "columns": {
       "branch": "الفرع",
       "city": "المدينة",
@@ -302,6 +307,7 @@
     "submit": "إنشاء الفرع",
     "cancel": "إلغاء",
     "success": "تم إنشاء الفرع بنجاح.",
+    "submitError": "تعذر إنشاء الفرع.",
     "locationHint": "ابحث عن مكان، أو انقر على الخريطة / اسحب العلامة.",
     "findingAddress": "جاري تحديد العنوان…",
     "searchPlaceholder": "ابحث عن مكان أو عنوان…",
@@ -494,6 +500,7 @@
   },
   "branchDetailPage": {
     "backToBranches": "العودة إلى الفروع",
+    "loading": "جاري تحميل الفرع…",
     "subtitle": "{city} · {departments, plural, =0 {لا توجد أقسام} =1 {قسم واحد} other {# أقسام}} · {employees, plural, =0 {لا يوجد موظفون} =1 {موظف واحد} other {# موظفين}}",
     "locationTitle": "موقع الفرع",
     "departmentsTitle": "الأقسام ({count})",

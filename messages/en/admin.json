@@ -1,7 +1,6 @@
 {
   "brand": "Admin Dashboard",
   "signOut": "Sign out",
-  "demoRoleSwitch": "Demo role (switch to test access)",
   "roles": {
     "superAdmin": "Super Admin",
     "departmentManager": "Department Manager"
@@ -22,7 +21,8 @@
     "leaveTypes": "Leave types",
     "leaveRequests": "Leave requests",
     "departments": "Departments",
-    "fingerprintImport": "Fingerprint import"
+    "fingerprintImport": "Fingerprint import",
+    "positions": "Positions"
   },
   "sidebar": {
     "expand": "Expand sidebar",
@@ -243,6 +243,11 @@
     "searchPlaceholder": "Search branches…",
     "emptySearch": "No branches match your search.",
     "emptyBranches": "No branches yet. Create your first branch to get started.",
+    "loading": "Loading branches…",
+    "updateSuccess": "Branch updated successfully.",
+    "updateError": "Failed to update branch.",
+    "deleteSuccess": "Branch deleted successfully.",
+    "deleteError": "Failed to delete branch.",
     "columns": {
       "branch": "Branch",
       "city": "City",
@@ -302,6 +307,7 @@
     "submit": "Create branch",
     "cancel": "Cancel",
     "success": "Branch created successfully.",
+    "submitError": "Failed to create branch.",
     "locationHint": "Search for a place, or click the map / drag the marker.",
     "findingAddress": "Finding address…",
     "searchPlaceholder": "Search for a place or address…",
@@ -494,6 +500,7 @@
   },
   "branchDetailPage": {
     "backToBranches": "Back to branches",
+    "loading": "Loading branch…",
     "subtitle": "{city} · {departments, plural, =0 {No departments} =1 {1 department} other {# departments}} · {employees, plural, =0 {no employees} =1 {1 employee} other {# employees}}",
     "locationTitle": "Branch location",
     "departmentsTitle": "Departments ({count})",

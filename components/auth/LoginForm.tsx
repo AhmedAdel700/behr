@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Mail } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { toast } from "sonner";
+import { loginAction } from "@/app/actions/auth/authActions";
+import { Link, useRouter } from "@/i18n/navigation";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
 import {
@@ -19,6 +21,9 @@ export function LoginForm({
   showRegisterLink?: boolean;
 }) {
   const t = useTranslations("auth");
+  const locale = useLocale();
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
 
   const schema = useMemo(
     () =>
@@ -28,7 +33,7 @@ export function LoginForm({
         passwordRequired: t("errors.passwordRequired"),
         passwordMin: t("errors.passwordMin"),
       }),
-    [t]
+    [t],
   );
 
   const {
@@ -43,9 +48,33 @@ export function LoginForm({
     },
   });
 
+  const onSubmit = async (values: LoginFormValues): Promise<void> => {
+    setSubmitting(true);
+
+    const result = await loginAction({
+      email: values.email,
+      password: values.password,
+      lang: locale,
+    });
+
+    if (!result.success) {
+      setSubmitting(false);
+      const message =
+        result.message === "invalidCredentials"
+          ? t("errors.invalidCredentials")
+          : result.message;
+      toast.error(message);
+      return;
+    }
+
+    setSubmitting(false);
+    router.push(result.redirectTo ?? "/");
+    router.refresh();
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(() => undefined)}
+      onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-4"
       noValidate
     >
@@ -68,7 +97,13 @@ export function LoginForm({
         {...register("password")}
       />
 
-      <MainButton type="submit" variant="primary" block className="mt-1">
+      <MainButton
+        type="submit"
+        variant="primary"
+        block
+        className="mt-1"
+        loading={submitting}
+      >
         {t("login.submit")}
       </MainButton>
 

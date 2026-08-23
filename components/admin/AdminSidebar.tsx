@@ -3,6 +3,9 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  logoutAction,
+} from "@/app/actions/auth/authActions";
+import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -16,10 +19,9 @@ import { MainButton } from "@/components/shared/MainButton";
 import {
   getAdminSessionSnapshot,
   subscribeAdminSession,
-  switchDemoRole,
   clearAdminSession,
 } from "@/lib/admin/adminSessionStore";
-import { getAdminNavItemsForRole, type AdminNavItem } from "@/lib/admin/adminNav";
+import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
 import {
   filterLeaveRequestsForAdmin,
   filterRegistrationsForAdmin,
@@ -142,7 +144,7 @@ export function AdminSidebar(): ReactElement {
       ? t("roles.superAdmin")
       : t("roles.departmentManager");
 
-  const navItems = getAdminNavItemsForRole(admin.role);
+  const navItems = getAdminNavItems(admin.permissions);
 
   const CollapseIcon = sidebarExpanded
     ? isRtl
@@ -210,51 +212,24 @@ export function AdminSidebar(): ReactElement {
         />
       </nav>
 
-      {showLabels ? (
-        <div className="mt-auto space-y-2 border-t border-border px-1 pt-4">
-          <p className="px-2 text-[11px] font-medium text-text-muted">
-            {t("demoRoleSwitch")}
-          </p>
-          <div className="grid grid-cols-1 gap-1.5 px-1">
-            <MainButton
-              variant={admin.role === "super_admin" ? "primary" : "neutral"}
-              size="sm"
-              block
-              onClick={() => switchDemoRole("super_admin")}
-            >
-              {t("roles.superAdmin")}
-            </MainButton>
-            <MainButton
-              variant={
-                admin.role === "department_manager" ? "primary" : "neutral"
-              }
-              size="sm"
-              block
-              onClick={() => switchDemoRole("department_manager")}
-            >
-              {t("roles.departmentManager")}
-            </MainButton>
-          </div>
-        </div>
-      ) : null}
-
       <div className={cn("mt-auto px-1", showLabels ? "pt-2" : "border-t border-border pt-3")}>
-        <Link
-          href="/login"
+        <button
+          type="button"
           onClick={() => {
             setDrawerOpen(false);
             clearAdminSession();
+            void logoutAction(locale);
           }}
           className={cn(
-            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
             showLabels ? "justify-start" : "justify-center lg:px-2",
-            "text-danger-700 hover:bg-danger-50"
+            "text-danger-700 hover:bg-danger-50",
           )}
           title={showLabels ? undefined : t("signOut")}
         >
           <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
           {showLabels ? <span>{t("signOut")}</span> : null}
-        </Link>
+        </button>
       </div>
     </div>
   );

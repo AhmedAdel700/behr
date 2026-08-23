@@ -1,10 +1,7 @@
-import { MOCK_ADMIN_EMPLOYEES } from "@/lib/admin/demo-data";
 import { getEmployeesSnapshot } from "@/lib/admin/adminDataStore";
 import {
-  MOCK_BRANCHES,
   buildUniqueBranchSlug,
   buildUniqueDepartmentSlug,
-  seedBranchDepartmentsFromEmployees,
 } from "@/lib/admin/demo-org-data";
 import type {
   AdminBranchDepartmentRecord,
@@ -43,9 +40,8 @@ export type DeleteDepartmentResult =
   | { success: true }
   | { success: false; reason: DeleteDepartmentFailureReason };
 
-let branches: AdminBranchRecord[] = MOCK_BRANCHES.map((item) => ({ ...item }));
-let branchDepartments: AdminBranchDepartmentRecord[] =
-  seedBranchDepartmentsFromEmployees(MOCK_ADMIN_EMPLOYEES, MOCK_BRANCHES);
+let branches: AdminBranchRecord[] = [];
+let branchDepartments: AdminBranchDepartmentRecord[] = [];
 
 const listeners = new Set<() => void>();
 
@@ -76,6 +72,29 @@ export function getBranchBySlug(slug: string): AdminBranchRecord | undefined {
 
 export function getBranchById(id: string): AdminBranchRecord | undefined {
   return branches.find((branch) => branch.id === id);
+}
+
+export function setBranches(nextBranches: AdminBranchRecord[]): void {
+  branches = nextBranches.map((item) => ({ ...item }));
+  emit();
+}
+
+export function upsertBranchRecord(branch: AdminBranchRecord): void {
+  const index = branches.findIndex((item) => item.id === branch.id);
+  if (index < 0) {
+    branches = [...branches, branch];
+  } else {
+    branches = [
+      ...branches.slice(0, index),
+      branch,
+      ...branches.slice(index + 1),
+    ];
+  }
+  emit();
+}
+
+export function removeBranchRecord(id: string): DeleteBranchResult {
+  return deleteBranch(id);
 }
 
 export function getBranchDepartmentById(

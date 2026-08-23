@@ -9,6 +9,7 @@ export interface AdminUser {
   name: string;
   email: string;
   role: AdminRole;
+  permissions: string[];
   department?: DepartmentOption;
 }
 
@@ -54,6 +55,8 @@ export interface AdminBranchRecord {
   email: string;
   latitude: number;
   longitude: number;
+  departmentsCount?: number;
+  usersCount?: number;
   createdAt: string;
 }
 

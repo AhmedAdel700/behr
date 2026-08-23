@@ -4,6 +4,9 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { Cairo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Providers } from "@/app/store/Providers";
+import { auth } from "@/auth";
+import { AuthSessionProvider } from "@/components/auth/AuthSessionProvider";
+import { Toaster } from "@/components/ui/sonner";
 import { routing } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import "@/styles/globals.css";
@@ -58,6 +61,7 @@ export default async function LocaleLayout({
 
   const locale = await getLocale();
   const messages = await getMessages();
+  const session = await auth();
   const isArabic = locale === "ar";
   const dir = isArabic ? "rtl" : "ltr";
 
@@ -76,7 +80,10 @@ export default async function LocaleLayout({
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers>{children}</Providers>
+          <AuthSessionProvider session={session}>
+            <Providers>{children}</Providers>
+            <Toaster />
+          </AuthSessionProvider>
         </NextIntlClientProvider>
       </body>
     </html>

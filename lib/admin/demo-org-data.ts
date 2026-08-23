@@ -6,57 +6,6 @@ import type {
   AdminEmployee,
 } from "@/types/AdminApiTypes";
 
-export const MOCK_BRANCHES: AdminBranchRecord[] = [
-  {
-    id: "branch-1",
-    slug: "riyadh",
-    name: "Riyadh Office",
-    city: "Riyadh",
-    address: "King Fahd Road, Al Olaya",
-    phone: "0112345678",
-    email: "riyadh@behr.com",
-    latitude: 24.7136,
-    longitude: 46.6753,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "branch-2",
-    slug: "jeddah",
-    name: "Jeddah Office",
-    city: "Jeddah",
-    address: "Prince Sultan Street, Al Rawdah",
-    phone: "0123456789",
-    email: "jeddah@behr.com",
-    latitude: 21.4858,
-    longitude: 39.1925,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "branch-3",
-    slug: "dammam",
-    name: "Dammam Office",
-    city: "Dammam",
-    address: "King Saud Street, Al Faisaliyah",
-    phone: "0134567890",
-    email: "dammam@behr.com",
-    latitude: 26.4207,
-    longitude: 50.0888,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "branch-4",
-    slug: "khobar",
-    name: "Khobar Office",
-    city: "Khobar",
-    address: "Prince Turki Street, Al Khobar",
-    phone: "0135678901",
-    email: "khobar@behr.com",
-    latitude: 26.2172,
-    longitude: 50.1971,
-    createdAt: "2024-01-01",
-  },
-];
-
 export function isKnownBranchOption(value: string): value is BranchOption {
   return (BRANCH_OPTIONS as readonly string[]).includes(value);
 }

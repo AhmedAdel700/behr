@@ -1,14 +1,18 @@
 "use client";
 
-import {
-  DEMO_DEPARTMENT_MANAGER,
-  DEMO_SUPER_ADMIN,
-} from "@/lib/admin/demo-data";
 import type { AdminUser } from "@/types/AdminApiTypes";
 
 const STORAGE_KEY = "behr-admin-session";
 
-let adminUser: AdminUser = DEMO_SUPER_ADMIN;
+const EMPTY_ADMIN_USER: AdminUser = {
+  id: "",
+  name: "",
+  email: "",
+  role: "department_manager",
+  permissions: [],
+};
+
+let adminUser: AdminUser = EMPTY_ADMIN_USER;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -55,10 +59,21 @@ export function getAdminSessionSnapshot(): AdminUser {
 
 export function hydrateAdminSession(): AdminUser {
   const stored = readStoredUser();
-  if (stored) {
+  if (stored?.id) {
     adminUser = stored;
   }
   return adminUser;
+}
+
+export function seedAdminSession(user: AdminUser): void {
+  if (!user.id) {
+    return;
+  }
+
+  adminUser = {
+    ...user,
+    permissions: user.permissions ?? [],
+  };
 }
 
 export function setAdminSession(user: AdminUser): void {
@@ -68,15 +83,13 @@ export function setAdminSession(user: AdminUser): void {
 }
 
 export function clearAdminSession(): void {
-  adminUser = DEMO_SUPER_ADMIN;
+  adminUser = EMPTY_ADMIN_USER;
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(STORAGE_KEY);
   }
   emit();
 }
 
-export function switchDemoRole(role: "super_admin" | "department_manager"): void {
-  setAdminSession(
-    role === "super_admin" ? DEMO_SUPER_ADMIN : DEMO_DEPARTMENT_MANAGER
-  );
+if (typeof window !== "undefined") {
+  hydrateAdminSession();
 }

@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type MouseEvent, type ReactElement, type SetStateAction } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type MouseEvent, type ReactElement, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
+import {
+  branchesApi,
+  useDeleteBranchMutation,
+  useGetBranchesQuery,
+  useUpdateBranchMutation,
+} from "@/app/store/api/branches/branchesApi";
+import type { AppDispatch } from "@/app/store/store";
 import { CreateBranchModal } from "@/components/admin/CreateBranchModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { BranchMapPicker } from "@/components/shared/BranchMapPicker";
@@ -20,13 +29,15 @@ import {
   subscribeEmployees,
 } from "@/lib/admin/adminDataStore";
 import {
-  deleteBranch,
   getBranchesSnapshot,
+  removeBranchRecord,
+  setBranches,
   subscribeOrg,
-  updateBranch,
+  upsertBranchRecord,
 } from "@/lib/admin/adminOrgStore";
 import { searchBranchRows } from "@/lib/admin/searchBranchRows";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
+import type { BranchPayload } from "@/types/BranchesApiTypes";
 
 interface BranchTableRow {
   branch: AdminBranchRecord;
@@ -34,12 +45,46 @@ interface BranchTableRow {
   employeeCount: number;
 }
 
-export function AdminBranchesPage(): ReactElement {
+export function AdminBranchesPage({
+  initialBranches,
+}: {
+  initialBranches?: AdminBranchRecord[];
+}): ReactElement {
   const t = useTranslations("admin.branchesPage");
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
+
+  if (initialBranches?.length && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      branchesApi.util.upsertQueryData("getBranches", undefined, initialBranches),
+    );
+  }
+
+  const { data: branchesData, isLoading, isFetching } = useGetBranchesQuery();
+
+  useLayoutEffect(() => {
+    if (!initialBranches?.length) {
+      return;
+    }
+
+    setBranches(initialBranches);
+  }, [initialBranches]);
+
+  useEffect(() => {
+    if (!branchesData) {
+      return;
+    }
+
+    setBranches(branchesData);
+  }, [branchesData]);
 
   useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
   useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
+
+  const resolvedBranches =
+    branchesData ?? initialBranches ?? getBranchesSnapshot();
 
   const createBranchTriggerRef = useRef<HTMLButtonElement>(null);
   const { triggerRef: editBranchTriggerRef, bindTrigger: bindEditBranchTrigger } =
@@ -51,14 +96,19 @@ export function AdminBranchesPage(): ReactElement {
   const [editing, setEditing] = useState<AdminBranchRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<UpdateBranchDraft>(emptyDraft());
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [updateBranchMutation] = useUpdateBranchMutation();
+  const [deleteBranchMutation, { isLoading: deletingBranch }] =
+    useDeleteBranchMutation();
 
   const overviews = buildBranchOverviews(getEmployeesSnapshot());
-  const branchRows: BranchTableRow[] = getBranchesSnapshot().map((branch) => {
+  const branchRows: BranchTableRow[] = resolvedBranches.map((branch) => {
     const overview = overviews.find((item) => item.branch === branch.slug);
     return {
       branch,
-      departmentCount: overview?.departments.length ?? 0,
-      employeeCount: overview?.employeeCount ?? 0,
+      departmentCount:
+        branch.departmentsCount ?? overview?.departments.length ?? 0,
+      employeeCount: branch.usersCount ?? overview?.employeeCount ?? 0,
     };
   });
 
@@ -77,21 +127,43 @@ export function AdminBranchesPage(): ReactElement {
   ): void => {
     bindEditBranchTrigger(event);
     setEditing(branch);
-    setDraft({
-      name: branch.name,
-      city: branch.city,
-      address: branch.address,
-      phone: branch.phone,
-      email: branch.email,
-      latitude: branch.latitude,
-      longitude: branch.longitude,
-    });
+    setDraft(branchToDraft(branch));
   };
 
-  const saveEdit = (): void => {
-    if (!editing) return;
-    updateBranch(editing.id, draft);
-    setDraft(emptyDraft());
+  const saveEdit = async (): Promise<boolean> => {
+    if (!editing?.id.trim()) {
+      toast.error(t("updateError"));
+      return false;
+    }
+
+    setSavingEdit(true);
+
+    const body: BranchPayload = {
+      name: draft.name.trim(),
+      city: draft.city.trim(),
+      address: draft.address.trim(),
+      phone: draft.phone.trim(),
+      email: draft.email.trim(),
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+    };
+
+    try {
+      const branch = await updateBranchMutation({
+        branchId: editing.id.trim(),
+        body,
+      }).unwrap();
+
+      upsertBranchRecord(branch);
+      toast.success(t("updateSuccess"));
+      setDraft(emptyDraft());
+      return true;
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, t("updateError")));
+      return false;
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const closeEdit = (): void => {
@@ -99,12 +171,23 @@ export function AdminBranchesPage(): ReactElement {
     setDraft(emptyDraft());
   };
 
-  const confirmDelete = (): boolean => {
-    if (!deleteId) return false;
-    const result = deleteBranch(deleteId);
-    if (!result.success) return false;
-    return true;
+  const handleDelete = async (): Promise<void> => {
+    if (!deleteId) {
+      return;
+    }
+
+    try {
+      await deleteBranchMutation({ branchId: deleteId }).unwrap();
+      removeBranchRecord(deleteId);
+      toast.success(t("deleteSuccess"));
+      setDeleteId(null);
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, t("deleteError")));
+    }
   };
+
+  const isTableLoading =
+    (isLoading || isFetching) && resolvedBranches.length === 0;
 
   const columnCount = 6;
 
@@ -171,7 +254,16 @@ export function AdminBranchesPage(): ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {filteredBranchRows.length === 0 ? (
+                {isTableLoading ? (
+                  <tr>
+                    <td
+                      colSpan={columnCount}
+                      className="px-4 py-10 text-center text-sm text-text-muted"
+                    >
+                      {t("loading")}
+                    </td>
+                  </tr>
+                ) : filteredBranchRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan={columnCount}
@@ -260,6 +352,7 @@ export function AdminBranchesPage(): ReactElement {
             draft={draft}
             setDraft={setDraft}
             onSave={saveEdit}
+            saving={savingEdit}
             onClose={closeEdit}
             cancelLabel={t("cancel")}
             saveLabel={t("save")}
@@ -297,7 +390,11 @@ export function AdminBranchesPage(): ReactElement {
         confirmLabel={t("deleteConfirm")}
         cancelLabel={t("cancel")}
         onCancel={() => setDeleteId(null)}
-        onConfirm={confirmDelete}
+        onConfirm={() => {
+          void handleDelete();
+          return false;
+        }}
+        loading={deletingBranch}
         triggerRef={deleteBranchTriggerRef}
       />
     </div>
@@ -317,7 +414,8 @@ interface UpdateBranchDraft {
 interface EditBranchDialogProps {
   draft: UpdateBranchDraft;
   setDraft: Dispatch<SetStateAction<UpdateBranchDraft>>;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
+  saving: boolean;
   onClose: () => void;
   title: string;
   cancelLabel: string;
@@ -340,6 +438,7 @@ function EditBranchDialog({
   draft,
   setDraft,
   onSave,
+  saving,
   onClose,
   title,
   cancelLabel,
@@ -355,8 +454,12 @@ function EditBranchDialog({
   const closeModal = useGenieModalClose(onClose);
 
   const handleSave = (): void => {
-    onSave();
-    closeModal();
+    void (async (): Promise<void> => {
+      const saved = await onSave();
+      if (saved) {
+        closeModal();
+      }
+    })();
   };
 
   return (
@@ -439,6 +542,8 @@ function EditBranchDialog({
         submitLabel={saveLabel}
         submitType="button"
         onSubmit={handleSave}
+        loading={saving}
+        cancelDisabled={saving}
       />
     </>
   );
@@ -454,4 +559,31 @@ function emptyDraft(): UpdateBranchDraft {
     latitude: DEFAULT_BRANCH_LOCATION.latitude,
     longitude: DEFAULT_BRANCH_LOCATION.longitude,
   };
+}
+
+function branchToDraft(branch: AdminBranchRecord): UpdateBranchDraft {
+  return {
+    name: branch.name ?? "",
+    city: branch.city ?? "",
+    address: branch.address ?? "",
+    phone: branch.phone ?? "",
+    email: branch.email ?? "",
+    latitude: branch.latitude ?? DEFAULT_BRANCH_LOCATION.latitude,
+    longitude: branch.longitude ?? DEFAULT_BRANCH_LOCATION.longitude,
+  };
+}
+
+function getMutationErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const value = (error as { error: unknown }).error;
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
 }

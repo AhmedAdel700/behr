@@ -3,8 +3,9 @@
 import { useMemo, useState, useSyncExternalStore, type ReactElement } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Pencil } from "lucide-react";
+import { logoutAction } from "@/app/actions/auth/authActions";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
 import { LeaveBalanceSection } from "@/components/employee/LeaveBalanceSection";
 import { AvatarUpload, ProfileAvatar } from "@/components/shared/AvatarUpload";
@@ -46,6 +47,7 @@ export function ProfilePageContent(): ReactElement {
   const t = useTranslations("employee.profile");
   const tLabel = useTranslations("employee.profile.labels");
   const tAuth = useTranslations("auth.errors");
+  const locale = useLocale();
 
   useSyncExternalStore(
     subscribeEmployeeProfile,
@@ -282,7 +284,13 @@ export function ProfilePageContent(): ReactElement {
         </div>
       </section>
 
-      <MainButton variant="delete" block link="/login">
+      <MainButton
+        variant="delete"
+        block
+        onClick={() => {
+          void logoutAction(locale);
+        }}
+      >
         {t("signOut")}
       </MainButton>
     </div>

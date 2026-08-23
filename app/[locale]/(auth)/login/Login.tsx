@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthSplitCard } from "@/components/auth/AuthSplitCard";
 import { LoginForm } from "@/components/auth/LoginForm";
-
 export async function Login({
   showRegisterLink = true,
 }: {

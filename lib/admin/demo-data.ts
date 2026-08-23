@@ -4,11 +4,32 @@ import type {
   RegistrationRequest,
 } from "@/types/AdminApiTypes";
 
+const DEMO_SUPER_ADMIN_PERMISSIONS: string[] = [
+  "overview.view",
+  "employees.view",
+  "branches.view",
+  "departments.view",
+  "leave_types.view",
+  "attendance.import",
+  "registration_requests.view",
+  "leave_requests.view",
+  "job_positions.view",
+];
+
+const DEMO_DEPARTMENT_MANAGER_PERMISSIONS: string[] = [
+  "overview.view",
+  "employees.view",
+  "leave_requests.view",
+  "leave_requests.approve",
+  "leave_requests.reject",
+];
+
 export const DEMO_SUPER_ADMIN: AdminUser = {
   id: "admin-1",
   name: "Layla Hassan",
   email: "admin@behr.com",
   role: "super_admin",
+  permissions: DEMO_SUPER_ADMIN_PERMISSIONS,
 };
 
 export const DEMO_DEPARTMENT_MANAGER: AdminUser = {
@@ -16,6 +37,7 @@ export const DEMO_DEPARTMENT_MANAGER: AdminUser = {
   name: "Omar Khalil",
   email: "manager@behr.com",
   role: "department_manager",
+  permissions: DEMO_DEPARTMENT_MANAGER_PERMISSIONS,
   department: "hr",
 };
 

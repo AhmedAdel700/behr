@@ -5,17 +5,20 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Building2, Mail, MapPinned, Phone } from "lucide-react";
+import { toast } from "sonner";
+import { useCreateBranchMutation } from "@/app/store/api/branches/branchesApi";
 import { BranchMapPicker } from "@/components/shared/BranchMapPicker";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
 import { DEFAULT_BRANCH_LOCATION } from "@/lib/admin/branchLocations";
-import { createBranch } from "@/lib/admin/adminOrgStore";
+import { upsertBranchRecord } from "@/lib/admin/adminOrgStore";
 import {
   createBranchSchema,
   type CreateBranchFormValues,
 } from "@/schemas/admin/org.schema";
+import type { BranchPayload } from "@/types/BranchesApiTypes";
 
 interface CreateBranchModalProps {
   open: boolean;
@@ -51,7 +54,7 @@ interface CreateBranchFormProps {
 function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElement {
   const t = useTranslations("admin.createBranch");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
+  const [createBranchMutation] = useCreateBranchMutation();
 
   const schema = useMemo(
     () =>
@@ -73,7 +76,7 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitted },
+    formState: { errors, isSubmitted, isSubmitting },
   } = useForm<CreateBranchFormValues>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
@@ -89,11 +92,25 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
     reset(emptyValues());
   }, [open, reset]);
 
-  const onSubmit = (values: CreateBranchFormValues): void => {
-    setSubmitting(true);
-    createBranch(values);
-    setSubmitting(false);
-    closeModal();
+  const onSubmit = async (values: CreateBranchFormValues): Promise<void> => {
+    const body: BranchPayload = {
+      name: values.name.trim(),
+      city: values.city.trim(),
+      address: values.address.trim(),
+      phone: values.phone.trim(),
+      email: values.email.trim(),
+      latitude: values.latitude,
+      longitude: values.longitude,
+    };
+
+    try {
+      const branch = await createBranchMutation({ body }).unwrap();
+      upsertBranchRecord(branch);
+      toast.success(t("success"));
+      closeModal();
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, t("submitError")));
+    }
   };
 
   return (
@@ -160,7 +177,7 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
                   title={
                     [watchedName.trim(), watchedCity.trim()]
                       .filter(Boolean)
-                      .join(" ┬╖ ") || undefined
+                      .join(" · ") || undefined
                   }
                   value={{
                     latitude: latField.value,
@@ -197,7 +214,7 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
           cancelLabel={t("cancel")}
           onCancel={closeModal}
           submitLabel={t("submit")}
-          loading={submitting}
+          loading={isSubmitting}
         />
       </form>
     </>
@@ -214,4 +231,19 @@ function emptyValues(): CreateBranchFormValues {
     latitude: DEFAULT_BRANCH_LOCATION.latitude,
     longitude: DEFAULT_BRANCH_LOCATION.longitude,
   };
+}
+
+function getMutationErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const value = (error as { error: unknown }).error;
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
 }

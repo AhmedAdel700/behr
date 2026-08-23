@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, type ReactElement } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useDispatch } from "react-redux";
 import { ArrowLeft, Eye, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
+import {
+  branchesApi,
+  useGetBranchByIdQuery,
+} from "@/app/store/api/branches/branchesApi";
+import type { AppDispatch } from "@/app/store/store";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
 import { BranchMapPicker } from "@/components/shared/BranchMapPicker";
@@ -18,31 +23,82 @@ import {
   getBranchDepartmentsSnapshot,
   getBranchesSnapshot,
   subscribeOrg,
+  upsertBranchRecord,
 } from "@/lib/admin/adminOrgStore";
 import { searchDepartmentSummaries } from "@/lib/admin/searchDepartmentSummaries";
+import type { AdminBranchRecord } from "@/types/AdminApiTypes";
 
-export function AdminBranchDetailPage(): ReactElement {
+interface AdminBranchDetailPageProps {
+  branchId: string;
+  initialBranch?: AdminBranchRecord | null;
+}
+
+export function AdminBranchDetailPage({
+  branchId,
+  initialBranch = null,
+}: AdminBranchDetailPageProps): ReactElement {
   const t = useTranslations("admin.branchDetailPage");
-  const params = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const [searchQuery, setSearchQuery] = useState("");
+  const didSeedCache = useRef(false);
+
+  if (initialBranch?.id && branchId && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      branchesApi.util.upsertQueryData("getBranchById", branchId, initialBranch),
+    );
+  }
+
+  const { data: branchData, isLoading, isError } = useGetBranchByIdQuery(
+    branchId,
+    { skip: !branchId },
+  );
+
+  useLayoutEffect(() => {
+    if (!initialBranch?.id) {
+      return;
+    }
+
+    upsertBranchRecord(initialBranch);
+  }, [initialBranch]);
+
+  useEffect(() => {
+    if (!branchData) {
+      return;
+    }
+
+    upsertBranchRecord(branchData);
+  }, [branchData]);
 
   useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
   useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
   useSyncExternalStore(subscribeOrg, getBranchDepartmentsSnapshot, getBranchDepartmentsSnapshot);
 
-  const branchParam = params.branchId;
-  const branchId = typeof branchParam === "string" ? branchParam : "";
-  const [searchQuery, setSearchQuery] = useState("");
-
   const employees = getEmployeesSnapshot();
-  const branch = branchId ? getBranchById(branchId) : undefined;
+  const branch =
+    branchData ??
+    initialBranch ??
+    (branchId ? getBranchById(branchId) : undefined);
   const overview = branch ? getBranchOverview(branch.slug, employees) : undefined;
+
+  const departmentCount =
+    branch?.departmentsCount ?? overview?.departments.length ?? 0;
+  const employeeCount = branch?.usersCount ?? overview?.employeeCount ?? 0;
 
   const filteredDepartments = useMemo(
     () => searchDepartmentSummaries(overview?.departments ?? [], searchQuery),
-    [overview?.departments, searchQuery]
+    [overview?.departments, searchQuery],
   );
 
-  if (!branch || !overview) {
+  if (isLoading && !branchData && !initialBranch) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
+        <p className="text-sm text-text-secondary">{t("loading")}</p>
+      </div>
+    );
+  }
+
+  if (!branch || isError) {
     return (
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -74,8 +130,8 @@ export function AdminBranchDetailPage(): ReactElement {
           <p className="text-sm text-text-secondary">
             {t("subtitle", {
               city: branch.city,
-              departments: overview.departments.length,
-              employees: overview.employeeCount,
+              departments: departmentCount,
+              employees: employeeCount,
             })}
           </p>
         </div>
@@ -141,7 +197,7 @@ export function AdminBranchDetailPage(): ReactElement {
                       colSpan={4}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {overview.departments.length === 0
+                      {departmentCount === 0
                         ? t("emptyDepartments")
                         : t("emptySearch")}
                     </td>
