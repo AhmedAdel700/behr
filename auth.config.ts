@@ -73,6 +73,10 @@ export const authConfig = {
         token.primaryRole = user.primaryRole;
         token.appRole = user.appRole;
         token.adminRole = user.adminRole;
+        token.image = user.image ?? null;
+        token.jobPosition = user.jobPosition ?? null;
+        token.department = user.department ?? null;
+        token.branch = user.branch ?? null;
         delete token.error;
         return token;
       }
@@ -112,6 +116,23 @@ export const authConfig = {
       if (typeof token.email === "string") {
         session.user.email = token.email;
       }
+
+      session.user.image =
+        typeof token.image === "string" && token.image.trim()
+          ? token.image
+          : null;
+      session.user.jobPosition =
+        typeof token.jobPosition === "string" && token.jobPosition.trim()
+          ? token.jobPosition
+          : null;
+      session.user.department =
+        typeof token.department === "string" && token.department.trim()
+          ? token.department
+          : null;
+      session.user.branch =
+        typeof token.branch === "string" && token.branch.trim()
+          ? token.branch
+          : null;
 
       session.accessToken =
         typeof token.accessToken === "string" ? token.accessToken : "";

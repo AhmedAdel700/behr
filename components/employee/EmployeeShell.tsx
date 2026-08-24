@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/shared/BrandLogo";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
 import { EmployeeTabBar } from "@/components/employee/EmployeeTabBar";
 import { MainButton } from "@/components/shared/MainButton";
+import type { SidebarUserInfo } from "@/lib/auth/sidebarUser";
 import { canSwitchDashboards, type PrimaryRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +16,12 @@ export function EmployeeShell({
   children,
   className,
   primaryRole,
+  sidebarUser,
 }: {
   children: ReactNode;
   className?: string;
   primaryRole?: PrimaryRole;
+  sidebarUser?: SidebarUserInfo;
 }) {
   const t = useTranslations("employee");
   const pathname = usePathname();
@@ -65,7 +68,7 @@ export function EmployeeShell({
       </header>
 
       <div className="mx-auto flex w-full max-w-lg items-start gap-5 px-4 pb-28 pt-5 lg:max-w-5xl lg:gap-6 lg:pb-6 lg:pt-6">
-        <EmployeeTabBar />
+        <EmployeeTabBar initialUser={sidebarUser} />
         <main className="min-w-0 flex-1 lg:pt-1">{children}</main>
       </div>
     </div>

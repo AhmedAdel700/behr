@@ -17,6 +17,9 @@ declare module "next-auth" {
       primaryRole: PrimaryRole;
       appRole: AppRole;
       adminRole?: AdminRole;
+      jobPosition: string | null;
+      department: string | null;
+      branch: string | null;
     } & DefaultSession["user"];
   }
 
@@ -31,6 +34,10 @@ declare module "next-auth" {
     primaryRole: PrimaryRole;
     appRole: AppRole;
     adminRole?: AdminRole;
+    image?: string | null;
+    jobPosition: string | null;
+    department: string | null;
+    branch: string | null;
   }
 }
 
@@ -46,6 +53,10 @@ declare module "next-auth/jwt" {
     appRole?: AppRole;
     adminRole?: AdminRole;
     error?: string;
+    image?: string | null;
+    jobPosition?: string | null;
+    department?: string | null;
+    branch?: string | null;
   }
 }
 

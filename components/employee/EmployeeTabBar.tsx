@@ -1,14 +1,17 @@
 "use client";
 
-import { useSyncExternalStore, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { CalendarClock, FileText, Home, UserRound } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { ProfileAvatar } from "@/components/shared/AvatarUpload";
 import {
-  getEmployeeProfileSnapshot,
-  subscribeEmployeeProfile,
-} from "@/lib/employee/employeeProfileStore";
+  getSidebarDisplayName,
+  getSidebarRoleLabel,
+  getSidebarUserInfo,
+  type SidebarUserInfo,
+} from "@/lib/auth/sidebarUser";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -19,16 +22,17 @@ const tabs = [
     match: (p: string) => p === "/" || p === "",
   },
   {
-    href: "/attendance",
-    key: "attendance",
-    icon: CalendarClock,
-    match: (p: string) => p.startsWith("/attendance"),
-  },
-  {
     href: "/requests",
     key: "requests",
     icon: FileText,
     match: (p: string) => p.startsWith("/requests"),
+  },
+  {
+    href: "/attendance",
+    key: "attendance",
+    icon: CalendarClock,
+    match: (p: string) => p.startsWith("/attendance"),
+    comingSoon: true,
   },
   {
     href: "/profile",
@@ -38,17 +42,21 @@ const tabs = [
   },
 ] as const;
 
-export function EmployeeTabBar() {
-  const t = useTranslations("employee.tabs");
+export function EmployeeTabBar({
+  initialUser,
+}: {
+  initialUser?: SidebarUserInfo;
+}): ReactElement {
+  const t = useTranslations("employee");
+  const tTabs = useTranslations("employee.tabs");
   const pathname = usePathname();
-
-  useSyncExternalStore(
-    subscribeEmployeeProfile,
-    getEmployeeProfileSnapshot,
-    getEmployeeProfileSnapshot,
-  );
-
-  const profile = getEmployeeProfileSnapshot();
+  const { data: session } = useSession();
+  const user =
+    session?.user?.id
+      ? getSidebarUserInfo(session)
+      : (initialUser ?? getSidebarUserInfo(null));
+  const displayName = getSidebarDisplayName(user);
+  const roleLabel = getSidebarRoleLabel(user, t("roles.employee"));
 
   return (
     <aside
@@ -64,18 +72,18 @@ export function EmployeeTabBar() {
     >
       <div className="mb-4 hidden items-center gap-3 px-2 pb-4 pt-1.5 lg:flex lg:border-b lg:border-border">
         <ProfileAvatar
-          src={profile.avatarSrc}
-          alt={profile.name}
+          src={user.imageSrc}
+          alt={displayName}
           width={44}
           height={44}
           className="size-11 shrink-0 rounded-full object-cover ring-2 ring-primary-100"
         />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink lg:text-base">
-            {profile.name}
+            {displayName}
           </p>
           <p className="truncate text-[12px] text-text-muted lg:text-sm">
-            {profile.role}
+            {roleLabel}
           </p>
         </div>
       </div>
@@ -115,7 +123,14 @@ export function EmployeeTabBar() {
                     )}
                     strokeWidth={active ? 2.25 : 1.75}
                   />
-                  <span>{t(tab.key)}</span>
+                  <span className="flex flex-col items-center gap-0.5 lg:flex-row lg:items-center lg:gap-2">
+                    <span>{tTabs(tab.key)}</span>
+                    {"comingSoon" in tab && tab.comingSoon ? (
+                      <span className="rounded bg-warning-50 px-1 py-px text-[9px] font-semibold text-warning-800 lg:text-[10px]">
+                        {tTabs("soon")}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             );

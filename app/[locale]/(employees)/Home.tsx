@@ -1,16 +1,31 @@
-import { getTranslations } from "next-intl/server";
-import { CalendarClock, FilePlus2, Files } from "lucide-react";
+import type { ReactElement } from "react";
+import { getTranslations, getLocale } from "next-intl/server";
+import { FilePlus2, Files } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { AttendanceHistorySection } from "@/components/employee/AttendanceHistorySection";
-import { MainButton } from "@/components/shared/MainButton";
-import { DEMO_EMPLOYEE_ID, demoRequests } from "@/lib/employee/demo-data";
+import { auth } from "@/auth";
+import { ComingSoonCard } from "@/components/employee/ComingSoonCard";
+import { fetchAllLeaveRequests } from "@services/leave-requests/leaveRequestsService";
 
-export async function EmployeeHome() {
+export async function EmployeeHome(): Promise<ReactElement> {
   const t = await getTranslations("employee");
-  const openCount = demoRequests.filter(
-    (request) =>
-      request.employeeId === DEMO_EMPLOYEE_ID && request.status === "pending"
-  ).length;
+  const session = await auth();
+  const locale = await getLocale();
+  let openCount = 0;
+
+  if (session?.accessToken) {
+    try {
+      const leaveRequests = await fetchAllLeaveRequests(
+        session.accessToken,
+        locale,
+        session.tokenType,
+      );
+      openCount = leaveRequests.filter(
+        (request) => request.status === "pending",
+      ).length;
+    } catch {
+      openCount = 0;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -21,21 +36,12 @@ export async function EmployeeHome() {
         <p className="text-sm text-text-secondary">{t("home.subtitle")}</p>
       </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-ink">
-            {t("home.todayAttendance")}
-          </h2>
-          <CalendarClock className="size-4 text-text-muted" />
-        </div>
-        <p className="text-sm text-text-secondary">{t("home.notCheckedIn")}</p>
-        <p className="mt-2 text-xs text-text-muted">{t("home.attendanceNote")}</p>
-        <div className="mt-4">
-          <MainButton variant="primary" block link="/attendance">
-            {t("home.goAttendance")}
-          </MainButton>
-        </div>
-      </section>
+      <ComingSoonCard
+        title={t("home.todayAttendance")}
+        badge={t("comingSoon.badge")}
+        heading={t("comingSoon.title")}
+        description={t("comingSoon.description")}
+      />
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-ink">{t("home.quickActions")}</h2>
@@ -67,8 +73,6 @@ export async function EmployeeHome() {
           </Link>
         </div>
       </section>
-
-      <AttendanceHistorySection employeeId={DEMO_EMPLOYEE_ID} />
     </div>
   );
 }

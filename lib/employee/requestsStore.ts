@@ -79,9 +79,9 @@ export function updateRequest(
     ...current,
     status: current.status,
     from: values.from,
-    to: values.to,
+    to: values.to ?? values.from,
     reason: values.reason,
-    note: values.note?.trim() ? values.note.trim() : undefined,
+    note: current.note,
     startTime: values.startTime?.trim() ? values.startTime : undefined,
     endTime: values.endTime?.trim() ? values.endTime : undefined,
   };

@@ -3,7 +3,8 @@
     "home": "Home",
     "attendance": "Attendance",
     "requests": "Requests",
-    "profile": "Profile"
+    "profile": "Profile",
+    "soon": "Soon"
   },
   "brand": "BeHR",
   "roles": {
@@ -11,6 +12,11 @@
     "departmentManager": "Department Manager"
   },
   "goToAdminDashboard": "Admin dashboard",
+  "comingSoon": {
+    "badge": "Phase 2",
+    "title": "Coming soon",
+    "description": "Check-in, check-out, and attendance history will be available in a later phase."
+  },
   "home": {
     "greeting": "Hello",
     "subtitle": "Here’s your day at a glance.",
@@ -63,6 +69,17 @@
     "subtitle": "Leave and time-off requests",
     "new": "New request",
     "empty": "No requests yet",
+    "loading": "Loading requests…",
+    "loadError": "Could not load requests.",
+    "noLeaveTypes": "No leave types are available yet.",
+    "unitHintDay": "Choose the start and end dates for this leave.",
+    "unitHintHour": "Choose the date and the hours you need away.",
+    "submitSuccess": "Leave request submitted.",
+    "notFoundTitle": "Request not found",
+    "notFoundDescription": "This request does not exist or is not available.",
+    "rejectionReason": "Rejection reason",
+    "reviewer": "Reviewed by",
+    "reviewedAt": "Reviewed at",
     "monthCount": "{count} requests",
     "filter": {
       "all": "All",
@@ -111,6 +128,7 @@
     "reason": "Reason",
     "note": "Note",
     "dates": "Dates",
+    "date": "Date",
     "hours": "Hours",
     "from": "From",
     "to": "To",
@@ -149,7 +167,8 @@
       "endTimeRequired": "End time is required",
       "timeInvalid": "End time must be after start time",
       "reasonRequired": "Reason is required",
-      "reasonMin": "Reason must be at least 5 characters"
+      "reasonMin": "Reason must be at least 5 characters",
+      "failed": "Could not submit this request."
     }
   },
   "profile": {

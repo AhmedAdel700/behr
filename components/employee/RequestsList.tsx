@@ -1,42 +1,80 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useEffect, type ReactElement } from "react";
+import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { MainButton } from "@/components/shared/MainButton";
 import {
-  leaveTypeSurface,
-  type DemoRequest,
-  type RequestStatus,
-} from "@/lib/employee/demo-data";
+  leaveRequestsApi,
+  useGetAllLeaveRequestsQuery,
+} from "@/app/store/api/leave-requests/leaveRequestsApi";
+import type { AppDispatch } from "@/app/store/store";
+import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
+import { MainButton } from "@/components/shared/MainButton";
 import {
   formatRequestMonthLabel,
   groupRequestsByMonth,
 } from "@/lib/employee/groupRequestsByMonth";
-import {
-  getEmployeeRequestsSnapshot,
-  subscribeRequests,
-} from "@/lib/employee/requestsStore";
+import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { cn } from "@/lib/utils";
+import type {
+  LeaveRequestRecord,
+  LeaveRequestStatus,
+} from "@/types/LeaveRequestsApiTypes";
 
-export function RequestsList() {
+export function RequestsList({
+  initialData,
+}: {
+  initialData?: LeaveRequestRecord[];
+}): ReactElement {
   const t = useTranslations("employee.requests");
   const locale = useLocale();
-  const requests = useSyncExternalStore(
-    subscribeRequests,
-    getEmployeeRequestsSnapshot,
-    getEmployeeRequestsSnapshot
-  );
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
+
+  if (initialData && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      leaveRequestsApi.util.upsertQueryData(
+        "getAllLeaveRequests",
+        undefined,
+        initialData,
+      ),
+    );
+  }
+
+  const {
+    data: leaveRequests,
+    isLoading,
+    isError,
+  } = useGetAllLeaveRequestsQuery();
+
+  const requests = leaveRequests ?? initialData ?? [];
   const monthGroups = useMemo(
     () => groupRequestsByMonth(requests),
-    [requests]
+    [requests],
   );
 
   const [openMonths, setOpenMonths] = useState<ReadonlySet<string>>(() => {
-    const newest = groupRequestsByMonth(getEmployeeRequestsSnapshot())[0]?.key;
+    const newest = groupRequestsByMonth(initialData ?? [])[0]?.key;
     return newest ? new Set([newest]) : new Set();
   });
+  const didAutoOpen = useRef((initialData ?? []).length > 0);
+
+  useEffect(() => {
+    if (didAutoOpen.current) {
+      return;
+    }
+
+    const newest = monthGroups[0]?.key;
+    if (!newest) {
+      return;
+    }
+
+    didAutoOpen.current = true;
+    setOpenMonths((prev) => (prev.size > 0 ? prev : new Set([newest])));
+  }, [monthGroups]);
 
   const toggleMonth = (key: string): void => {
     setOpenMonths((prev) => {
@@ -69,7 +107,15 @@ export function RequestsList() {
         </MainButton>
       </section>
 
-      {monthGroups.length === 0 ? (
+      {isLoading && requests.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+          {t("loading")}
+        </p>
+      ) : isError && requests.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+          {t("loadError")}
+        </p>
+      ) : monthGroups.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
           {t("empty")}
         </p>
@@ -92,7 +138,7 @@ export function RequestsList() {
                     <ChevronDown
                       className={cn(
                         "size-4 shrink-0 text-text-muted transition-transform duration-200",
-                        isOpen && "rotate-180"
+                        isOpen && "rotate-180",
                       )}
                     />
                   }
@@ -100,7 +146,7 @@ export function RequestsList() {
                     "h-auto w-full justify-between gap-3 rounded-xl px-3 py-2.5 text-start font-normal shadow-none ring-0",
                     isOpen
                       ? "bg-transparent hover:bg-transparent"
-                      : "bg-surface-muted hover:bg-neutral-200/70"
+                      : "bg-surface-muted hover:bg-neutral-200/70",
                   )}
                 >
                   <span className="flex min-w-0 items-baseline gap-2">
@@ -116,7 +162,7 @@ export function RequestsList() {
                 {isOpen ? (
                   <ul id={panelId} className="space-y-3">
                     {group.items.map((item) => (
-                      <RequestCard key={item.id} item={item} />
+                      <RequestCard key={item.id} item={item} locale={locale} />
                     ))}
                   </ul>
                 ) : null}
@@ -129,7 +175,13 @@ export function RequestsList() {
   );
 }
 
-function RequestCard({ item }: { item: DemoRequest }) {
+function RequestCard({
+  item,
+  locale,
+}: {
+  item: LeaveRequestRecord;
+  locale: string;
+}): ReactElement {
   const t = useTranslations("employee.requests");
 
   return (
@@ -139,19 +191,18 @@ function RequestCard({ item }: { item: DemoRequest }) {
         className="block rounded-2xl border border-border bg-surface p-4 shadow-xs transition-colors hover:border-border-strong"
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                leaveTypeSurface[item.type].soft
-              )}
-            >
-              {t(`types.${item.type}`)}
-            </span>
+          <div className="min-w-0 space-y-1.5">
+            <LeaveTypeBadge
+              leaveTypeId={item.leaveType.id}
+              name={item.leaveType.name}
+            />
             <p className="text-sm font-medium text-ink">
-              {item.from === item.to
-                ? item.from
-                : `${item.from} → ${item.to}`}
+              {formatLeaveRequestRange(
+                item.startAt,
+                item.endAt,
+                locale,
+                item.leaveType.unit,
+              )}
             </p>
             <p className="line-clamp-2 text-xs text-text-secondary">
               {item.reason}
@@ -171,16 +222,16 @@ function StatusBadge({
   status,
   label,
 }: {
-  status: RequestStatus;
+  status: LeaveRequestStatus;
   label: string;
-}) {
+}): ReactElement {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium",
+        "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
         status === "pending" && "bg-warning-50 text-warning-700",
         status === "approved" && "bg-success-50 text-success-700",
-        status === "rejected" && "bg-danger-50 text-danger-700"
+        status === "rejected" && "bg-danger-50 text-danger-700",
       )}
     >
       {label}

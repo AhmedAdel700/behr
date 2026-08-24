@@ -32,6 +32,7 @@ export const baseApi = createApi({
     "Branch",
     "Department",
     "Employee",
+    "LeaveRequest",
     "LeaveType",
     "Position",
     "RegistrationRequest",

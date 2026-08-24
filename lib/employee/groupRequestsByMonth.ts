@@ -1,19 +1,19 @@
-import type { DemoRequest } from "@/lib/employee/demo-data";
+import type { LeaveRequestRecord } from "@/types/LeaveRequestsApiTypes";
 
 export interface RequestMonthGroup {
   /** `YYYY-MM` */
   key: string;
-  items: DemoRequest[];
+  items: LeaveRequestRecord[];
 }
 
 /** Group requests by created month (`YYYY-MM`), newest month first. */
 export function groupRequestsByMonth(
-  requests: DemoRequest[]
+  requests: readonly LeaveRequestRecord[],
 ): RequestMonthGroup[] {
-  const buckets = new Map<string, DemoRequest[]>();
+  const buckets = new Map<string, LeaveRequestRecord[]>();
 
   const sorted = [...requests].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt)
+    b.createdAt.localeCompare(a.createdAt),
   );
 
   for (const item of sorted) {
@@ -33,7 +33,7 @@ export function groupRequestsByMonth(
 
 export function formatRequestMonthLabel(
   monthKey: string,
-  locale: string
+  locale: string,
 ): string {
   const date = new Date(`${monthKey}-01T12:00:00`);
   return new Intl.DateTimeFormat(locale, {

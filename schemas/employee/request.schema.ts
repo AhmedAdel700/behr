@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { RequestType } from "@/lib/employee/demo-data";
+import type { LeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
 
 export type RequestFormErrorMessages = {
   fromRequired: string;
@@ -13,8 +13,8 @@ export type RequestFormErrorMessages = {
 };
 
 export function createRequestSchema(
-  type: RequestType,
-  errors: RequestFormErrorMessages
+  unit: LeaveTypeUnit,
+  errors: RequestFormErrorMessages,
 ) {
   const base = z.object({
     from: z.string().min(1, { error: errors.fromRequired }),
@@ -23,20 +23,21 @@ export function createRequestSchema(
       .string()
       .min(1, { error: errors.reasonRequired })
       .min(5, { error: errors.reasonMin }),
-    note: z.string().optional(),
     startTime: z.string().optional(),
     endTime: z.string().optional(),
   });
 
-  if (type === "permission") {
-    return base
-      .extend({
+  if (unit === "hour") {
+    return z
+      .object({
+        from: z.string().min(1, { error: errors.fromRequired }),
+        to: z.string().optional(),
+        reason: z
+          .string()
+          .min(1, { error: errors.reasonRequired })
+          .min(5, { error: errors.reasonMin }),
         startTime: z.string().min(1, { error: errors.startTimeRequired }),
         endTime: z.string().min(1, { error: errors.endTimeRequired }),
-      })
-      .refine((data) => data.to >= data.from, {
-        path: ["to"],
-        error: errors.rangeInvalid,
       })
       .refine((data) => data.endTime > data.startTime, {
         path: ["endTime"],

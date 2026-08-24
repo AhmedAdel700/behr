@@ -1,68 +1,95 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type ReactElement } from "react";
+import { useRef, type ReactElement } from "react";
+import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Trash2 } from "lucide-react";
-import { notFound } from "next/navigation";
-import { Link, useRouter } from "@/i18n/navigation";
-import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
-import { MainButton } from "@/components/shared/MainButton";
-import { leaveTypeSurface } from "@/lib/employee/demo-data";
+import { ArrowLeft } from "lucide-react";
 import {
-  canModifyRequest,
-  deleteRequest,
-  getEmployeeRequestById,
-  getEmployeeRequestsSnapshot,
-  subscribeRequests,
-} from "@/lib/employee/requestsStore";
-import { formatStoredTime12, resolveTimeLocale } from "@/lib/formatTime";
+  leaveRequestsApi,
+  useGetLeaveRequestQuery,
+} from "@/app/store/api/leave-requests/leaveRequestsApi";
+import type { AppDispatch } from "@/app/store/store";
+import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
+import { MainButton } from "@/components/shared/MainButton";
+import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
+import type { LeaveRequestRecord } from "@/types/LeaveRequestsApiTypes";
 
-export function RequestDetail({ id }: { id: string }): ReactElement {
+export function RequestDetail({
+  id,
+  initialData,
+}: {
+  id: string;
+  initialData?: LeaveRequestRecord;
+}): ReactElement {
   const t = useTranslations("employee.requests");
   const locale = useLocale();
-  const router = useRouter();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const deleteRequestTriggerRef = useRef<HTMLButtonElement>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
 
-  useSyncExternalStore(
-    subscribeRequests,
-    getEmployeeRequestsSnapshot,
-    getEmployeeRequestsSnapshot
-  );
-  const item = getEmployeeRequestById(id);
-
-  if (!item) {
-    notFound();
+  if (initialData && id && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      leaveRequestsApi.util.upsertQueryData("getLeaveRequest", id, initialData),
+    );
   }
 
-  const canModify = canModifyRequest(item.status);
+  const {
+    data: leaveRequest,
+    isLoading,
+    isError,
+  } = useGetLeaveRequestQuery(id, { skip: !id });
 
-  const handleDelete = (): boolean => {
-    setDeleting(true);
-    const removed = deleteRequest(id);
-    setDeleting(false);
-    if (removed) {
-      router.push("/requests");
-    }
-    return removed;
-  };
+  const item = leaveRequest ?? initialData;
+
+  if (!id || ((isError || !item) && !isLoading)) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
+          {t("notFoundTitle")}
+        </h1>
+        <p className="text-sm text-text-secondary">{t("notFoundDescription")}</p>
+        <MainButton variant="primary" size="sm" link="/requests">
+          {t("back")}
+        </MainButton>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+        {t("loading")}
+      </p>
+    );
+  }
+
+  const submittedAt = formatTimestamp(item.createdAt, locale);
+  const reviewedAt = item.reviewedAt
+    ? formatTimestamp(item.reviewedAt, locale)
+    : null;
 
   return (
     <div className="space-y-5">
-      <section className="space-y-2">
-        <span
-          className={cn(
-            "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-            leaveTypeSurface[item.type].soft
-          )}
+      <section className="space-y-3">
+        <MainButton
+          variant="ghost-brand"
+          size="sm"
+          startIcon={<ArrowLeft className="size-4 rtl:rotate-180" />}
+          link="/requests"
         >
-          {t(`types.${item.type}`)}
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          {t("detail")}
-        </h1>
+          {t("back")}
+        </MainButton>
+        <div className="space-y-2">
+          <LeaveTypeBadge
+            leaveTypeId={item.leaveType.id}
+            name={item.leaveType.name}
+          />
+          <h1 className="text-xl font-semibold tracking-tight text-ink">
+            {t("detail")}
+          </h1>
+        </div>
       </section>
 
       <dl className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-xs">
@@ -70,85 +97,65 @@ export function RequestDetail({ id }: { id: string }): ReactElement {
           <div className="min-w-0">
             <dt className="text-xs text-text-muted">{t("dates")}</dt>
             <dd className="mt-1 text-sm font-medium text-ink">
-              {item.from === item.to ? item.from : `${item.from} → ${item.to}`}
+              {formatLeaveRequestRange(
+                item.startAt,
+                item.endAt,
+                locale,
+                item.leaveType.unit,
+              )}
             </dd>
           </div>
           <span
             className={cn(
-              "inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+              "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
               item.status === "pending" && "bg-warning-50 text-warning-700",
               item.status === "approved" && "bg-success-50 text-success-700",
-              item.status === "rejected" && "bg-danger-50 text-danger-700"
+              item.status === "rejected" && "bg-danger-50 text-danger-700",
             )}
           >
             {t(`status.${item.status}`)}
           </span>
         </div>
-        {item.startTime && item.endTime ? (
-          <div>
-            <dt className="text-xs text-text-muted">{t("hours")}</dt>
-            <dd className="mt-1 text-sm font-medium text-ink">
-              {formatStoredTime12(item.startTime, resolveTimeLocale(locale))} →{" "}
-              {formatStoredTime12(item.endTime, resolveTimeLocale(locale))}
-            </dd>
-          </div>
-        ) : null}
         <div>
           <dt className="text-xs text-text-muted">{t("reason")}</dt>
           <dd className="mt-1 text-sm text-text-secondary">{item.reason}</dd>
         </div>
-        {item.note ? (
+        {item.rejectionReason ? (
           <div>
-            <dt className="text-xs text-text-muted">{t("note")}</dt>
-            <dd className="mt-1 text-sm text-text-secondary">{item.note}</dd>
+            <dt className="text-xs text-text-muted">{t("rejectionReason")}</dt>
+            <dd className="mt-1 text-sm text-text-secondary">
+              {item.rejectionReason}
+            </dd>
+          </div>
+        ) : null}
+        {item.reviewer ? (
+          <div>
+            <dt className="text-xs text-text-muted">{t("reviewer")}</dt>
+            <dd className="mt-1 text-sm font-medium text-ink">
+              {item.reviewer.fullName}
+            </dd>
+          </div>
+        ) : null}
+        {reviewedAt ? (
+          <div>
+            <dt className="text-xs text-text-muted">{t("reviewedAt")}</dt>
+            <dd className="mt-1 text-sm font-medium text-ink">{reviewedAt}</dd>
           </div>
         ) : null}
         <div>
           <dt className="text-xs text-text-muted">{t("createdAt")}</dt>
-          <dd className="mt-1 text-sm font-medium text-ink">{item.createdAt}</dd>
+          <dd className="mt-1 text-sm font-medium text-ink">{submittedAt}</dd>
         </div>
       </dl>
-
-      {canModify ? (
-        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-          <MainButton
-            variant="edit"
-            block
-            link={`/requests/${item.id}/edit`}
-            startIcon={<Pencil className="size-4" />}
-          >
-            {t("edit")}
-          </MainButton>
-          <MainButton
-            ref={deleteRequestTriggerRef}
-            variant="delete-soft"
-            block
-            startIcon={<Trash2 className="size-4" />}
-            onClick={() => setConfirmOpen(true)}
-          >
-            {t("delete")}
-          </MainButton>
-        </div>
-      ) : null}
-
-      <Link
-        href="/requests"
-        className="inline-flex text-sm font-medium text-primary-600 hover:text-primary-700"
-      >
-        {t("back")}
-      </Link>
-
-      <DeleteConfirmModal
-        open={confirmOpen}
-        title={t("deleteTitle")}
-        description={t("deleteDescription")}
-        confirmLabel={t("deleteConfirm")}
-        cancelLabel={t("deleteCancel")}
-        loading={deleting}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleDelete}
-        triggerRef={deleteRequestTriggerRef}
-      />
     </div>
   );
+}
+
+function formatTimestamp(value: string, locale: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return formatDateTime12(date, resolveTimeLocale(locale));
 }

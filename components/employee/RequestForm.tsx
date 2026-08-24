@@ -4,29 +4,35 @@ import { useMemo, type ReactElement } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Link, useRouter } from "@/i18n/navigation";
+import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
+import { useCreateLeaveRequestMutation } from "@/app/store/api/leave-requests/leaveRequestsApi";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainDatePicker } from "@/components/shared/MainDatePicker";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainTimeInput } from "@/components/shared/MainTimeInput";
-import type { RequestType } from "@/lib/employee/demo-data";
-import { leaveTypeSurface } from "@/lib/employee/demo-data";
-import { updateRequest } from "@/lib/employee/requestsStore";
+import {
+  buildLeaveRequestDateTime,
+  DEFAULT_DAY_END_TIME,
+  DEFAULT_DAY_START_TIME,
+  getLeaveRequestMutationError,
+} from "@/lib/employee/leaveRequestDisplay";
 import {
   createRequestSchema,
   type RequestFormValues,
 } from "@/schemas/employee/request.schema";
-import { cn } from "@/lib/utils";
+import type { LeaveTypeRecord } from "@/types/LeaveTypesApiTypes";
 
 export interface RequestFormProps {
-  type: RequestType;
+  leaveType: Pick<LeaveTypeRecord, "id" | "name" | "unit" | "description">;
   mode?: "create" | "edit";
   requestId?: string;
   initialValues?: RequestFormValues;
 }
 
 export function RequestForm({
-  type,
+  leaveType,
   mode = "create",
   requestId,
   initialValues,
@@ -34,10 +40,12 @@ export function RequestForm({
   const t = useTranslations("employee.requests");
   const router = useRouter();
   const isEdit = mode === "edit";
+  const [createLeaveRequest, { isLoading: creating }] =
+    useCreateLeaveRequestMutation();
 
   const schema = useMemo(
     () =>
-      createRequestSchema(type, {
+      createRequestSchema(leaveType.unit, {
         fromRequired: t("errors.fromRequired"),
         toRequired: t("errors.toRequired"),
         rangeInvalid: t("errors.rangeInvalid"),
@@ -47,7 +55,7 @@ export function RequestForm({
         reasonRequired: t("errors.reasonRequired"),
         reasonMin: t("errors.reasonMin"),
       }),
-    [t, type]
+    [t, leaveType.unit],
   );
 
   const {
@@ -55,54 +63,85 @@ export function RequestForm({
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
+    setValue,
+    reset,
+    formState: { errors },
   } = useForm<RequestFormValues>({
     resolver: zodResolver(schema),
     defaultValues: initialValues ?? {
       from: "",
       to: "",
       reason: "",
-      note: "",
       startTime: "",
       endTime: "",
     },
   });
 
-  const isPermission = type === "permission";
+  const isHourUnit = leaveType.unit === "hour";
   const fromValue = watch("from");
   const fromDate = fromValue
     ? new Date(
         Number(fromValue.slice(0, 4)),
         Number(fromValue.slice(5, 7)) - 1,
-        Number(fromValue.slice(8, 10))
+        Number(fromValue.slice(8, 10)),
       )
     : undefined;
 
-  const onSubmit = (values: RequestFormValues): void => {
-    if (isEdit && requestId) {
-      const updated = updateRequest(requestId, values);
-      if (updated) {
-        router.push(`/requests/${requestId}`);
-      }
+  const onSubmit = async (values: RequestFormValues): Promise<void> => {
+    if (isEdit) {
       return;
+    }
+
+    const leaveTypeId = Number(leaveType.id);
+    if (!Number.isFinite(leaveTypeId)) {
+      toast.error(t("errors.failed"));
+      return;
+    }
+
+    const startTime = isHourUnit
+      ? (values.startTime ?? "")
+      : DEFAULT_DAY_START_TIME;
+    const endTime = isHourUnit ? (values.endTime ?? "") : DEFAULT_DAY_END_TIME;
+    const endDate = isHourUnit ? values.from : (values.to ?? values.from);
+
+    try {
+      const result = await createLeaveRequest({
+        body: {
+          leave_type_id: leaveTypeId,
+          start_at: buildLeaveRequestDateTime(values.from, startTime),
+          end_at: buildLeaveRequestDateTime(endDate, endTime),
+          reason: values.reason.trim(),
+        },
+      }).unwrap();
+      toast.success(result.message || t("submitSuccess"));
+      reset();
+      router.push("/requests");
+    } catch (error) {
+      toast.error(getLeaveRequestMutationError(error, t("errors.failed")));
     }
   };
 
   return (
     <div className="space-y-5">
-      <section className="space-y-2">
-        <span
-          className={cn(
-            "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-            leaveTypeSurface[type].soft
-          )}
+      <section className="space-y-3">
+        <MainButton
+          variant="ghost-brand"
+          size="sm"
+          startIcon={<ArrowLeft className="size-4 rtl:rotate-180" />}
+          link={isEdit && requestId ? `/requests/${requestId}` : "/requests/new"}
         >
-          {t(`types.${type}`)}
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          {isEdit ? t("editTitle") : t("new")}
-        </h1>
-        <p className="text-sm text-text-secondary">{t(`typeHints.${type}`)}</p>
+          {t("back")}
+        </MainButton>
+        <div className="space-y-2">
+          <h1 className="text-xl font-semibold tracking-tight text-ink">
+            {isEdit ? t("editTitle") : t("new")}
+          </h1>
+          <p className="text-sm text-text-secondary">
+            {leaveType.description.trim()
+              ? leaveType.description
+              : t(isHourUnit ? "unitHintHour" : "unitHintDay")}
+          </p>
+        </div>
       </section>
 
       <form
@@ -115,35 +154,42 @@ export function RequestForm({
           control={control}
           render={({ field }) => (
             <MainDatePicker
-              label={t("from")}
+              label={isHourUnit ? t("date") : t("from")}
               required
               placeholder={t("pickDate")}
               value={field.value}
-              onChange={field.onChange}
+              onChange={(value) => {
+                field.onChange(value);
+                if (isHourUnit) {
+                  setValue("to", value, { shouldValidate: false });
+                }
+              }}
               onBlur={field.onBlur}
               error={errors.from?.message}
             />
           )}
         />
 
-        <Controller
-          name="to"
-          control={control}
-          render={({ field }) => (
-            <MainDatePicker
-              label={t("to")}
-              required
-              placeholder={t("pickDate")}
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              minDate={fromDate}
-              error={errors.to?.message}
-            />
-          )}
-        />
+        {isHourUnit ? null : (
+          <Controller
+            name="to"
+            control={control}
+            render={({ field }) => (
+              <MainDatePicker
+                label={t("to")}
+                required
+                placeholder={t("pickDate")}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                minDate={fromDate}
+                error={errors.to?.message}
+              />
+            )}
+          />
+        )}
 
-        {isPermission ? (
+        {isHourUnit ? (
           <>
             <Controller
               name="startTime"
@@ -188,31 +234,17 @@ export function RequestForm({
           error={errors.reason?.message}
           {...register("reason")}
         />
-        <MainInput
-          as="textarea"
-          label={t("note")}
-          placeholder={t("placeholders.note")}
-          error={errors.note?.message}
-          {...register("note")}
-        />
 
         <MainButton
           type="submit"
           variant="primary"
           block
           className="mt-1"
-          loading={isSubmitting}
+          loading={creating}
         >
           {isEdit ? t("save") : t("submit")}
         </MainButton>
       </form>
-
-      <Link
-        href={isEdit && requestId ? `/requests/${requestId}` : "/requests/new"}
-        className="inline-flex text-sm font-medium text-primary-600 hover:text-primary-700"
-      >
-        {t("back")}
-      </Link>
     </div>
   );
 }

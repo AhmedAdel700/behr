@@ -4,6 +4,23 @@ export type LeaveTypeUnit = "day" | "hour";
 export type LeaveTypeAllocationType = "yearly" | "monthly" | "none";
 export type LeaveTypeGenderRestriction = "none" | "female" | "male";
 
+export function parseLeaveTypeUnit(value: unknown): LeaveTypeUnit {
+  if (typeof value !== "string") {
+    return "day";
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "hour" ||
+    normalized === "hr" ||
+    normalized === "hours"
+  ) {
+    return "hour";
+  }
+
+  return "day";
+}
+
 export interface LeaveTypeApiRecord {
   id: number;
   name: string;

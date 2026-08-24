@@ -4,16 +4,17 @@ import {
   leaveTypesCollectionUrl,
 } from "@services/leave-types/leaveTypesPaths";
 import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
-import type {
-  LeaveTypeApiRecord,
-  LeaveTypeDeleteResult,
-  LeaveTypeMutationResult,
-  LeaveTypePayload,
-  LeaveTypeRecord,
-  LeaveTypesListQueryParams,
-  LeaveTypesListResult,
+import {
+  LeaveTypesApiError,
+  parseLeaveTypeUnit,
+  type LeaveTypeApiRecord,
+  type LeaveTypeDeleteResult,
+  type LeaveTypeMutationResult,
+  type LeaveTypePayload,
+  type LeaveTypeRecord,
+  type LeaveTypesListQueryParams,
+  type LeaveTypesListResult,
 } from "@/types/LeaveTypesApiTypes";
-import { LeaveTypesApiError } from "@/types/LeaveTypesApiTypes";
 
 function buildAuthorizedHeaders(
   accessToken: string,
@@ -94,17 +95,22 @@ function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
     payload.meta !== null
   ) {
     const meta = payload.meta as Record<string, unknown>;
+    const currentPage = readPositiveInt(meta.current_page);
+    const lastPage = readPositiveInt(meta.last_page);
+    const perPage = readPositiveInt(meta.per_page);
+    const total = readPositiveInt(meta.total);
+
     if (
-      typeof meta.current_page === "number" &&
-      typeof meta.last_page === "number" &&
-      typeof meta.per_page === "number" &&
-      typeof meta.total === "number"
+      currentPage !== null &&
+      lastPage !== null &&
+      perPage !== null &&
+      total !== null
     ) {
       return {
-        current_page: meta.current_page,
-        last_page: meta.last_page,
-        per_page: meta.per_page,
-        total: meta.total,
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPage,
+        total,
       };
     }
   }
@@ -115,6 +121,21 @@ function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
     per_page: 15,
     total: 0,
   };
+}
+
+function readPositiveInt(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function wrapNetworkError(error: unknown, fallback: string): never {
@@ -150,10 +171,6 @@ function parseCount(value: string | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function isLeaveTypeUnit(value: unknown): value is LeaveTypeApiRecord["unit"] {
-  return value === "day" || value === "hour";
-}
-
 function isLeaveTypeAllocationType(
   value: unknown,
 ): value is LeaveTypeApiRecord["allocation_type"] {
@@ -171,7 +188,7 @@ function mapLeaveTypeFromApi(record: LeaveTypeApiRecord): LeaveTypeRecord {
     id: String(record.id),
     name: normalizeText(record.name),
     description: normalizeText(record.description),
-    unit: isLeaveTypeUnit(record.unit) ? record.unit : "day",
+    unit: parseLeaveTypeUnit(record.unit),
     allocationType: isLeaveTypeAllocationType(record.allocation_type)
       ? record.allocation_type
       : "none",
@@ -281,6 +298,42 @@ export async function fetchLeaveType(
   );
 
   return mapLeaveTypeFromApi(data);
+}
+
+const MAX_LEAVE_TYPE_PAGES = 50;
+
+export async function fetchAllLeaveTypes(
+  accessToken: string,
+  lang: string,
+  tokenType = "Bearer",
+): Promise<LeaveTypeRecord[]> {
+  const collected: LeaveTypeRecord[] = [];
+  const seen = new Set<string>();
+  let page = 1;
+  let lastPage = 1;
+  let total = 0;
+
+  do {
+    const result = await fetchLeaveTypes(accessToken, lang, tokenType, { page });
+    lastPage = Math.max(1, result.meta.last_page);
+    total = Math.max(total, result.meta.total);
+
+    for (const leaveType of result.leaveTypes) {
+      if (seen.has(leaveType.id)) {
+        continue;
+      }
+
+      seen.add(leaveType.id);
+      collected.push(leaveType);
+    }
+
+    page += 1;
+  } while (
+    page <= MAX_LEAVE_TYPE_PAGES &&
+    (page <= lastPage || collected.length < total)
+  );
+
+  return collected;
 }
 
 export async function createLeaveTypeRequest(

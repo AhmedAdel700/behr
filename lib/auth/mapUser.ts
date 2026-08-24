@@ -13,6 +13,10 @@ export interface AuthSessionUser {
   id: string;
   name: string;
   email: string;
+  image: string | null;
+  jobPosition: string | null;
+  department: string | null;
+  branch: string | null;
   roles: string[];
   permissions: string[];
   primaryRole: PrimaryRole;
@@ -25,6 +29,15 @@ export interface AuthSessionWithToken extends AuthSessionUser {
   tokenType: string;
   expiresIn: number;
   accessTokenIssuedAt: number;
+}
+
+function optionalProfileString(value: string | null | undefined): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function resolveAuthFieldsFromRoles(roles: readonly string[]): {
@@ -56,6 +69,10 @@ export function resolveAuthSessionUser(
     id: session.user.id,
     name: session.user.name ?? "",
     email: session.user.email ?? "",
+    image: optionalProfileString(session.user.image),
+    jobPosition: optionalProfileString(session.user.jobPosition),
+    department: optionalProfileString(session.user.department),
+    branch: optionalProfileString(session.user.branch),
     roles,
     permissions: session.user.permissions ?? [],
     primaryRole: session.user.primaryRole ?? resolved.primaryRole,
@@ -81,6 +98,10 @@ export function mapBackendUserToAuthUser(
     id: String(backendUser.id),
     name: backendUser.full_name,
     email: backendUser.email,
+    image: optionalProfileString(backendUser.image),
+    jobPosition: optionalProfileString(backendUser.job_position),
+    department: optionalProfileString(backendUser.department),
+    branch: optionalProfileString(backendUser.branch),
     roles: backendUser.roles ?? [],
     permissions: backendUser.permissions ?? [],
     primaryRole,
