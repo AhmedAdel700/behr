@@ -1,8 +1,15 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import {
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { useDispatch } from "react-redux";
+import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Briefcase,
@@ -19,56 +26,93 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import {
+  employeesApi,
+  useDeleteEmployeeMutation,
+  useGetEmployeeQuery,
+} from "@/app/store/api/employees/employeesApi";
+import type { AppDispatch } from "@/app/store/store";
 import { AttendanceHistorySection } from "@/components/employee/AttendanceHistorySection";
 import { LeaveStatsSection } from "@/components/employee/LeaveStatsSection";
 import { EditEmployeeAssignmentModal } from "@/components/admin/EditEmployeeAssignmentModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
-import { getBranchDisplayName } from "@/lib/admin/buildBranchOverviews";
-import {
-  deleteEmployee,
-  getEmployeeById,
-  getEmployeesSnapshot,
-  subscribeEmployees,
-} from "@/lib/admin/adminDataStore";
-import { getDepartmentManagerName } from "@/lib/admin/departmentManagers";
 import {
   getAdminSessionSnapshot,
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
-import { getBranchesSnapshot, getBranchDepartmentsSnapshot, subscribeOrg } from "@/lib/admin/adminOrgStore";
-import {
-  canManageEmployees,
-  canViewEmployee,
-  isSuperAdmin,
-} from "@/lib/admin/permissions";
+import { canManageEmployees, isSuperAdmin } from "@/lib/admin/permissions";
+import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import type { EmployeeRecord } from "@/types/EmployeesApiTypes";
 
-export function AdminEmployeeDetailPage(): ReactElement {
+export function AdminEmployeeDetailPage({
+  employeeId,
+  initialData,
+}: {
+  employeeId: string;
+  initialData?: EmployeeRecord;
+}): ReactElement {
   const t = useTranslations("admin.employeeDetailPage");
   const tEmployees = useTranslations("admin.employees");
-  const tDept = useTranslations("admin.departments");
-  const tBranch = useTranslations("auth.branchOptions");
+  const locale = useLocale();
   const router = useRouter();
-  const params = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
 
-  useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-  useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
+  useSyncExternalStore(
+    subscribeAdminSession,
+    getAdminSessionSnapshot,
+    getAdminSessionSnapshot,
+  );
 
-  const employeeParam = params.employeeId;
-  const employeeId = typeof employeeParam === "string" ? employeeParam : "";
+  if (initialData && employeeId && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      employeesApi.util.upsertQueryData("getEmployee", employeeId, initialData),
+    );
+  }
+
+  const {
+    data: employeeData,
+    isLoading,
+    isError,
+  } = useGetEmployeeQuery(employeeId, { skip: !employeeId });
+
   const admin = getAdminSessionSnapshot();
-  const employee = employeeId ? getEmployeeById(employeeId) : undefined;
-  const canView = employee ? canViewEmployee(admin, employee) : false;
+  const employee = employeeData ?? initialData;
   const canEdit = canManageEmployees(admin.role);
   const canDelete = isSuperAdmin(admin.role);
+  const [deleteEmployeeMutation, { isLoading: deletingEmployee }] =
+    useDeleteEmployeeMutation();
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const editEmployeeTriggerRef = useRef<HTMLButtonElement>(null);
   const deleteEmployeeTriggerRef = useRef<HTMLButtonElement>(null);
 
-  if (!employee || !canView) {
+  const confirmDelete = async (): Promise<void> => {
+    if (!employee) {
+      return;
+    }
+
+    try {
+      await deleteEmployeeMutation({ employeeId: employee.id }).unwrap();
+      setDeleteOpen(false);
+      router.push("/admin-dashboard/employees");
+    } catch (error) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
+        typeof error.error === "string" &&
+        error.error.trim()
+          ? error.error
+          : tEmployees("deleteError");
+      toast.error(message);
+    }
+  };
+
+  if (!employeeId || ((isError || !employee) && !isLoading)) {
     return (
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -82,23 +126,15 @@ export function AdminEmployeeDetailPage(): ReactElement {
     );
   }
 
-  const branchName = getBranchDisplayName(
-    employee.branch,
-    getBranchesSnapshot(),
-    (value) => tBranch(value)
-  );
+  if (!employee) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
+        <p className="text-sm text-text-secondary">{tEmployees("loading")}</p>
+      </div>
+    );
+  }
 
-  const departmentRecord = getBranchDepartmentsSnapshot().find(
-    (department) => department.slug === employee.department
-  );
-  const departmentName = departmentRecord?.name ?? tDept(employee.department);
-
-  const handleDelete = (): boolean => {
-    const deleted = deleteEmployee(employee.id);
-    if (!deleted) return false;
-    router.push("/admin-dashboard/employees");
-    return true;
-  };
+  const positionLabel = employee.jobPosition?.name ?? tEmployees("notAssigned");
 
   return (
     <div className="space-y-6">
@@ -113,10 +149,10 @@ export function AdminEmployeeDetailPage(): ReactElement {
         </MainButton>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {employee.name}
+            {employee.fullName}
           </h1>
           <p className="text-sm text-text-secondary">
-            {t("subtitle", { position: employee.position })}
+            {t("subtitle", { position: positionLabel })}
           </p>
         </div>
       </section>
@@ -125,22 +161,25 @@ export function AdminEmployeeDetailPage(): ReactElement {
         <InfoCard title={t("sections.work")} icon={Briefcase}>
           <DetailField
             label={t("fields.department")}
-            value={departmentName}
+            value={employee.department?.name ?? tEmployees("notAssigned")}
             icon={Users}
           />
           <DetailField
             label={t("fields.branch")}
-            value={branchName}
+            value={formatBranchLabel(employee.branch, tEmployees("notAssigned"))}
             icon={MapPinned}
           />
           <DetailField
             label={t("fields.position")}
-            value={employee.position}
+            value={positionLabel}
             icon={UserRound}
           />
           <DetailField
             label={t("fields.departmentManager")}
-            value={getDepartmentManagerName(employee.department)}
+            value={
+              employee.department?.manager?.fullName ??
+              tEmployees("notAssigned")
+            }
             icon={UserRound}
           />
         </InfoCard>
@@ -153,7 +192,7 @@ export function AdminEmployeeDetailPage(): ReactElement {
           />
           <DetailField
             label={t("fields.phone")}
-            value={employee.phone}
+            value={employee.phone || tEmployees("notAssigned")}
             icon={Phone}
           />
         </InfoCard>
@@ -166,12 +205,12 @@ export function AdminEmployeeDetailPage(): ReactElement {
           />
           <DetailField
             label={t("fields.fingerprintNumber")}
-            value={employee.fingerprintNumber}
+            value={employee.fingerprintNumber || tEmployees("notAssigned")}
             icon={Fingerprint}
           />
           <DetailField
             label={t("fields.joinDate")}
-            value={employee.joinedAt}
+            value={formatJoinDate(employee.createdAt, locale)}
             icon={CalendarDays}
           />
         </InfoCard>
@@ -181,7 +220,7 @@ export function AdminEmployeeDetailPage(): ReactElement {
 
       <AttendanceHistorySection employeeId={employee.id} />
 
-      {(canEdit || canDelete) ? (
+      {canEdit || canDelete ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {canEdit ? (
             <MainButton
@@ -216,11 +255,15 @@ export function AdminEmployeeDetailPage(): ReactElement {
         confirmLabel={tEmployees("deleteConfirm")}
         cancelLabel={tEmployees("cancel")}
         onCancel={() => setDeleteOpen(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => {
+          void confirmDelete();
+          return false;
+        }}
+        loading={deletingEmployee}
         triggerRef={deleteEmployeeTriggerRef}
       />
 
-      {employee && canEdit ? (
+      {canEdit ? (
         <EditEmployeeAssignmentModal
           employee={employee}
           open={editOpen}
@@ -230,6 +273,30 @@ export function AdminEmployeeDetailPage(): ReactElement {
       ) : null}
     </div>
   );
+}
+
+function formatJoinDate(value: string, locale: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return formatDateTime12(date, resolveTimeLocale(locale));
+}
+
+function formatBranchLabel(
+  branch: EmployeeRecord["branch"],
+  fallback: string,
+): string {
+  if (!branch) {
+    return fallback;
+  }
+
+  if (branch.city.trim()) {
+    return `${branch.name} · ${branch.city}`;
+  }
+
+  return branch.name.trim() ? branch.name : fallback;
 }
 
 interface InfoCardProps {
@@ -256,10 +323,12 @@ function DetailField({
   label,
   value,
   icon: Icon,
+  action,
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
+  action?: ReactNode;
 }): ReactElement {
   return (
     <div className="rounded-xl border border-border/80 bg-surface-muted/30 px-3 py-2.5">
@@ -267,7 +336,12 @@ function DetailField({
         <Icon className="size-3.5 shrink-0" aria-hidden />
         {label}
       </dt>
-      <dd className="mt-1.5 break-words text-sm font-medium text-ink">{value}</dd>
+      <dd className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="min-w-0 break-words text-sm font-medium text-ink">
+          {value}
+        </span>
+        {action}
+      </dd>
     </div>
   );
 }

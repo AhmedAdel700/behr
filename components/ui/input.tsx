@@ -22,6 +22,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         ref={ref}
         type={type}
         data-slot="input"
+        suppressHydrationWarning
         className={cn(
           inputBaseClassName,
           type === "search" &&

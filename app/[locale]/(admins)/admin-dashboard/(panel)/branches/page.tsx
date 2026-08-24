@@ -3,25 +3,24 @@ import { getLocale } from "next-intl/server";
 import { auth } from "@/auth";
 import { AdminBranchesPage } from "@/components/admin/AdminBranchesPage";
 import { fetchBranches } from "@services/branches/branchesService";
-import type { AdminBranchRecord } from "@/types/AdminApiTypes";
+import type { BranchesListResult } from "@/types/BranchesApiTypes";
 
 export default async function AdminBranchesRoute(): Promise<ReactElement> {
   const session = await auth();
   const locale = await getLocale();
-  let initialBranches: AdminBranchRecord[] | undefined;
+  let initialData: BranchesListResult | undefined;
 
   if (session?.accessToken) {
     try {
-      const result = await fetchBranches(
+      initialData = await fetchBranches(
         session.accessToken,
         locale,
         session.tokenType,
       );
-      initialBranches = result.branches;
     } catch {
-      initialBranches = undefined;
+      initialData = undefined;
     }
   }
 
-  return <AdminBranchesPage initialBranches={initialBranches} />;
+  return <AdminBranchesPage initialData={initialData} />;
 }

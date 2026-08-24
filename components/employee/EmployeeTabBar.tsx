@@ -98,6 +98,7 @@ export function EmployeeTabBar() {
               >
                 <Link
                   href={tab.href}
+                  prefetch
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors",
                     "lg:flex-row lg:gap-3 lg:px-3.5 lg:py-3 lg:text-base",

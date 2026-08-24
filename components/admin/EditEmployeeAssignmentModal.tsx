@@ -1,29 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactElement, type RefObject } from "react";
+import { useEffect, useMemo, type ReactElement, type RefObject } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Building2, MapPinned } from "lucide-react";
+import { Briefcase, Building2, Fingerprint, MapPinned } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  useGetBranchesQuery,
+} from "@/app/store/api/branches/branchesApi";
+import {
+  normalizeDepartmentsListParams,
+  useGetDepartmentsQuery,
+} from "@/app/store/api/departments/departmentsApi";
+import { useUpdateEmployeeMutation } from "@/app/store/api/employees/employeesApi";
+import { useGetAllPositionsQuery } from "@/app/store/api/positions/positionsApi";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import {
-  getBranchDepartmentsSnapshot,
-  getBranchesSnapshot,
-} from "@/lib/admin/adminOrgStore";
-import { updateEmployee } from "@/lib/admin/adminDataStore";
-import {
+  toEmployeePayload,
   updateEmployeeAssignmentSchema,
   type UpdateEmployeeAssignmentFormValues,
 } from "@/schemas/admin/employee.schema";
-import type { AdminEmployee } from "@/types/AdminApiTypes";
-import type { BranchOption, DepartmentOption } from "@/lib/auth/register-options";
+import type { EmployeeRecord } from "@/types/EmployeesApiTypes";
 
 interface EditEmployeeAssignmentModalProps {
-  employee: AdminEmployee;
+  employee: EmployeeRecord;
   open: boolean;
   onClose: () => void;
   triggerRef?: RefObject<HTMLElement | null>;
@@ -54,7 +60,7 @@ export function EditEmployeeAssignmentModal({
 }
 
 interface EditEmployeeAssignmentFormProps {
-  employee: AdminEmployee;
+  employee: EmployeeRecord;
   open: boolean;
   onClose: () => void;
 }
@@ -66,7 +72,8 @@ function EditEmployeeAssignmentForm({
 }: EditEmployeeAssignmentFormProps): ReactElement {
   const t = useTranslations("admin.employees");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
+  const [updateEmployeeMutation, { isLoading: submitting }] =
+    useUpdateEmployeeMutation();
 
   const schema = useMemo(
     () =>
@@ -74,7 +81,8 @@ function EditEmployeeAssignmentForm({
         branchRequired: t("errors.branchRequired"),
         departmentRequired: t("errors.departmentRequired"),
         positionRequired: t("errors.positionRequired"),
-        positionMin: t("errors.positionMin"),
+        fingerprintRequired: t("errors.fingerprintRequired"),
+        fingerprintInvalid: t("errors.fingerprintInvalid"),
       }),
     [t],
   );
@@ -99,43 +107,80 @@ function EditEmployeeAssignmentForm({
     reset(toFormValues(employee));
   }, [open, employee, reset]);
 
-  const selectedBranchSlug = watch("branch");
-  const branches = getBranchesSnapshot();
-  const departments = getBranchDepartmentsSnapshot();
-  const selectedBranch = branches.find((branch) => branch.slug === selectedBranchSlug);
+  const selectedBranchId = watch("branchId");
+  const { data: branchesResult } = useGetBranchesQuery(
+    DEFAULT_BRANCHES_LIST_PARAMS,
+    { skip: !open },
+  );
+  const { data: departmentsResult } = useGetDepartmentsQuery(
+    normalizeDepartmentsListParams({
+      page: 1,
+      branch_id: selectedBranchId || undefined,
+    }),
+    { skip: !open || !selectedBranchId },
+  );
+  const { data: positions = [] } = useGetAllPositionsQuery(undefined, {
+    skip: !open,
+  });
+
+  const branches = branchesResult?.branches ?? [];
+  const departments = departmentsResult?.departments ?? [];
 
   const branchOptions = useMemo(
     () =>
       branches.map((branch) => ({
-        value: branch.slug,
-        label: `${branch.name} · ${branch.city}`,
+        value: branch.id,
+        label: branch.city ? `${branch.name} · ${branch.city}` : branch.name,
       })),
     [branches],
   );
 
-  const departmentOptions = useMemo(() => {
-    if (!selectedBranch) return [];
-    return departments
-      .filter((department) => department.branchId === selectedBranch.id)
-      .map((department) => ({
-        value: department.slug,
+  const departmentOptions = useMemo(
+    () =>
+      departments.map((department) => ({
+        value: department.id,
         label: department.name,
-      }));
-  }, [departments, selectedBranch]);
+      })),
+    [departments],
+  );
+
+  const positionOptions = useMemo(() => {
+    const options = positions.map((position) => ({
+      value: position.id,
+      label: position.name,
+    }));
+    const currentPosition = employee.jobPosition;
+
+    if (
+      currentPosition &&
+      !options.some((option) => option.value === currentPosition.id)
+    ) {
+      options.unshift({
+        value: currentPosition.id,
+        label: currentPosition.name,
+      });
+    }
+
+    return options;
+  }, [employee.jobPosition, positions]);
 
   const handleBranchChange = (): void => {
-    setValue("department", "", { shouldValidate: isSubmitted });
+    setValue("departmentId", "", { shouldValidate: isSubmitted });
   };
 
-  const onSubmit = (values: UpdateEmployeeAssignmentFormValues): void => {
-    setSubmitting(true);
-    updateEmployee(employee.id, {
-      branch: values.branch as BranchOption,
-      department: values.department as DepartmentOption,
-      position: values.position.trim(),
-    });
-    setSubmitting(false);
-    closeModal();
+  const onSubmit = async (
+    values: UpdateEmployeeAssignmentFormValues,
+  ): Promise<void> => {
+    try {
+      await updateEmployeeMutation({
+        employeeId: employee.id,
+        body: toEmployeePayload(values),
+      }).unwrap();
+      toast.success(t("updateSuccess"));
+      closeModal();
+    } catch (error) {
+      toast.error(getEmployeeMutationError(error, t("errors.failed")));
+    }
   };
 
   return (
@@ -150,7 +195,7 @@ function EditEmployeeAssignmentForm({
       >
         <Controller
           control={control}
-          name="branch"
+          name="branchId"
           render={({ field }) => (
             <MainSelect
               label={t("fields.branch")}
@@ -163,14 +208,14 @@ function EditEmployeeAssignmentForm({
                 handleBranchChange();
               }}
               onBlur={field.onBlur}
-              error={isSubmitted ? errors.branch?.message : undefined}
+              error={isSubmitted ? errors.branchId?.message : undefined}
             />
           )}
         />
 
         <Controller
           control={control}
-          name="department"
+          name="departmentId"
           render={({ field }) => (
             <MainSelect
               label={t("fields.department")}
@@ -180,17 +225,37 @@ function EditEmployeeAssignmentForm({
               value={field.value}
               onValueChange={field.onChange}
               onBlur={field.onBlur}
-              disabled={!selectedBranch}
-              error={isSubmitted ? errors.department?.message : undefined}
+              disabled={!selectedBranchId}
+              error={isSubmitted ? errors.departmentId?.message : undefined}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="jobPositionId"
+          render={({ field }) => (
+            <MainSelect
+              label={t("fields.position")}
+              startIcon={<Briefcase />}
+              placeholder={t("placeholders.position")}
+              options={positionOptions}
+              value={field.value}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              error={isSubmitted ? errors.jobPositionId?.message : undefined}
             />
           )}
         />
 
         <MainInput
-          label={t("fields.position")}
-          error={isSubmitted ? errors.position?.message : undefined}
-          {...register("position")}
-          placeholder={t("placeholders.position")}
+          label={t("fields.fingerprintNumber")}
+          startIcon={<Fingerprint />}
+          maxLength={20}
+          autoComplete="off"
+          error={isSubmitted ? errors.fingerprintNumber?.message : undefined}
+          {...register("fingerprintNumber")}
+          placeholder={t("placeholders.fingerprintNumber")}
         />
 
         <ModalFormActions
@@ -205,11 +270,30 @@ function EditEmployeeAssignmentForm({
 }
 
 function toFormValues(
-  employee: AdminEmployee,
+  employee: EmployeeRecord,
 ): UpdateEmployeeAssignmentFormValues {
   return {
-    branch: employee.branch,
-    department: employee.department,
-    position: employee.position,
+    branchId: employee.branch?.id ?? "",
+    departmentId: employee.department?.id ?? "",
+    jobPositionId: employee.jobPosition?.id ?? "",
+    fingerprintNumber: employee.fingerprintNumber,
   };
+}
+
+function getEmployeeMutationError(error: unknown, fallback: string): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "string" &&
+    error.error.trim()
+  ) {
+    return error.error;
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

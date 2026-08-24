@@ -1,14 +1,28 @@
 "use client";
 
-import { useMemo, useState, type ReactElement } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactElement,
+} from "react";
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type FieldErrors,
+  type Resolver,
+} from "react-hook-form";
 import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
   ArrowRight,
   Building2,
   Briefcase,
+  Clock,
   Fingerprint,
   Lock,
   Mail,
@@ -16,25 +30,32 @@ import {
   Phone,
   User,
 } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { toast } from "sonner";
+import {
+  useGetPublicBranchDepartmentsQuery,
+  useGetPublicBranchesQuery,
+  useGetPublicJobPositionsQuery,
+  useRegisterAccountMutation,
+} from "@/app/store/api/public/publicOrgApi";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   RegisterWizardShell,
   type RegisterStepId,
 } from "@/components/auth/RegisterWizardShell";
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import {
-  BRANCH_OPTIONS,
-  DEPARTMENT_OPTIONS,
-} from "@/lib/auth/register-options";
-import {
   createRegisterSchema,
+  createRegisterStepSchema,
   type RegisterFormValues,
 } from "@/schemas/auth/register.schema";
+import type { RegisterPayload } from "@/types/PublicOrgApiTypes";
 
 const STEP_ORDER: RegisterStepId[] = ["profile", "work", "security"];
+const REVIEW_REDIRECT_SECONDS = 5;
 
 const STEP_FIELDS: Record<RegisterStepId, (keyof RegisterFormValues)[]> = {
   profile: ["name", "email", "phone", "avatar"],
@@ -42,35 +63,119 @@ const STEP_FIELDS: Record<RegisterStepId, (keyof RegisterFormValues)[]> = {
   security: ["password", "confirmPassword"],
 };
 
+function toFormErrors(
+  issues: readonly { path: readonly PropertyKey[]; message: string; code: string }[],
+): FieldErrors<RegisterFormValues> {
+  const errors: FieldErrors<RegisterFormValues> = {};
+
+  for (const issue of issues) {
+    const name = issue.path[0];
+    if (typeof name !== "string" || name in errors) {
+      continue;
+    }
+
+    const key = name as keyof RegisterFormValues;
+    errors[key] = {
+      type: issue.code,
+      message: issue.message,
+    };
+  }
+
+  return errors;
+}
+
+function getRegisterErrorMessages(error: unknown, fallback: string): string[] {
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = error.data;
+    if (typeof data === "object" && data !== null && "messages" in data) {
+      const rawMessages = data.messages;
+      if (Array.isArray(rawMessages)) {
+        const messages = rawMessages.filter(
+          (message): message is string =>
+            typeof message === "string" && Boolean(message.trim()),
+        );
+        if (messages.length > 0) {
+          return messages;
+        }
+      }
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "string" &&
+    error.error.trim()
+  ) {
+    return [error.error];
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return [error.message];
+  }
+
+  return [fallback];
+}
+
 export function RegisterForm(): ReactElement {
   const t = useTranslations("auth");
-  const tBranch = useTranslations("auth.branchOptions");
-  const tDepartment = useTranslations("auth.departmentOptions");
+  const router = useRouter();
   const [step, setStep] = useState<RegisterStepId>("profile");
+  const [submitted, setSubmitted] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(REVIEW_REDIRECT_SECONDS);
+  const [securityAttempted, setSecurityAttempted] = useState(false);
+  const [registerAccount, { isLoading: submitting }] =
+    useRegisterAccountMutation();
 
-  const schema = useMemo(
-    () =>
-      createRegisterSchema({
-        nameRequired: t("errors.nameRequired"),
-        nameMin: t("errors.nameMin"),
-        emailRequired: t("errors.emailRequired"),
-        emailInvalid: t("errors.emailInvalid"),
-        phoneRequired: t("errors.phoneRequired"),
-        phoneInvalid: t("errors.phoneInvalid"),
-        fingerprintRequired: t("errors.fingerprintRequired"),
-        fingerprintInvalid: t("errors.fingerprintInvalid"),
-        branchRequired: t("errors.branchRequired"),
-        departmentRequired: t("errors.departmentRequired"),
-        positionRequired: t("errors.positionRequired"),
-        positionMin: t("errors.positionMin"),
-        passwordRequired: t("errors.passwordRequired"),
-        passwordMin: t("errors.passwordMin"),
-        confirmPasswordRequired: t("errors.confirmPasswordRequired"),
-        passwordMismatch: t("errors.passwordMismatch"),
-        avatarInvalidType: t("errors.avatarInvalidType"),
-        avatarTooLarge: t("errors.avatarTooLarge"),
-      }),
+  const schemaMessages = useMemo(
+    () => ({
+      nameRequired: t("errors.nameRequired"),
+      nameMin: t("errors.nameMin"),
+      emailRequired: t("errors.emailRequired"),
+      emailInvalid: t("errors.emailInvalid"),
+      phoneRequired: t("errors.phoneRequired"),
+      phoneInvalid: t("errors.phoneInvalid"),
+      fingerprintRequired: t("errors.fingerprintRequired"),
+      fingerprintInvalid: t("errors.fingerprintInvalid"),
+      branchRequired: t("errors.branchRequired"),
+      departmentRequired: t("errors.departmentRequired"),
+      positionRequired: t("errors.positionRequired"),
+      positionMin: t("errors.positionMin"),
+      passwordRequired: t("errors.passwordRequired"),
+      passwordMin: t("errors.passwordMin"),
+      confirmPasswordRequired: t("errors.confirmPasswordRequired"),
+      passwordMismatch: t("errors.passwordMismatch"),
+      avatarInvalidType: t("errors.avatarInvalidType"),
+      avatarTooLarge: t("errors.avatarTooLarge"),
+    }),
     [t],
+  );
+
+  const stepRef = useRef<RegisterStepId>(step);
+  const validationIntentRef = useRef<"step" | "submit">("step");
+  const messagesRef = useRef(schemaMessages);
+  stepRef.current = step;
+  messagesRef.current = schemaMessages;
+
+  const resolver = useCallback<Resolver<RegisterFormValues>>(
+    async (values) => {
+      const schema =
+        validationIntentRef.current === "submit"
+          ? createRegisterSchema(messagesRef.current)
+          : createRegisterStepSchema(stepRef.current, messagesRef.current);
+
+      const parsed = schema.safeParse(values);
+      if (parsed.success) {
+        return { values, errors: {} };
+      }
+
+      return {
+        values: {},
+        errors: toFormErrors(parsed.error.issues),
+      };
+    },
+    [],
   );
 
   const steps = useMemo(
@@ -83,32 +188,19 @@ export function RegisterForm(): ReactElement {
     [t],
   );
 
-  const branchOptions = useMemo(
-    () =>
-      BRANCH_OPTIONS.map((value) => ({
-        value,
-        label: tBranch(value),
-      })),
-    [tBranch],
-  );
-
-  const departmentOptions = useMemo(
-    () =>
-      DEPARTMENT_OPTIONS.map((value) => ({
-        value,
-        label: tDepartment(value),
-      })),
-    [tDepartment],
-  );
-
   const {
     register,
     control,
     handleSubmit,
     trigger,
+    setValue,
+    clearErrors,
     formState: { errors },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(schema),
+    resolver,
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
+    shouldUnregister: false,
     defaultValues: {
       name: "",
       email: "",
@@ -123,24 +215,167 @@ export function RegisterForm(): ReactElement {
     },
   });
 
+  const selectedBranchId = useWatch({ control, name: "branch" });
+  const { data: branches = [] } = useGetPublicBranchesQuery();
+  const { data: jobPositions = [] } = useGetPublicJobPositionsQuery();
+  const { data: departments = [], isFetching: loadingDepartments } =
+    useGetPublicBranchDepartmentsQuery(selectedBranchId, {
+      skip: !selectedBranchId,
+    });
+
+  const branchOptions = useMemo(
+    () =>
+      branches.map((branch) => ({
+        value: branch.id,
+        label: branch.name,
+      })),
+    [branches],
+  );
+
+  const departmentOptions = useMemo(
+    () =>
+      departments.map((department) => ({
+        value: department.id,
+        label: department.name,
+      })),
+    [departments],
+  );
+
+  const positionOptions = useMemo(
+    () =>
+      jobPositions.map((position) => ({
+        value: position.id,
+        label: position.name,
+      })),
+    [jobPositions],
+  );
+
+  useEffect(() => {
+    if (!submitted) {
+      return;
+    }
+
+    setSecondsLeft(REVIEW_REDIRECT_SECONDS);
+    const intervalId = window.setInterval(() => {
+      setSecondsLeft((current) => Math.max(0, current - 1));
+    }, 1000);
+    const timeoutId = window.setTimeout(() => {
+      router.push("/login");
+    }, REVIEW_REDIRECT_SECONDS * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [router, submitted]);
+
   const stepIndex = STEP_ORDER.indexOf(step);
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === STEP_ORDER.length - 1;
 
   const goBack = (): void => {
-    if (isFirst) return;
+    if (isFirst || submitting) return;
+    validationIntentRef.current = "step";
+    setSecurityAttempted(false);
+    clearErrors(STEP_FIELDS[step]);
     setStep(STEP_ORDER[stepIndex - 1] ?? "profile");
   };
 
   const goNext = async (): Promise<void> => {
-    const valid = await trigger(STEP_FIELDS[step]);
+    if (isLast || submitting) return;
+
+    validationIntentRef.current = "step";
+    const valid = await trigger(STEP_FIELDS[step], { shouldFocus: true });
     if (!valid) return;
 
-    if (isLast) return;
-    setStep(STEP_ORDER[stepIndex + 1] ?? "security");
+    const nextStep = STEP_ORDER[stepIndex + 1];
+    if (!nextStep) return;
+
+    clearErrors(STEP_FIELDS[nextStep]);
+    setStep(nextStep);
   };
 
-  const onSubmit = handleSubmit(() => undefined);
+  const submitRegistration = handleSubmit(async (values): Promise<void> => {
+    const branchId = Number(values.branch);
+    const departmentId = Number(values.department);
+    const jobPositionId = Number(values.position);
+
+    if (
+      !Number.isFinite(branchId) ||
+      !Number.isFinite(departmentId) ||
+      !Number.isFinite(jobPositionId)
+    ) {
+      toast.error(t("errors.registerFailed"));
+      return;
+    }
+
+    const body: RegisterPayload = {
+      full_name: values.name.trim(),
+      email: values.email.trim(),
+      phone: values.phone.trim(),
+      password: values.password,
+      password_confirmation: values.confirmPassword,
+      fingerprint_number: values.fingerprintNumber.trim(),
+      branch_id: branchId,
+      department_id: departmentId,
+      job_position_id: jobPositionId,
+      ...(values.avatar ? { image: values.avatar } : {}),
+    };
+
+    try {
+      await registerAccount(body).unwrap();
+      setSubmitted(true);
+    } catch (error) {
+      const messages = getRegisterErrorMessages(
+        error,
+        t("errors.registerFailed"),
+      );
+      for (const message of messages) {
+        toast.error(message);
+      }
+    }
+  });
+
+  const onFormSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    if (submitting) return;
+
+    if (!isLast) {
+      void goNext();
+      return;
+    }
+
+    validationIntentRef.current = "submit";
+    setSecurityAttempted(true);
+    void submitRegistration(event);
+  };
+
+  if (submitted) {
+    return (
+      <div className="mx-auto w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-surface px-6 py-10 text-center shadow-md sm:px-10">
+        <BrandLogo size="lg" className="mx-auto" />
+        <div className="mx-auto mt-6 grid size-14 place-items-center rounded-full bg-primary-50 text-primary-700">
+          <Clock className="size-6" />
+        </div>
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
+          {t("register.reviewTitle")}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+          {t("register.reviewDescription")}
+        </p>
+        <p className="mt-6 text-sm font-medium text-ink">
+          {t("register.reviewRedirect", { seconds: secondsLeft })}
+        </p>
+        <MainButton
+          variant="primary"
+          className="mt-6"
+          link="/login"
+        >
+          {t("register.loginNow")}
+        </MainButton>
+      </div>
+    );
+  }
 
   return (
     <RegisterWizardShell
@@ -155,7 +390,7 @@ export function RegisterForm(): ReactElement {
               type="button"
               variant="neutral"
               block
-              disabled={isFirst}
+              disabled={isFirst || submitting}
               startIcon={<ArrowLeft className="size-4 rtl:rotate-180" />}
               onClick={goBack}
             >
@@ -163,7 +398,17 @@ export function RegisterForm(): ReactElement {
             </MainButton>
 
             {isLast ? (
-              <MainButton type="submit" form="register-form" variant="primary" block>
+              <MainButton
+                type="button"
+                variant="primary"
+                block
+                loading={submitting}
+                onClick={() => {
+                  validationIntentRef.current = "submit";
+                  setSecurityAttempted(true);
+                  void submitRegistration();
+                }}
+              >
                 {t("register.submit")}
               </MainButton>
             ) : (
@@ -195,7 +440,7 @@ export function RegisterForm(): ReactElement {
     >
       <form
         id="register-form"
-        onSubmit={onSubmit}
+        onSubmit={onFormSubmit}
         className="space-y-3"
         noValidate
       >
@@ -249,17 +494,26 @@ export function RegisterForm(): ReactElement {
 
         {step === "work" ? (
           <>
-            <MainInput
-              label={t("register.position")}
-              autoComplete="organization-title"
-              startIcon={<Briefcase />}
-              error={errors.position?.message}
-              {...register("position")}
-              placeholder={t("register.positionPlaceholder")}
+            <Controller
+              name="position"
+              control={control}
+              render={({ field }) => (
+                <MainSelect
+                  label={t("register.position")}
+                  startIcon={<Briefcase />}
+                  error={errors.position?.message}
+                  options={positionOptions}
+                  placeholder={t("register.positionPlaceholder")}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
             <MainInput
               label={t("register.fingerprintNumber")}
-              type="tel"
+              type="text"
               autoComplete="off"
               startIcon={<Fingerprint />}
               error={errors.fingerprintNumber?.message}
@@ -278,7 +532,12 @@ export function RegisterForm(): ReactElement {
                   options={branchOptions}
                   placeholder={t("register.branchPlaceholder")}
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    if (value !== field.value) {
+                      setValue("department", "", { shouldValidate: false });
+                    }
+                    field.onChange(value);
+                  }}
                   onBlur={field.onBlur}
                   name={field.name}
                 />
@@ -293,11 +552,18 @@ export function RegisterForm(): ReactElement {
                   startIcon={<Building2 />}
                   error={errors.department?.message}
                   options={departmentOptions}
-                  placeholder={t("register.departmentPlaceholder")}
+                  placeholder={
+                    selectedBranchId
+                      ? loadingDepartments
+                        ? t("register.departmentLoading")
+                        : t("register.departmentPlaceholder")
+                      : t("register.selectBranchFirst")
+                  }
                   value={field.value}
                   onValueChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
+                  disabled={!selectedBranchId || loadingDepartments}
                 />
               )}
             />
@@ -311,7 +577,9 @@ export function RegisterForm(): ReactElement {
               type="password"
               autoComplete="new-password"
               startIcon={<Lock />}
-              error={errors.password?.message}
+              error={
+                securityAttempted ? errors.password?.message : undefined
+              }
               {...register("password")}
               placeholder={t("register.passwordPlaceholder")}
             />
@@ -320,7 +588,11 @@ export function RegisterForm(): ReactElement {
               type="password"
               autoComplete="new-password"
               startIcon={<Lock />}
-              error={errors.confirmPassword?.message}
+              error={
+                securityAttempted
+                  ? errors.confirmPassword?.message
+                  : undefined
+              }
               {...register("confirmPassword")}
               placeholder={t("register.confirmPasswordPlaceholder")}
             />

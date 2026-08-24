@@ -11,6 +11,7 @@ import type {
   BranchDeleteResult,
   BranchMutationResult,
   BranchPayload,
+  BranchesListQueryParams,
   BranchesListResult,
   BranchesPaginationMeta,
 } from "@/types/BranchesApiTypes";
@@ -122,15 +123,32 @@ async function readJsonPayload(response: Response): Promise<unknown> {
   return response.json().catch(() => null);
 }
 
+function buildBranchesListUrl(params?: BranchesListQueryParams): string {
+  const searchParams = new URLSearchParams();
+  const search = params?.search?.trim();
+
+  if (search) {
+    searchParams.set("search", search);
+  }
+
+  if (params?.page && params.page > 1) {
+    searchParams.set("page", String(params.page));
+  }
+
+  const query = searchParams.toString();
+  return query ? `${branchesCollectionUrl()}?${query}` : branchesCollectionUrl();
+}
+
 export async function fetchBranches(
   accessToken: string,
   lang: string,
   tokenType = "Bearer",
+  params?: BranchesListQueryParams,
 ): Promise<BranchesListResult> {
   let response: Response;
 
   try {
-    response = await fetch(branchesCollectionUrl(), {
+    response = await fetch(buildBranchesListUrl(params), {
       method: "GET",
       headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
       cache: "no-store",

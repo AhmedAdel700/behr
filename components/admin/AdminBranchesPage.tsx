@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type MouseEvent, type ReactElement, type SetStateAction } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch, type MouseEvent, type ReactElement, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import {
   branchesApi,
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  normalizeBranchesListParams,
   useDeleteBranchMutation,
   useGetBranchesQuery,
   useUpdateBranchMutation,
@@ -21,6 +23,9 @@ import { ModalShell } from "@/components/shared/ModalShell";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
+import { SearchInput } from "@/components/shared/SearchInput";
+import { TablePagination } from "@/components/shared/TablePagination";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { DEFAULT_BRANCH_LOCATION } from "@/lib/admin/branchLocations";
 import { buildBranchOverviews } from "@/lib/admin/buildBranchOverviews";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
@@ -35,9 +40,12 @@ import {
   subscribeOrg,
   upsertBranchRecord,
 } from "@/lib/admin/adminOrgStore";
-import { searchBranchRows } from "@/lib/admin/searchBranchRows";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
-import type { BranchPayload } from "@/types/BranchesApiTypes";
+import type {
+  BranchPayload,
+  BranchesListQueryParams,
+  BranchesListResult,
+} from "@/types/BranchesApiTypes";
 
 interface BranchTableRow {
   branch: AdminBranchRecord;
@@ -46,45 +54,55 @@ interface BranchTableRow {
 }
 
 export function AdminBranchesPage({
-  initialBranches,
+  initialData,
 }: {
-  initialBranches?: AdminBranchRecord[];
+  initialData?: BranchesListResult;
 }): ReactElement {
   const t = useTranslations("admin.branchesPage");
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const didSeedCache = useRef(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
 
-  if (initialBranches?.length && !didSeedCache.current) {
+  const queryArg: BranchesListQueryParams = normalizeBranchesListParams({
+    page,
+    search: searchQuery,
+  });
+
+  if (initialData && !didSeedCache.current) {
     didSeedCache.current = true;
     dispatch(
-      branchesApi.util.upsertQueryData("getBranches", undefined, initialBranches),
+      branchesApi.util.upsertQueryData(
+        "getBranches",
+        DEFAULT_BRANCHES_LIST_PARAMS,
+        initialData,
+      ),
     );
   }
 
-  const { data: branchesData, isLoading, isFetching } = useGetBranchesQuery();
+  const { data: branchesResult, isLoading, isFetching } = useGetBranchesQuery(queryArg);
 
   useLayoutEffect(() => {
-    if (!initialBranches?.length) {
+    if (!initialData?.branches.length) {
       return;
     }
 
-    setBranches(initialBranches);
-  }, [initialBranches]);
+    setBranches(initialData.branches);
+  }, [initialData]);
 
   useEffect(() => {
-    if (!branchesData) {
+    if (!branchesResult?.branches.length) {
       return;
     }
 
-    setBranches(branchesData);
-  }, [branchesData]);
+    for (const branch of branchesResult.branches) {
+      upsertBranchRecord(branch);
+    }
+  }, [branchesResult]);
 
   useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
   useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
-
-  const resolvedBranches =
-    branchesData ?? initialBranches ?? getBranchesSnapshot();
 
   const createBranchTriggerRef = useRef<HTMLButtonElement>(null);
   const { triggerRef: editBranchTriggerRef, bindTrigger: bindEditBranchTrigger } =
@@ -92,7 +110,6 @@ export function AdminBranchesPage({
   const { triggerRef: deleteBranchTriggerRef, bindTrigger: bindDeleteBranchTrigger } =
     useModalTriggerRef();
   const [creating, setCreating] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [editing, setEditing] = useState<AdminBranchRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<UpdateBranchDraft>(emptyDraft());
@@ -100,6 +117,11 @@ export function AdminBranchesPage({
   const [updateBranchMutation] = useUpdateBranchMutation();
   const [deleteBranchMutation, { isLoading: deletingBranch }] =
     useDeleteBranchMutation();
+
+  const resolvedBranches =
+    branchesResult?.branches ?? initialData?.branches ?? [];
+  const meta = branchesResult?.meta ?? initialData?.meta;
+  const trimmedSearch = searchQuery.trim();
 
   const overviews = buildBranchOverviews(getEmployeesSnapshot());
   const branchRows: BranchTableRow[] = resolvedBranches.map((branch) => {
@@ -112,14 +134,14 @@ export function AdminBranchesPage({
     };
   });
 
-  const filteredBranchRows = useMemo(
-    () => searchBranchRows(branchRows, searchQuery),
-    [branchRows, searchQuery]
-  );
-
   const deleteTarget = deleteId
     ? branchRows.find((row) => row.branch.id === deleteId)?.branch ?? null
     : null;
+
+  const handleSearch = (query: string): void => {
+    setSearchQuery(query);
+    setPage(1);
+  };
 
   const openEdit = (
     branch: AdminBranchRecord,
@@ -186,8 +208,10 @@ export function AdminBranchesPage({
     }
   };
 
+  const isInitialQuery = page === 1 && searchQuery.trim().length === 0;
+  const hasSeededInitialData = Boolean(initialData?.branches?.length);
   const isTableLoading =
-    (isLoading || isFetching) && resolvedBranches.length === 0;
+    (isLoading || isFetching) && !(isInitialQuery && hasSeededInitialData);
 
   const columnCount = 6;
 
@@ -203,18 +227,15 @@ export function AdminBranchesPage({
       <section className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="w-full lg:max-w-xs">
-            <MainInput
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+            <SearchInput
+              onSearch={handleSearch}
               placeholder={t("searchPlaceholder")}
-              startIcon={<Search />}
               aria-label={t("searchPlaceholder")}
             />
           </div>
           <div className="flex items-center justify-between gap-3 lg:justify-end">
             <h2 className="text-sm font-semibold text-ink">
-              {t("branchesTitle", { count: filteredBranchRows.length })}
+              {t("branchesTitle", { count: meta?.total ?? branchRows.length })}
             </h2>
             <MainButton
               ref={createBranchTriggerRef}
@@ -255,27 +276,18 @@ export function AdminBranchesPage({
               </thead>
               <tbody>
                 {isTableLoading ? (
+                  <TableSkeleton columnCount={columnCount} />
+                ) : branchRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan={columnCount}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {t("loading")}
-                    </td>
-                  </tr>
-                ) : filteredBranchRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={columnCount}
-                      className="px-4 py-10 text-center text-sm text-text-muted"
-                    >
-                      {branchRows.length === 0
-                        ? t("emptyBranches")
-                        : t("emptySearch")}
+                      {trimmedSearch ? t("emptySearch") : t("emptyBranches")}
                     </td>
                   </tr>
                 ) : (
-                  filteredBranchRows.map(({ branch, departmentCount, employeeCount }) => (
+                  branchRows.map(({ branch, departmentCount, employeeCount }) => (
                     <tr
                       key={branch.id}
                       className="border-b border-border last:border-b-0"
@@ -337,6 +349,19 @@ export function AdminBranchesPage({
               </tbody>
             </table>
           </div>
+          {!isTableLoading && meta ? (
+            <TablePagination
+              page={meta.current_page}
+              pageSize={meta.per_page}
+              totalItems={meta.total}
+              onPageChange={setPage}
+              previousLabel={t("pagination.previous")}
+              nextLabel={t("pagination.next")}
+              formatSummary={({ start, end, total }) =>
+                t("pagination.summary", { start, end, total })
+              }
+            />
+          ) : null}
         </div>
       </section>
 

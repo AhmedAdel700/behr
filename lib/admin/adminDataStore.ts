@@ -65,7 +65,7 @@ export function deleteEmployee(id: string): boolean {
 export function updateEmployee(
   id: string,
   patch: Partial<
-    Pick<AdminEmployee, "branch" | "department" | "position">
+    Pick<AdminEmployee, "branch" | "department" | "position" | "fingerprintNumber">
   >
 ): AdminEmployee | undefined {
   const index = employees.findIndex((item) => item.id === id);

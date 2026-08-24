@@ -1,70 +1,95 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, type MouseEvent, type ReactElement } from "react";
-import { useTranslations } from "next-intl";
-import { Check, Search, X } from "lucide-react";
+import { useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Check, Eye, X } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { toast } from "sonner";
+import {
+  DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS,
+  normalizeRegistrationRequestsListParams,
+  registrationRequestsApi,
+  useAcceptRegistrationRequestMutation,
+  useGetRegistrationRequestsQuery,
+  useRejectRegistrationRequestMutation,
+} from "@/app/store/api/registration-requests/registrationRequestsApi";
+import type { AppDispatch } from "@/app/store/store";
+import { RegistrationRequestViewModal } from "@/components/admin/RegistrationRequestViewModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
-import { MainInput } from "@/components/shared/MainInput";
+import { SearchInput } from "@/components/shared/SearchInput";
 import { TablePagination } from "@/components/shared/TablePagination";
-import {
-  getRegistrationsSnapshot,
-  setRegistrationStatus,
-  subscribeRegistrations,
-} from "@/lib/admin/adminDataStore";
-import {
-  getAdminSessionSnapshot,
-  subscribeAdminSession,
-} from "@/lib/admin/adminSessionStore";
-import { filterRegistrationsForAdmin } from "@/lib/admin/permissions";
-import { searchRegistrationRequests } from "@/lib/admin/searchRegistrationRequests";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
+import type {
+  RegistrationRequestRecord,
+  RegistrationRequestsListQueryParams,
+  RegistrationRequestsListResult,
+} from "@/types/RegistrationRequestsApiTypes";
 
-const PAGE_SIZE = 5;
+function formatSubmittedAt(value: string, locale: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
 
-export function AdminRegistrationsPage(): ReactElement {
+  return formatDateTime12(date, resolveTimeLocale(locale));
+}
+
+export function AdminRegistrationsPage({
+  initialData,
+}: {
+  initialData?: RegistrationRequestsListResult;
+}): ReactElement {
   const t = useTranslations("admin.registrations");
-  const tDept = useTranslations("admin.departments");
-  const tBranch = useTranslations("auth.branchOptions");
-
-  useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
-  useSyncExternalStore(
-    subscribeRegistrations,
-    getRegistrationsSnapshot,
-    getRegistrationsSnapshot
-  );
-
-  const admin = getAdminSessionSnapshot();
-  const allRequests = getRegistrationsSnapshot();
-  const requests = filterRegistrationsForAdmin(admin, allRequests);
-
-  const pending = requests.filter((item) => item.status === "pending");
+  const locale = useLocale();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [viewId, setViewId] = useState<string | null>(null);
   const [approveId, setApproveId] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
+  const { triggerRef: viewRegistrationTriggerRef, bindTrigger: bindViewRegistrationTrigger } =
+    useModalTriggerRef();
   const { triggerRef: approveRegistrationTriggerRef, bindTrigger: bindApproveRegistrationTrigger } =
     useModalTriggerRef();
   const { triggerRef: rejectRegistrationTriggerRef, bindTrigger: bindRejectRegistrationTrigger } =
     useModalTriggerRef();
 
-  const filteredPending = useMemo(
-    () =>
-      searchRegistrationRequests(pending, searchQuery, {
-        department: (value) => tDept(value),
-        branch: (value) => tBranch(value),
-      }),
-    [pending, searchQuery, tDept, tBranch]
-  );
+  const queryArg: RegistrationRequestsListQueryParams =
+    normalizeRegistrationRequestsListParams({
+      page,
+      search: searchQuery,
+      status: "pending",
+    });
 
-  const totalPages = Math.max(1, Math.ceil(filteredPending.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
+  if (initialData && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      registrationRequestsApi.util.upsertQueryData(
+        "getRegistrationRequests",
+        DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS,
+        initialData,
+      ),
+    );
+  }
 
-  const pagedPending = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredPending.slice(start, start + PAGE_SIZE);
-  }, [filteredPending, safePage]);
+  const {
+    data: requestsResult,
+    isLoading,
+    isFetching,
+  } = useGetRegistrationRequestsQuery(queryArg);
+  const [acceptRegistration, { isLoading: accepting }] =
+    useAcceptRegistrationRequestMutation();
+  const [rejectRegistration, { isLoading: rejecting }] =
+    useRejectRegistrationRequestMutation();
+
+  const requests = requestsResult?.requests ?? initialData?.requests ?? [];
+  const meta = requestsResult?.meta ?? initialData?.meta;
+  const pending = requests.filter((item) => item.status === "pending");
 
   const approveRequest = approveId
     ? pending.find((item) => item.id === approveId) ?? null
@@ -73,28 +98,55 @@ export function AdminRegistrationsPage(): ReactElement {
     ? pending.find((item) => item.id === rejectId) ?? null
     : null;
 
-  const handleSearchChange = (value: string): void => {
-    setSearchQuery(value);
+  const handleSearch = (query: string): void => {
+    setSearchQuery(query);
     setPage(1);
   };
 
-  const confirmApprove = (): boolean => {
-    if (!approveId) return false;
-    setRegistrationStatus(approveId, "approved");
-    return true;
+  const openView = (
+    request: RegistrationRequestRecord,
+    event: MouseEvent<HTMLButtonElement>,
+  ): void => {
+    bindViewRegistrationTrigger(event);
+    setViewId(request.id);
   };
 
-  const confirmReject = (): boolean => {
-    if (!rejectId) return false;
-    setRegistrationStatus(rejectId, "rejected");
-    return true;
+  const confirmApprove = async (): Promise<void> => {
+    if (!approveId) {
+      return;
+    }
+
+    try {
+      const result = await acceptRegistration({ requestId: approveId }).unwrap();
+      toast.success(result.message || t("approveConfirm"));
+      setApproveId(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("reviewError");
+      toast.error(message);
+    }
   };
 
-  const columnCount = 7;
-  const emptyMessage =
-    pending.length === 0
-      ? t("emptyPending")
-      : t("noSearchResults");
+  const confirmReject = async (): Promise<void> => {
+    if (!rejectId) {
+      return;
+    }
+
+    try {
+      const result = await rejectRegistration({ requestId: rejectId }).unwrap();
+      toast.success(result.message || t("rejectConfirm"));
+      setRejectId(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("reviewError");
+      toast.error(message);
+    }
+  };
+
+  const isInitialQuery = page === 1 && searchQuery.trim().length === 0;
+  const hasSeededInitialData = initialData !== undefined;
+  const isTableLoading =
+    (isLoading || isFetching) && !(isInitialQuery && hasSeededInitialData);
 
   return (
     <div className="space-y-6">
@@ -108,23 +160,20 @@ export function AdminRegistrationsPage(): ReactElement {
       <section className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="w-full lg:max-w-xs">
-            <MainInput
-              type="search"
-              value={searchQuery}
-              onChange={(event) => handleSearchChange(event.target.value)}
+            <SearchInput
+              onSearch={handleSearch}
               placeholder={t("searchPlaceholder")}
-              startIcon={<Search />}
               aria-label={t("searchPlaceholder")}
             />
           </div>
           <h2 className="self-end text-sm font-semibold text-ink lg:self-auto">
-            {t("pendingTitle", { count: pending.length })}
+            {t("pendingTitle", { count: meta?.total ?? pending.length })}
           </h2>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
-        <div className="admin-scroll-visible overflow-x-auto">
-          <table className="w-full min-w-[960px] border-collapse text-sm">
+          <div className="admin-scroll-visible overflow-x-auto">
+            <table className="w-full min-w-[1040px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-muted/60">
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
@@ -132,6 +181,9 @@ export function AdminRegistrationsPage(): ReactElement {
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("columns.contact")}
+                  </th>
+                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                    {t("columns.fingerprint")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("columns.position")}
@@ -151,17 +203,21 @@ export function AdminRegistrationsPage(): ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {pagedPending.length === 0 ? (
+                {isTableLoading ? (
+                  <TableSkeleton columnCount={8} />
+                ) : pending.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={columnCount}
+                      colSpan={8}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {emptyMessage}
+                      {searchQuery.trim()
+                        ? t("noSearchResults")
+                        : t("emptyPending")}
                     </td>
                   </tr>
                 ) : (
-                  pagedPending.map((request) => (
+                  pending.map((request) => (
                     <tr
                       key={request.id}
                       className="border-b border-border last:border-b-0"
@@ -171,25 +227,33 @@ export function AdminRegistrationsPage(): ReactElement {
                       </td>
                       <td className="px-4 py-3 text-start">
                         <p className="text-ink">{request.email}</p>
-                        <p className="text-xs text-text-muted">{request.phone}</p>
-                        <p className="text-xs font-mono tabular-nums text-text-muted">
-                          {request.fingerprintNumber}
-                        </p>
+                        <p className="text-xs text-text-muted">{request.phone || "—"}</p>
+                      </td>
+                      <td className="px-4 py-3 text-start text-xs font-mono tabular-nums text-text-secondary">
+                        {request.fingerprintNumber || "—"}
                       </td>
                       <td className="px-4 py-3 text-start text-text-secondary">
-                        {request.position}
+                        {request.positionName || "—"}
                       </td>
                       <td className="px-4 py-3 text-start text-text-secondary">
-                        {tDept(request.department)}
+                        {request.departmentName || "—"}
                       </td>
                       <td className="px-4 py-3 text-start text-text-secondary">
-                        {tBranch(request.branch)}
+                        {request.branchName || "—"}
                       </td>
                       <td className="px-4 py-3 text-start text-text-secondary">
-                        {request.submittedAt}
+                        {formatSubmittedAt(request.createdAt, locale)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-start gap-2">
+                          <MainButton
+                            variant="edit-soft"
+                            size="sm"
+                            iconOnly
+                            aria-label={t("view")}
+                            startIcon={<Eye className="size-4" />}
+                            onClick={(event) => openView(request, event)}
+                          />
                           <MainButton
                             variant="add-soft"
                             size="sm"
@@ -221,19 +285,28 @@ export function AdminRegistrationsPage(): ReactElement {
             </table>
           </div>
 
-          <TablePagination
-            page={safePage}
-            pageSize={PAGE_SIZE}
-            totalItems={filteredPending.length}
-            onPageChange={setPage}
-            previousLabel={t("pagination.previous")}
-            nextLabel={t("pagination.next")}
-            formatSummary={({ start, end, total }) =>
-              t("pagination.summary", { start, end, total })
-            }
-          />
+          {!isTableLoading && meta ? (
+            <TablePagination
+              page={meta.current_page}
+              pageSize={meta.per_page}
+              totalItems={meta.total}
+              onPageChange={setPage}
+              previousLabel={t("pagination.previous")}
+              nextLabel={t("pagination.next")}
+              formatSummary={({ start, end, total }) =>
+                t("pagination.summary", { start, end, total })
+              }
+            />
+          ) : null}
         </div>
       </section>
+
+      <RegistrationRequestViewModal
+        requestId={viewId}
+        open={viewId !== null}
+        onClose={() => setViewId(null)}
+        triggerRef={viewRegistrationTriggerRef}
+      />
 
       <DeleteConfirmModal
         open={approveRequest !== null}
@@ -247,7 +320,11 @@ export function AdminRegistrationsPage(): ReactElement {
         cancelLabel={t("cancel")}
         confirmVariant="add-soft"
         onCancel={() => setApproveId(null)}
-        onConfirm={confirmApprove}
+        onConfirm={() => {
+          void confirmApprove();
+          return false;
+        }}
+        loading={accepting}
         triggerRef={approveRegistrationTriggerRef}
       />
 
@@ -263,7 +340,11 @@ export function AdminRegistrationsPage(): ReactElement {
         cancelLabel={t("cancel")}
         confirmVariant="delete-soft"
         onCancel={() => setRejectId(null)}
-        onConfirm={confirmReject}
+        onConfirm={() => {
+          void confirmReject();
+          return false;
+        }}
+        loading={rejecting}
         triggerRef={rejectRegistrationTriggerRef}
       />
     </div>

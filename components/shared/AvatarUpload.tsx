@@ -117,7 +117,11 @@ export function AvatarUpload({
       >
         {displaySrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- local preview
-          <img src={displaySrc} alt="" className="size-full rounded-2xl object-cover" />
+          <img
+            src={displaySrc}
+            alt=""
+            className="absolute inset-0 size-full max-h-none max-w-none object-cover"
+          />
         ) : (
           <UserRound className="size-10" aria-hidden />
         )}

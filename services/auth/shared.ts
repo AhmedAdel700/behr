@@ -28,6 +28,7 @@ export const authApiPaths = {
   login: "/auth/login",
   logout: "/auth/logout",
   refresh: "/auth/refresh",
+  register: "/auth/register",
 } as const;
 
 export function buildAuthApiUrl(path: string): string {

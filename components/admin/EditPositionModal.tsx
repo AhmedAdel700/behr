@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactElement, type RefObject } from "react";
+import { useEffect, useMemo, type ReactElement, type RefObject } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Briefcase } from "lucide-react";
+import { toast } from "sonner";
+import { useUpdatePositionMutation } from "@/app/store/api/positions/positionsApi";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
-import { updatePosition } from "@/lib/admin/positionsStore";
 import {
   createPositionSchema,
   type PositionFormValues,
@@ -58,7 +59,8 @@ function EditPositionForm({
   const t = useTranslations("admin.createPosition");
   const tPage = useTranslations("admin.positionsPage");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
+  const [updatePositionMutation, { isLoading: submitting }] =
+    useUpdatePositionMutation();
 
   const schema = useMemo(
     () =>
@@ -87,17 +89,19 @@ function EditPositionForm({
     reset({ name: position.name });
   }, [open, position, reset]);
 
-  const onSubmit = (values: PositionFormValues): void => {
-    setSubmitting(true);
-    const updated = updatePosition(position.id, { name: values.name });
-    setSubmitting(false);
-
-    if (!updated) {
-      setError("name", { message: t("errors.duplicate") });
-      return;
+  const onSubmit = async (values: PositionFormValues): Promise<void> => {
+    try {
+      await updatePositionMutation({
+        positionId: position.id,
+        body: { name: values.name.trim() },
+      }).unwrap();
+      toast.success(tPage("save"));
+      closeModal();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("errors.duplicate");
+      setError("name", { message });
     }
-
-    closeModal();
   };
 
   return (

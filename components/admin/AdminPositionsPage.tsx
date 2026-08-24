@@ -1,34 +1,34 @@
 "use client";
 
-import {
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type MouseEvent,
-  type ReactElement,
-} from "react";
+import { useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  normalizePositionsListParams,
+  useDeletePositionMutation,
+  useGetPositionsQuery,
+} from "@/app/store/api/positions/positionsApi";
 import { CreatePositionModal } from "@/components/admin/CreatePositionModal";
 import { EditPositionModal } from "@/components/admin/EditPositionModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
-import { MainInput } from "@/components/shared/MainInput";
-import {
-  deletePosition,
-  getPositionsSnapshot,
-  subscribePositions,
-} from "@/lib/admin/positionsStore";
+import { SearchInput } from "@/components/shared/SearchInput";
+import { TablePagination } from "@/components/shared/TablePagination";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
-import type { PositionRecord } from "@/types/PositionsApiTypes";
+import type {
+  PositionRecord,
+  PositionsListQueryParams,
+  PositionsListResult,
+} from "@/types/PositionsApiTypes";
 
-export function AdminPositionsPage(): ReactElement {
+export function AdminPositionsPage({
+  initialData,
+}: {
+  initialData?: PositionsListResult;
+}): ReactElement {
   const t = useTranslations("admin.positionsPage");
 
-  useSyncExternalStore(subscribePositions, getPositionsSnapshot, getPositionsSnapshot);
-
-  const positions = getPositionsSnapshot();
   const createPositionTriggerRef = useRef<HTMLButtonElement>(null);
   const { triggerRef: editPositionTriggerRef, bindTrigger: bindEditPositionTrigger } =
     useModalTriggerRef();
@@ -36,19 +36,28 @@ export function AdminPositionsPage(): ReactElement {
     useModalTriggerRef();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PositionRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const filteredPositions = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return positions;
-    return positions.filter(
-      (position) =>
-        position.name.toLowerCase().includes(query) ||
-        position.slug.toLowerCase().includes(query),
-    );
-  }, [positions, searchQuery]);
+  const positionsQueryArg: PositionsListQueryParams =
+    normalizePositionsListParams({
+      page,
+      search: searchQuery,
+    });
+
+  const {
+    data: positionsResult,
+    isLoading,
+    isFetching,
+  } = useGetPositionsQuery(positionsQueryArg);
+  const [deletePositionMutation, { isLoading: deletingPosition }] =
+    useDeletePositionMutation();
+
+  const positions =
+    positionsResult?.positions ?? initialData?.positions ?? [];
+  const meta = positionsResult?.meta ?? initialData?.meta;
 
   const deleteTarget = deleteId
     ? positions.find((item) => item.id === deleteId) ?? null
@@ -62,13 +71,24 @@ export function AdminPositionsPage(): ReactElement {
     setEditing(position);
   };
 
-  const confirmDelete = (): boolean => {
-    if (!deleteId) return false;
-    const result = deletePosition(deleteId);
-    return result.success;
+  const confirmDelete = async (): Promise<void> => {
+    if (!deleteId) {
+      return;
+    }
+
+    await deletePositionMutation({ positionId: deleteId }).unwrap();
+    setDeleteId(null);
   };
 
-  const columnCount = 2;
+  const handleSearch = (query: string): void => {
+    setSearchQuery(query);
+    setPage(1);
+  };
+
+  const isInitialQuery = page === 1 && searchQuery.trim().length === 0;
+  const hasSeededInitialData = Boolean(initialData?.positions?.length);
+  const isTableLoading =
+    (isLoading || isFetching) && !(isInitialQuery && hasSeededInitialData);
 
   return (
     <div className="space-y-6">
@@ -82,18 +102,15 @@ export function AdminPositionsPage(): ReactElement {
       <section className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="w-full lg:max-w-xs">
-            <MainInput
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+            <SearchInput
+              onSearch={handleSearch}
               placeholder={t("searchPlaceholder")}
-              startIcon={<Search />}
               aria-label={t("searchPlaceholder")}
             />
           </div>
           <div className="flex items-center justify-between gap-3 lg:justify-end">
             <h2 className="text-sm font-semibold text-ink">
-              {t("resultsTitle", { count: filteredPositions.length })}
+              {t("resultsTitle", { count: meta?.total ?? positions.length })}
             </h2>
             <MainButton
               ref={createPositionTriggerRef}
@@ -121,17 +138,19 @@ export function AdminPositionsPage(): ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {filteredPositions.length === 0 ? (
+                {isTableLoading ? (
+                  <TableSkeleton columnCount={2} />
+                ) : positions.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={columnCount}
+                      colSpan={2}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {positions.length === 0 ? t("empty") : t("noResults")}
+                      {searchQuery.trim() ? t("noResults") : t("empty")}
                     </td>
                   </tr>
                 ) : (
-                  filteredPositions.map((position) => (
+                  positions.map((position) => (
                     <tr
                       key={position.id}
                       className="border-b border-border last:border-b-0"
@@ -168,6 +187,19 @@ export function AdminPositionsPage(): ReactElement {
               </tbody>
             </table>
           </div>
+          {!isTableLoading && meta ? (
+            <TablePagination
+              page={meta.current_page}
+              pageSize={meta.per_page}
+              totalItems={meta.total}
+              onPageChange={setPage}
+              previousLabel={t("pagination.previous")}
+              nextLabel={t("pagination.next")}
+              formatSummary={({ start, end, total }) =>
+                t("pagination.summary", { start, end, total })
+              }
+            />
+          ) : null}
         </div>
       </section>
 
@@ -197,7 +229,11 @@ export function AdminPositionsPage(): ReactElement {
         confirmLabel={t("deleteConfirm")}
         cancelLabel={t("cancel")}
         onCancel={() => setDeleteId(null)}
-        onConfirm={confirmDelete}
+        onConfirm={() => {
+          void confirmDelete();
+          return false;
+        }}
+        loading={deletingPosition}
         triggerRef={deletePositionTriggerRef}
       />
     </div>

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactElement, type RefObject } from "react";
+import { useEffect, useMemo, type ReactElement, type RefObject } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Briefcase } from "lucide-react";
+import { toast } from "sonner";
+import { useCreatePositionMutation } from "@/app/store/api/positions/positionsApi";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
-import { createPosition } from "@/lib/admin/positionsStore";
 import {
   createPositionSchema,
   type PositionFormValues,
@@ -51,7 +52,8 @@ function CreatePositionForm({
 }: CreatePositionFormProps): ReactElement {
   const t = useTranslations("admin.createPosition");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
+  const [createPositionMutation, { isLoading: submitting }] =
+    useCreatePositionMutation();
 
   const schema = useMemo(
     () =>
@@ -80,17 +82,18 @@ function CreatePositionForm({
     reset({ name: "" });
   }, [open, reset]);
 
-  const onSubmit = (values: PositionFormValues): void => {
-    setSubmitting(true);
-    const created = createPosition({ name: values.name });
-    setSubmitting(false);
-
-    if (!created) {
-      setError("name", { message: t("errors.duplicate") });
-      return;
+  const onSubmit = async (values: PositionFormValues): Promise<void> => {
+    try {
+      await createPositionMutation({
+        body: { name: values.name.trim() },
+      }).unwrap();
+      toast.success(t("success"));
+      closeModal();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("errors.duplicate");
+      setError("name", { message });
     }
-
-    closeModal();
   };
 
   return (

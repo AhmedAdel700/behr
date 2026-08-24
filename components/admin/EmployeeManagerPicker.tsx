@@ -1,68 +1,95 @@
 "use client";
 
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { Search, X } from "lucide-react";
-import type { AdminEmployee } from "@/types/AdminApiTypes";
-import { searchEmployees } from "@/lib/admin/searchEmployees";
-import { getDepartmentManagerName } from "@/lib/admin/departmentManagers";
+import { X } from "lucide-react";
+import { useGetEmployeesQuery } from "@/app/store/api/employees/employeesApi";
 import { MainButton } from "@/components/shared/MainButton";
-import { MainInput } from "@/components/shared/MainInput";
-import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/shared/SearchInput";
+import { toEmployeeManagerRecord } from "@services/employees/employeesService";
+import type { EmployeeManagerRecord } from "@/types/EmployeesApiTypes";
 
 interface EmployeeManagerPickerProps {
-  employees: AdminEmployee[];
-  branchSlug?: string;
+  branchId?: string;
   selectedEmployeeId: string;
+  initialSelectedEmployee?: EmployeeManagerRecord | null;
   onSelect: (employeeId: string) => void;
   error?: string;
 }
 
 export function EmployeeManagerPicker({
-  employees,
-  branchSlug,
+  branchId,
   selectedEmployeeId,
+  initialSelectedEmployee = null,
   onSelect,
   error,
 }: EmployeeManagerPickerProps): ReactElement {
   const t = useTranslations("admin.createDepartment");
-  const tDept = useTranslations("admin.departments");
-  const tEmployees = useTranslations("admin.employees");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const scopedEmployees = useMemo(() => {
-    if (!branchSlug) return employees;
-    return employees.filter((employee) => employee.branch === branchSlug);
-  }, [branchSlug, employees]);
-
-  const trimmedQuery = searchQuery.trim();
-  const isSearching = trimmedQuery.length > 0;
-
-  const filteredEmployees = useMemo(
-    () => {
-      if (!isSearching) return [];
-      return searchEmployees(scopedEmployees, trimmedQuery, {
-        department: (value) => tDept(value),
-        departmentManager: (value) => getDepartmentManagerName(value),
-        status: (value) => tEmployees(`status.${value}`),
-      });
-    },
-    [scopedEmployees, trimmedQuery, isSearching, tDept, tEmployees]
+  const shouldSearch = Boolean(branchId && debouncedSearch.trim());
+  const { data: employeesResult, isFetching } = useGetEmployeesQuery(
+    { search: debouncedSearch, page: 1 },
+    { skip: !shouldSearch },
   );
 
-  const selectedEmployee = scopedEmployees.find(
-    (employee) => employee.id === selectedEmployeeId
-  );
+  const filteredEmployees = useMemo(() => {
+    return (employeesResult?.employees ?? []).map(toEmployeeManagerRecord);
+  }, [employeesResult?.employees]);
+
+  const [selectedEmployeeSnapshot, setSelectedEmployeeSnapshot] =
+    useState<EmployeeManagerRecord | null>(() => {
+      if (
+        selectedEmployeeId &&
+        initialSelectedEmployee?.id === selectedEmployeeId
+      ) {
+        return initialSelectedEmployee;
+      }
+
+      return null;
+    });
+
+  useEffect(() => {
+    if (!selectedEmployeeId) {
+      setSelectedEmployeeSnapshot(null);
+      return;
+    }
+
+    setSelectedEmployeeSnapshot((current) => {
+      if (current?.id === selectedEmployeeId) {
+        return current;
+      }
+
+      if (initialSelectedEmployee?.id === selectedEmployeeId) {
+        return initialSelectedEmployee;
+      }
+
+      return current;
+    });
+  }, [selectedEmployeeId, initialSelectedEmployee]);
+
+  const selectedEmployee =
+    filteredEmployees.find((employee) => employee.id === selectedEmployeeId) ??
+    (selectedEmployeeSnapshot?.id === selectedEmployeeId
+      ? selectedEmployeeSnapshot
+      : undefined);
   const hasSelection = selectedEmployee !== undefined;
 
   const handleSelect = (employeeId: string): void => {
+    const nextSelected =
+      filteredEmployees.find((employee) => employee.id === employeeId) ?? null;
+    setSelectedEmployeeSnapshot(nextSelected);
     onSelect(employeeId);
     setSearchQuery("");
+    setDebouncedSearch("");
   };
 
   const handleRemove = (): void => {
+    setSelectedEmployeeSnapshot(null);
     onSelect("");
     setSearchQuery("");
+    setDebouncedSearch("");
   };
 
   return (
@@ -74,10 +101,12 @@ export function EmployeeManagerPicker({
 
       {selectedEmployee ? (
         <div className="flex items-start gap-2 rounded-xl border border-primary-200 bg-primary-50/50 px-3 py-2.5">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-1">
             <p className="text-sm font-medium text-ink">{selectedEmployee.name}</p>
             <p className="text-xs text-text-secondary">{selectedEmployee.email}</p>
-            <p className="text-xs text-text-muted">{selectedEmployee.position}</p>
+            {selectedEmployee.position ? (
+              <p className="text-xs text-text-muted">{selectedEmployee.position}</p>
+            ) : null}
           </div>
           <MainButton
             type="button"
@@ -91,23 +120,26 @@ export function EmployeeManagerPicker({
         </div>
       ) : null}
 
-      <MainInput
-        type="search"
+      <SearchInput
         value={searchQuery}
-        onChange={(event) => setSearchQuery(event.target.value)}
+        onChange={setSearchQuery}
+        onSearch={setDebouncedSearch}
         placeholder={t("placeholders.managerSearch")}
-        startIcon={<Search />}
         aria-label={t("placeholders.managerSearch")}
-        disabled={!branchSlug || hasSelection}
+        disabled={!branchId || hasSelection}
       />
 
-      {!branchSlug ? (
+      {!branchId ? (
         <p className="text-xs text-text-muted">{t("selectBranchFirst")}</p>
-      ) : hasSelection ? null : !isSearching ? (
+      ) : hasSelection ? null : !debouncedSearch.trim() ? (
         <p className="text-xs text-text-muted">{t("typeToSearch")}</p>
       ) : (
         <ul className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-border bg-surface-muted/20 p-2">
-          {filteredEmployees.length === 0 ? (
+          {isFetching ? (
+            <li className="px-2 py-6 text-center text-sm text-text-muted">
+              {t("typeToSearch")}
+            </li>
+          ) : filteredEmployees.length === 0 ? (
             <li className="px-2 py-6 text-center text-sm text-text-muted">
               {t("noEmployeesFound")}
             </li>
@@ -119,11 +151,21 @@ export function EmployeeManagerPicker({
                   variant="neutral"
                   block
                   onClick={() => handleSelect(employee.id)}
-                  className="h-auto flex-col items-start justify-start gap-0 rounded-lg px-3 py-2.5 text-start font-normal"
+                  className="h-auto items-start justify-start rounded-lg px-3 py-2.5 text-start font-normal"
                 >
-                  <p className="text-sm font-medium text-ink">{employee.name}</p>
-                  <p className="text-xs text-text-secondary">{employee.email}</p>
-                  <p className="text-xs text-text-muted">{employee.position}</p>
+                  <span className="flex w-full flex-col items-start gap-1 text-start">
+                    <span className="text-sm font-medium text-ink">
+                      {employee.name}
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      {employee.email}
+                    </span>
+                    {employee.position ? (
+                      <span className="text-xs text-text-muted">
+                        {employee.position}
+                      </span>
+                    ) : null}
+                  </span>
                 </MainButton>
               </li>
             ))

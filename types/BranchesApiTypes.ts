@@ -23,6 +23,11 @@ export interface BranchesPaginationMeta {
   total: number;
 }
 
+export interface BranchesListQueryParams {
+  search?: string;
+  page?: number;
+}
+
 export interface BranchPayload {
   name: string;
   city: string;

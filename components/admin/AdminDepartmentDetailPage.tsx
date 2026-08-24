@@ -1,76 +1,27 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { MainButton } from "@/components/shared/MainButton";
-import { MainInput } from "@/components/shared/MainInput";
 import {
-  getBranchDepartmentOverview,
-  getBranchDisplayName,
-} from "@/lib/admin/buildBranchOverviews";
-import { getDepartmentManagerName } from "@/lib/admin/departmentManagers";
-import {
-  getEmployeesSnapshot,
-  subscribeEmployees,
-} from "@/lib/admin/adminDataStore";
-import {
-  getBranchDepartmentById,
-  getBranchById,
-  getBranchDepartmentsSnapshot,
-  getBranchesSnapshot,
-  subscribeOrg,
-} from "@/lib/admin/adminOrgStore";
-import { searchEmployees } from "@/lib/admin/searchEmployees";
+  useGetDepartmentByIdQuery,
+} from "@/app/store/api/departments/departmentsApi";
 
 export function AdminDepartmentDetailPage(): ReactElement {
   const t = useTranslations("admin.departmentDetailPage");
-  const tDept = useTranslations("admin.departments");
   const tEmployees = useTranslations("admin.employees");
-  const tBranch = useTranslations("auth.branchOptions");
   const params = useParams();
-
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-  useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
-  useSyncExternalStore(subscribeOrg, getBranchDepartmentsSnapshot, getBranchDepartmentsSnapshot);
 
   const departmentParam = params.departmentId;
   const departmentId =
     typeof departmentParam === "string" ? departmentParam : "";
+  const { data: department } = useGetDepartmentByIdQuery(departmentId, {
+    skip: !departmentId,
+  });
 
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const employees = getEmployeesSnapshot();
-  const branches = getBranchesSnapshot();
-  const department = departmentId
-    ? getBranchDepartmentById(departmentId)
-    : undefined;
-  const branch = department ? getBranchById(department.branchId) : undefined;
-
-  const overview =
-    department && branch
-      ? getBranchDepartmentOverview(branch.slug, department.slug, employees)
-      : undefined;
-
-  const memberRows = useMemo(() => {
-    if (!overview || !department) return [];
-    return overview.members.filter(
-      (member) => member.id !== department.managerEmployeeId
-    );
-  }, [overview, department]);
-
-  const filteredMembers = useMemo(
-    () =>
-      searchEmployees(memberRows, searchQuery, {
-        department: (value) => tDept(value),
-        departmentManager: (value) => getDepartmentManagerName(value),
-        status: (value) => tEmployees(`status.${value}`),
-      }),
-    [memberRows, searchQuery, tDept, tEmployees]
-  );
-
-  if (!department || !branch || !overview) {
+  if (!department) {
     return (
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -84,10 +35,9 @@ export function AdminDepartmentDetailPage(): ReactElement {
     );
   }
 
-  const branchName = getBranchDisplayName(
-    branch.slug,
-    branches,
-    (value) => tBranch(value)
+  const otherMemberCount = Math.max(
+    0,
+    department.usersCount - (department.managerUserId ? 1 : 0),
   );
 
   return (
@@ -103,30 +53,19 @@ export function AdminDepartmentDetailPage(): ReactElement {
         </MainButton>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {overview.name}
+            {department.name}
           </h1>
           <p className="text-sm text-text-secondary">
             {t("subtitle", {
-              branch: branchName,
-              manager: overview.manager.name,
-              count: memberRows.length,
+              branch: department.branchName || "—",
+              manager: department.managerName || "—",
+              count: otherMemberCount,
             })}
           </p>
         </div>
       </section>
 
       <section className="space-y-3">
-        <div className="w-full max-w-xs">
-          <MainInput
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t("searchPlaceholder")}
-            startIcon={<Search />}
-            aria-label={t("searchPlaceholder")}
-          />
-        </div>
-
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
           <div className="admin-scroll-visible overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-sm">
@@ -146,52 +85,29 @@ export function AdminDepartmentDetailPage(): ReactElement {
               <tbody>
                 <tr className="border-b border-primary-200 bg-primary-50/50">
                   <td className="px-4 py-3 text-start">
-                    <p className="font-semibold text-ink">{overview.manager.name}</p>
+                    <p className="font-semibold text-ink">{department.managerName || "—"}</p>
                     <p className="mt-0.5 text-xs text-text-secondary">
                       {t("managerLabel")}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-start">
-                    <p className="text-ink">{overview.manager.email}</p>
+                    <p className="text-ink">{department.managerEmail || "—"}</p>
                   </td>
                   <td className="px-4 py-3 text-start font-medium text-primary-700">
-                    {overview.manager.position}
+                    —
                   </td>
                 </tr>
 
-                {filteredMembers.length === 0 ? (
+                {otherMemberCount === 0 ? (
                   <tr>
                     <td
                       colSpan={3}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {searchQuery.trim()
-                        ? t("emptySearch")
-                        : t("emptyMembers")}
+                      {t("emptyMembers")}
                     </td>
                   </tr>
-                ) : (
-                  filteredMembers.map((member) => (
-                    <tr
-                      key={member.id}
-                      className="border-b border-border last:border-b-0"
-                    >
-                      <td className="px-4 py-3 text-start">
-                        <p className="font-medium text-ink">{member.name}</p>
-                      </td>
-                      <td className="px-4 py-3 text-start">
-                        <p className="text-ink">{member.email}</p>
-                        <p className="text-xs text-text-muted">{member.phone}</p>
-                        <p className="text-xs font-mono tabular-nums text-text-muted">
-                          {member.fingerprintNumber}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-start text-text-secondary">
-                        {member.position}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ) : null}
               </tbody>
             </table>
           </div>

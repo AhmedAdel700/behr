@@ -3,8 +3,6 @@
 import {
   useEffect,
   useMemo,
-  useState,
-  useSyncExternalStore,
   type ReactElement,
   type RefObject,
 } from "react";
@@ -12,6 +10,12 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Building2, MapPinned } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  useGetBranchesQuery,
+} from "@/app/store/api/branches/branchesApi";
+import { useUpdateDepartmentMutation } from "@/app/store/api/departments/departmentsApi";
 import { EmployeeManagerPicker } from "@/components/admin/EmployeeManagerPicker";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
@@ -19,22 +23,17 @@ import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import {
-  getEmployeesSnapshot,
-  subscribeEmployees,
-} from "@/lib/admin/adminDataStore";
-import {
-  getBranchesSnapshot,
-  subscribeOrg,
-  updateBranchDepartment,
-} from "@/lib/admin/adminOrgStore";
-import {
   updateDepartmentSchema,
   type UpdateDepartmentFormValues,
 } from "@/schemas/admin/org.schema";
-import type { AdminBranchDepartmentRecord } from "@/types/AdminApiTypes";
+import type {
+  DepartmentPayload,
+  DepartmentRecord,
+} from "@/types/DepartmentsApiTypes";
+import type { EmployeeManagerRecord } from "@/types/EmployeesApiTypes";
 
 interface EditDepartmentModalProps {
-  department: AdminBranchDepartmentRecord;
+  department: DepartmentRecord;
   open: boolean;
   onClose: () => void;
   triggerRef?: RefObject<HTMLElement | null>;
@@ -61,7 +60,7 @@ export function EditDepartmentModal({
 }
 
 interface EditDepartmentFormProps {
-  department: AdminBranchDepartmentRecord;
+  department: DepartmentRecord;
   open: boolean;
   onClose: () => void;
 }
@@ -74,13 +73,10 @@ function EditDepartmentForm({
   const t = useTranslations("admin.createDepartment");
   const tPage = useTranslations("admin.departmentsPage");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
-
-  useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-
-  const branches = getBranchesSnapshot();
-  const employees = getEmployeesSnapshot();
+  const [updateDepartmentMutation, { isLoading: submitting }] =
+    useUpdateDepartmentMutation();
+  const { data: branchesResult } = useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
+  const branches = branchesResult?.branches ?? [];
 
   const schema = useMemo(
     () =>
@@ -116,7 +112,25 @@ function EditDepartmentForm({
   }, [open, department, reset]);
 
   const selectedBranchId = watch("branchId");
-  const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
+
+  const initialSelectedManager = useMemo((): EmployeeManagerRecord | null => {
+    if (!department.managerUserId) {
+      return null;
+    }
+
+    return {
+      id: department.managerUserId,
+      name: department.managerName,
+      email: department.managerEmail,
+      position: "",
+      branchId: department.branchId,
+    };
+  }, [
+    department.branchId,
+    department.managerEmail,
+    department.managerName,
+    department.managerUserId,
+  ]);
 
   const branchOptions = useMemo(
     () =>
@@ -135,17 +149,39 @@ function EditDepartmentForm({
     }
   };
 
-  const onSubmit = (values: UpdateDepartmentFormValues): void => {
-    setSubmitting(true);
-    const updated = updateBranchDepartment(department.id, values);
-    setSubmitting(false);
+  const onSubmit = async (values: UpdateDepartmentFormValues): Promise<void> => {
+    const branchId = Number(values.branchId);
 
-    if (!updated) {
-      setError("name", { message: t("errors.duplicate") });
+    if (!Number.isFinite(branchId)) {
+      setError("branchId", { message: t("errors.branchRequired") });
+      return;
+    }
+    const managerValue = values.managerEmployeeId.trim();
+    const managerUserId =
+      managerValue.length > 0 ? Number(managerValue) : null;
+
+    if (managerUserId !== null && !Number.isFinite(managerUserId)) {
+      setError("managerEmployeeId", { message: t("errors.managerRequired") });
       return;
     }
 
-    closeModal();
+    const body: DepartmentPayload = {
+      name: values.name.trim(),
+      branch_id: branchId,
+      manager_user_id: managerUserId,
+    };
+
+    try {
+      await updateDepartmentMutation({
+        departmentId: department.id,
+        body,
+      }).unwrap();
+      toast.success(tPage("save"));
+      closeModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("errors.duplicate");
+      setError("name", { message });
+    }
   };
 
   return (
@@ -190,9 +226,9 @@ function EditDepartmentForm({
           name="managerEmployeeId"
           render={({ field }) => (
             <EmployeeManagerPicker
-              employees={employees}
-              branchSlug={selectedBranch?.slug}
+              branchId={selectedBranchId}
               selectedEmployeeId={field.value}
+              initialSelectedEmployee={initialSelectedManager}
               onSelect={(employeeId) => {
                 field.onChange(employeeId);
                 if (employeeId) {
@@ -218,11 +254,11 @@ function EditDepartmentForm({
 }
 
 function toFormValues(
-  department: AdminBranchDepartmentRecord,
+  department: DepartmentRecord,
 ): UpdateDepartmentFormValues {
   return {
     branchId: department.branchId,
     name: department.name,
-    managerEmployeeId: department.managerEmployeeId,
+    managerEmployeeId: department.managerUserId,
   };
 }

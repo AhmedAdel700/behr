@@ -63,6 +63,9 @@
     "searchPlaceholder": "ابحث بالاسم أو البريد أو المسمى الوظيفي…",
     "emptyEmployees": "لا يوجد موظفون ضمن نطاق صلاحياتك الحالي.",
     "noResults": "لا يوجد موظفون يطابقون بحثك أو عوامل التصفية.",
+    "notAssigned": "—",
+    "loading": "جاري تحميل الموظف…",
+    "updateSuccess": "تم تحديث الموظف بنجاح.",
     "filters": {
       "department": "القسم",
       "branch": "الفرع",
@@ -93,31 +96,37 @@
     "view": "عرض الموظف",
     "delete": "حذف الموظف",
     "editTitle": "تعديل التعيين",
-    "editSubtitle": "يمكنك تحديث الفرع والقسم والمسمى الوظيفي فقط. لا يمكن تعديل بيانات التواصل من هنا.",
+    "editSubtitle": "يمكنك تحديث الفرع والقسم والمسمى الوظيفي ورقم البصمة. لا يمكن تعديل بيانات التواصل من هنا.",
+    "editFingerprint": "تعديل رقم البصمة",
     "fields": {
       "name": "الاسم الكامل",
       "email": "البريد الإلكتروني",
       "phone": "الهاتف",
       "position": "المسمى الوظيفي",
       "branch": "الفرع",
-      "department": "القسم"
+      "department": "القسم",
+      "fingerprintNumber": "رقم البصمة"
     },
     "placeholders": {
       "branch": "اختر الفرع",
       "department": "اختر القسم",
-      "position": "مثال: أخصائي موارد بشرية"
+      "position": "اختر المسمى الوظيفي",
+      "fingerprintNumber": "مثال: FP0031"
     },
     "errors": {
       "branchRequired": "الفرع مطلوب.",
       "departmentRequired": "القسم مطلوب.",
       "positionRequired": "المسمى الوظيفي مطلوب.",
-      "positionMin": "يجب أن يكون المسمى الوظيفي حرفين على الأقل."
+      "fingerprintRequired": "رقم البصمة مطلوب.",
+      "fingerprintInvalid": "أدخل رقم بصمة صالحاً (حتى 20 حرفاً أو رقماً).",
+      "failed": "تعذر تحديث هذا الموظف."
     },
     "save": "حفظ التعديلات",
     "cancel": "إلغاء",
     "deleteTitle": "حذف هذا الموظف؟",
     "deleteDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف سجل الموظف من الدليل.",
-    "deleteConfirm": "حذف"
+    "deleteConfirm": "حذف",
+    "deleteError": "تعذر حذف هذا الموظف."
   },
   "employeeDetailPage": {
     "backToEmployees": "العودة إلى الموظفين",
@@ -175,10 +184,17 @@
     "rejectDescription": "سيتم رفض طلب تسجيل {name}.",
     "rejectConfirm": "رفض",
     "cancel": "إلغاء",
+    "view": "عرض التفاصيل",
+    "detailTitle": "تفاصيل طلب التسجيل",
+    "detailLoading": "جاري تحميل تفاصيل الطلب…",
+    "detailError": "تعذر تحميل طلب التسجيل هذا.",
+    "close": "إغلاق",
+    "reviewError": "تعذر تحديث طلب التسجيل هذا.",
     "submittedAt": "تاريخ الإرسال {date}",
     "columns": {
       "name": "المتقدم",
       "contact": "التواصل",
+      "fingerprint": "البصمة",
       "position": "المسمى الوظيفي",
       "department": "القسم",
       "branch": "الفرع",
@@ -191,7 +207,11 @@
       "phone": "الهاتف",
       "position": "المسمى الوظيفي",
       "department": "القسم",
-      "branch": "الفرع"
+      "branch": "الفرع",
+      "fingerprint": "رقم البصمة",
+      "reviewer": "راجعه",
+      "reviewedAt": "تاريخ المراجعة",
+      "rejectionReason": "سبب الرفض"
     },
     "status": {
       "pending": "معلقة",
@@ -245,6 +265,11 @@
     "emptySearch": "لا توجد فروع تطابق بحثك.",
     "emptyBranches": "لا توجد فروع بعد. أنشئ فرعك الأول للبدء.",
     "loading": "جاري تحميل الفروع…",
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "summary": "عرض {start}–{end} من {total}"
+    },
     "updateSuccess": "تم تحديث الفرع بنجاح.",
     "updateError": "تعذر تحديث الفرع.",
     "deleteSuccess": "تم حذف الفرع بنجاح.",
@@ -370,29 +395,61 @@
   },
   "createLeaveType": {
     "title": "إنشاء نوع إجازة",
-    "subtitle": "أضف نوع إجازة جديد مع الوحدة والفئة والرصيد الافتراضي.",
+    "subtitle": "أضف نوع إجازة مع قواعد الرصيد والترحيل والموافقة.",
     "submit": "إنشاء نوع الإجازة",
     "cancel": "إلغاء",
+    "success": "تم إنشاء نوع الإجازة بنجاح.",
     "fields": {
       "name": "اسم نوع الإجازة",
+      "description": "الوصف",
       "unit": "الوحدة",
-      "category": "الفئة",
-      "defaultEntitlement": "الرصيد الافتراضي"
+      "allocationType": "نوع الرصيد",
+      "allocationAmount": "مقدار الرصيد",
+      "canCarryForward": "يمكن الترحيل",
+      "carryForwardLimit": "حد الترحيل",
+      "isPaid": "مدفوعة",
+      "requiresApproval": "تتطلب موافقة",
+      "genderRestriction": "تقييد الجنس",
+      "isActive": "نشط"
     },
     "placeholders": {
       "name": "مثال: إجازة سنوية",
+      "description": "مثال: إجازة سنوية مدفوعة",
       "unit": "اختر الوحدة",
-      "category": "مثال: الإجازات الأساسية",
-      "defaultEntitlement": "مثال: 30"
+      "allocationType": "اختر نوع الرصيد",
+      "allocationAmount": "مثال: 21",
+      "carryForwardLimit": "مثال: 5"
+    },
+    "options": {
+      "yes": "نعم",
+      "no": "لا",
+      "unit": {
+        "day": "يوم",
+        "hour": "ساعة"
+      },
+      "allocationType": {
+        "yearly": "سنوي",
+        "monthly": "شهري",
+        "none": "بدون حد"
+      },
+      "gender": {
+        "none": "بدون تقييد",
+        "female": "إناث",
+        "male": "ذكور"
+      }
     },
     "errors": {
       "nameRequired": "اسم نوع الإجازة مطلوب.",
       "nameMin": "يجب أن يكون اسم نوع الإجازة حرفين على الأقل.",
+      "descriptionRequired": "الوصف مطلوب.",
       "unitRequired": "اختر وحدة.",
-      "categoryRequired": "الفئة مطلوبة.",
-      "categoryMin": "يجب أن تكون الفئة حرفين على الأقل.",
-      "entitlementRequired": "الرصيد الافتراضي مطلوب.",
-      "entitlementMin": "يجب أن يكون الرصيد الافتراضي 1 على الأقل."
+      "allocationTypeRequired": "اختر نوع الرصيد.",
+      "allocationAmountRequired": "مقدار الرصيد مطلوب.",
+      "allocationAmountInvalid": "يجب أن يكون مقدار الرصيد 0 أو أكثر.",
+      "carryForwardLimitRequired": "حد الترحيل مطلوب.",
+      "carryForwardLimitInvalid": "يجب أن يكون حد الترحيل 0 أو أكثر.",
+      "genderRequired": "اختر تقييد الجنس.",
+      "failed": "تعذر حفظ نوع الإجازة."
     }
   },
   "leaveTypesPage": {
@@ -403,12 +460,32 @@
     "resultsTitle": "أنواع الإجازات ({count})",
     "empty": "لم يتم إعداد أنواع إجازات بعد.",
     "noResults": "لا توجد أنواع إجازات تطابق بحثك.",
+    "edit": "تعديل نوع الإجازة",
+    "delete": "حذف نوع الإجازة",
+    "editTitle": "تعديل نوع الإجازة",
+    "editSubtitle": "حدّث قواعد الرصيد والترحيل والموافقة.",
+    "deleteTitle": "حذف نوع الإجازة هذا؟",
+    "deleteDescription": "سيتم حذف {name} من الدليل.",
+    "deleteConfirm": "حذف",
+    "cancel": "إلغاء",
+    "save": "حفظ التعديلات",
+    "paid": "مدفوعة",
+    "unpaid": "غير مدفوعة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "carryForward": "ترحيل حتى {limit}",
+    "noCarryForward": "بدون ترحيل",
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "summary": "عرض {start}–{end} من {total}"
+    },
     "columns": {
       "name": "نوع الإجازة",
-      "category": "الفئة",
       "unit": "الوحدة",
-      "defaultEntitlement": "الرصيد الافتراضي",
-      "slug": "المعرّف"
+      "allocation": "الرصيد",
+      "status": "الحالة",
+      "actions": "إجراءات"
     }
   },
   "positionsPage": {
@@ -428,6 +505,11 @@
     "deleteConfirm": "حذف",
     "cancel": "إلغاء",
     "save": "حفظ التغييرات",
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "summary": "عرض {start}–{end} من {total}"
+    },
     "columns": {
       "name": "المسمى الوظيفي",
       "actions": "إجراءات"
@@ -438,6 +520,7 @@
     "subtitle": "أضف مسمى وظيفي جديد للموظفين والتعيينات.",
     "submit": "إنشاء المسمى الوظيفي",
     "cancel": "إلغاء",
+    "success": "تم إنشاء المسمى الوظيفي بنجاح.",
     "fields": {
       "name": "اسم المسمى الوظيفي"
     },
@@ -462,6 +545,11 @@
       "allBranches": "جميع الفروع"
     },
     "emptyDepartments": "لا توجد أقسام بعد. أنشئ قسمك الأول للبدء.",
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "summary": "عرض {start}–{end} من {total}"
+    },
     "columns": {
       "department": "القسم",
       "branch": "الفرع",

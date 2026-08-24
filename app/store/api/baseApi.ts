@@ -28,7 +28,14 @@ export const baseApi = createApi({
     },
   }),
 
-  tagTypes: ["Branch"],
+  tagTypes: [
+    "Branch",
+    "Department",
+    "Employee",
+    "LeaveType",
+    "Position",
+    "RegistrationRequest",
+  ],
 
   endpoints: () => ({}),
 });

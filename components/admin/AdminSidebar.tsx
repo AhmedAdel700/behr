@@ -20,14 +20,7 @@ import {
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
-import {
-  filterLeaveRequestsForAdmin,
-  filterRegistrationsForAdmin,
-} from "@/lib/admin/permissions";
-import {
-  getRegistrationsSnapshot,
-  subscribeRegistrations,
-} from "@/lib/admin/adminDataStore";
+import { filterLeaveRequestsForAdmin } from "@/lib/admin/permissions";
 import {
   getRequestsSnapshot,
   subscribeRequests,
@@ -35,6 +28,10 @@ import {
 import { useAdminSidebarExpanded } from "@/lib/admin/useAdminSidebarPreference";
 import { useAdminMobileDrawerMount, useAdminMobileNav } from "@/lib/admin/adminMobileNav";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS,
+  useGetRegistrationRequestsQuery,
+} from "@/app/store/api/registration-requests/registrationRequestsApi";
 
 function AdminNavLinks({
   expanded,
@@ -62,6 +59,7 @@ function AdminNavLinks({
           <li key={item.href}>
             <Link
               href={item.href}
+              prefetch
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -123,12 +121,10 @@ export function AdminSidebar(): ReactElement {
   useSyncExternalStore(subscribeAdminSession, isAdminLoggingOut, () => false);
   const admin = getAdminSessionSnapshot();
   const signingOut = isAdminLoggingOut();
-  useSyncExternalStore(subscribeRegistrations, getRegistrationsSnapshot, getRegistrationsSnapshot);
   useSyncExternalStore(subscribeRequests, getRequestsSnapshot, getRequestsSnapshot);
-  const pendingRegistrationCount = filterRegistrationsForAdmin(
-    admin,
-    getRegistrationsSnapshot()
-  ).filter((item) => item.status === "pending").length;
+  const { data: registrationRequestsResult } =
+    useGetRegistrationRequestsQuery(DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS);
+  const pendingRegistrationCount = registrationRequestsResult?.meta.total ?? 0;
   const pendingLeaveCount = filterLeaveRequestsForAdmin(
     admin,
     getRequestsSnapshot()

@@ -32,6 +32,7 @@ function SelectTrigger({
   className,
   size = "default",
   children,
+  suppressHydrationWarning = true,
   ...props
 }: SelectPrimitive.Trigger.Props & {
   size?: "sm" | "default"
@@ -40,6 +41,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
+      suppressHydrationWarning={suppressHydrationWarning}
       className={cn(
         "relative flex h-10 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-surface px-3 text-sm text-text whitespace-nowrap transition-colors outline-none select-none focus-visible:border-primary-400 focus-visible:ring-2 focus-visible:ring-primary-500/25 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger-500 aria-invalid:ring-2 aria-invalid:ring-danger-500/20 data-placeholder:text-text-muted data-[size=default]:h-10 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className

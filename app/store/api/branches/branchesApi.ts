@@ -3,12 +3,17 @@ import {
   createBranchAction,
   deleteBranchAction,
   getBranchByIdAction,
-  getBranchesAction,
   updateBranchAction,
 } from "@/app/actions/branches/branchActions";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
-import type { BranchPayload } from "@/types/BranchesApiTypes";
+import type {
+  BranchPayload,
+  BranchesListQueryParams,
+  BranchesListResult,
+} from "@/types/BranchesApiTypes";
+import { fetchBranches } from "@services/branches/branchesService";
 import { getCookie } from "cookies-next";
+import { getSession } from "next-auth/react";
 
 interface BranchMutationArgs {
   body: BranchPayload;
@@ -27,22 +32,70 @@ async function getLang(): Promise<string> {
   return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
+export function normalizeBranchesListParams(
+  arg?: BranchesListQueryParams | void,
+): BranchesListQueryParams {
+  const page = arg?.page && arg.page > 1 ? arg.page : 1;
+  const search = arg?.search?.trim();
+
+  return {
+    page,
+    ...(search ? { search } : {}),
+  };
+}
+
+export function serializeBranchesListParams(
+  params: BranchesListQueryParams,
+): string {
+  return JSON.stringify({
+    page: params.page ?? 1,
+    search: params.search?.trim() ?? "",
+  });
+}
+
+export const DEFAULT_BRANCHES_LIST_PARAMS: BranchesListQueryParams = {
+  page: 1,
+};
+
 export const branchesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getBranches: builder.query<AdminBranchRecord[], void>({
-      async queryFn() {
-        const result = await getBranchesAction(await getLang());
+    getBranches: builder.query<
+      BranchesListResult,
+      BranchesListQueryParams | void
+    >({
+      async queryFn(arg) {
+        const session = await getSession();
 
-        if (!result.success) {
-          return { error: { status: "CUSTOM_ERROR", error: result.message } };
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
         }
 
-        return { data: result.branches };
+        const lang = await getLang();
+        const tokenType =
+          typeof session.tokenType === "string" && session.tokenType
+            ? session.tokenType
+            : "Bearer";
+
+        const result = await fetchBranches(
+          session.accessToken,
+          lang,
+          tokenType,
+          normalizeBranchesListParams(arg),
+        );
+
+        return { data: { branches: result.branches, meta: result.meta } };
       },
+      serializeQueryArgs: ({ queryArgs }) =>
+        serializeBranchesListParams(normalizeBranchesListParams(queryArgs)),
       providesTags: (result) =>
         result
           ? [
-              ...result.map((branch) => ({
+              ...result.branches.map((branch) => ({
                 type: "Branch" as const,
                 id: branch.id,
               })),

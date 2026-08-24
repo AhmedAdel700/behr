@@ -63,6 +63,9 @@
     "searchPlaceholder": "Search by name, email, position…",
     "emptyEmployees": "No employees in your current access scope.",
     "noResults": "No employees match your search or filters.",
+    "notAssigned": "—",
+    "loading": "Loading employee…",
+    "updateSuccess": "Employee updated successfully.",
     "filters": {
       "department": "Department",
       "branch": "Branch",
@@ -93,31 +96,37 @@
     "view": "View employee",
     "delete": "Delete employee",
     "editTitle": "Edit assignment",
-    "editSubtitle": "Update branch, department, and position only. Contact details cannot be changed here.",
+    "editSubtitle": "Update branch, department, position, and fingerprint number. Contact details cannot be changed here.",
+    "editFingerprint": "Edit fingerprint number",
     "fields": {
       "name": "Full name",
       "email": "Email",
       "phone": "Phone",
       "position": "Position",
       "branch": "Branch",
-      "department": "Department"
+      "department": "Department",
+      "fingerprintNumber": "Fingerprint number"
     },
     "placeholders": {
       "branch": "Select branch",
       "department": "Select department",
-      "position": "e.g. HR Specialist"
+      "position": "Select position",
+      "fingerprintNumber": "e.g. FP0031"
     },
     "errors": {
       "branchRequired": "Branch is required.",
       "departmentRequired": "Department is required.",
       "positionRequired": "Position is required.",
-      "positionMin": "Position must be at least 2 characters."
+      "fingerprintRequired": "Fingerprint number is required.",
+      "fingerprintInvalid": "Enter a valid fingerprint number (up to 20 letters or digits).",
+      "failed": "Could not update this employee."
     },
     "save": "Save changes",
     "cancel": "Cancel",
     "deleteTitle": "Delete this employee?",
     "deleteDescription": "This cannot be undone. The employee record will be removed from the directory.",
-    "deleteConfirm": "Delete"
+    "deleteConfirm": "Delete",
+    "deleteError": "Could not delete this employee."
   },
   "employeeDetailPage": {
     "backToEmployees": "Back to employees",
@@ -175,10 +184,17 @@
     "rejectDescription": "{name}'s registration request will be declined.",
     "rejectConfirm": "Reject",
     "cancel": "Cancel",
+    "view": "View details",
+    "detailTitle": "Registration details",
+    "detailLoading": "Loading registration details…",
+    "detailError": "Could not load this registration request.",
+    "close": "Close",
+    "reviewError": "Could not update this registration request.",
     "submittedAt": "Submitted {date}",
     "columns": {
       "name": "Applicant",
       "contact": "Contact",
+      "fingerprint": "Fingerprint",
       "position": "Position",
       "department": "Department",
       "branch": "Branch",
@@ -191,7 +207,11 @@
       "phone": "Phone",
       "position": "Position",
       "department": "Department",
-      "branch": "Branch"
+      "branch": "Branch",
+      "fingerprint": "Fingerprint ID",
+      "reviewer": "Reviewed by",
+      "reviewedAt": "Reviewed at",
+      "rejectionReason": "Rejection reason"
     },
     "status": {
       "pending": "Pending",
@@ -245,6 +265,11 @@
     "emptySearch": "No branches match your search.",
     "emptyBranches": "No branches yet. Create your first branch to get started.",
     "loading": "Loading branches…",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "summary": "Showing {start}–{end} of {total}"
+    },
     "updateSuccess": "Branch updated successfully.",
     "updateError": "Failed to update branch.",
     "deleteSuccess": "Branch deleted successfully.",
@@ -370,29 +395,61 @@
   },
   "createLeaveType": {
     "title": "Create leave type",
-    "subtitle": "Add a new leave type with its unit, category, and default entitlement.",
+    "subtitle": "Add a leave type with allocation, carry-forward, and approval rules.",
     "submit": "Create leave type",
     "cancel": "Cancel",
+    "success": "Leave type created successfully.",
     "fields": {
       "name": "Leave type name",
+      "description": "Description",
       "unit": "Unit",
-      "category": "Category",
-      "defaultEntitlement": "Default entitlement"
+      "allocationType": "Allocation type",
+      "allocationAmount": "Allocation amount",
+      "canCarryForward": "Can carry forward",
+      "carryForwardLimit": "Carry-forward limit",
+      "isPaid": "Paid",
+      "requiresApproval": "Requires approval",
+      "genderRestriction": "Gender restriction",
+      "isActive": "Active"
     },
     "placeholders": {
-      "name": "e.g. Annual leave",
+      "name": "e.g. Annual Leave",
+      "description": "e.g. Paid annual vacation leave",
       "unit": "Select unit",
-      "category": "e.g. Time off",
-      "defaultEntitlement": "e.g. 30"
+      "allocationType": "Select allocation",
+      "allocationAmount": "e.g. 21",
+      "carryForwardLimit": "e.g. 5"
+    },
+    "options": {
+      "yes": "Yes",
+      "no": "No",
+      "unit": {
+        "day": "Day",
+        "hour": "Hour"
+      },
+      "allocationType": {
+        "yearly": "Yearly",
+        "monthly": "Monthly",
+        "none": "None"
+      },
+      "gender": {
+        "none": "None",
+        "female": "Female",
+        "male": "Male"
+      }
     },
     "errors": {
       "nameRequired": "Leave type name is required.",
       "nameMin": "Leave type name must be at least 2 characters.",
+      "descriptionRequired": "Description is required.",
       "unitRequired": "Select a unit.",
-      "categoryRequired": "Category is required.",
-      "categoryMin": "Category must be at least 2 characters.",
-      "entitlementRequired": "Default entitlement is required.",
-      "entitlementMin": "Default entitlement must be at least 1."
+      "allocationTypeRequired": "Select an allocation type.",
+      "allocationAmountRequired": "Allocation amount is required.",
+      "allocationAmountInvalid": "Allocation amount must be 0 or more.",
+      "carryForwardLimitRequired": "Carry-forward limit is required.",
+      "carryForwardLimitInvalid": "Carry-forward limit must be 0 or more.",
+      "genderRequired": "Select a gender restriction.",
+      "failed": "Could not save this leave type."
     }
   },
   "leaveTypesPage": {
@@ -403,12 +460,32 @@
     "resultsTitle": "Leave types ({count})",
     "empty": "No leave types configured yet.",
     "noResults": "No leave types match your search.",
+    "edit": "Edit leave type",
+    "delete": "Delete leave type",
+    "editTitle": "Edit leave type",
+    "editSubtitle": "Update allocation, carry-forward, and approval rules.",
+    "deleteTitle": "Delete this leave type?",
+    "deleteDescription": "{name} will be removed from the directory.",
+    "deleteConfirm": "Delete",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "active": "Active",
+    "inactive": "Inactive",
+    "carryForward": "Carry forward up to {limit}",
+    "noCarryForward": "No carry forward",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "summary": "Showing {start}–{end} of {total}"
+    },
     "columns": {
       "name": "Leave type",
-      "category": "Category",
       "unit": "Unit",
-      "defaultEntitlement": "Default entitlement",
-      "slug": "Slug"
+      "allocation": "Allocation",
+      "status": "Status",
+      "actions": "Actions"
     }
   },
   "positionsPage": {
@@ -428,6 +505,11 @@
     "deleteConfirm": "Delete",
     "cancel": "Cancel",
     "save": "Save changes",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "summary": "Showing {start}–{end} of {total}"
+    },
     "columns": {
       "name": "Position",
       "actions": "Actions"
@@ -438,6 +520,7 @@
     "subtitle": "Add a new job title for employees and assignments.",
     "submit": "Create position",
     "cancel": "Cancel",
+    "success": "Position created successfully.",
     "fields": {
       "name": "Position name"
     },
@@ -462,6 +545,11 @@
       "allBranches": "All branches"
     },
     "emptyDepartments": "No departments yet. Create your first department to get started.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "summary": "Showing {start}–{end} of {total}"
+    },
     "columns": {
       "department": "Department",
       "branch": "Branch",

@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
   type ReactElement,
   type RefObject,
 } from "react";
@@ -12,6 +11,12 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Building2, MapPinned } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  useGetBranchesQuery,
+} from "@/app/store/api/branches/branchesApi";
+import { useCreateDepartmentMutation } from "@/app/store/api/departments/departmentsApi";
 import { EmployeeManagerPicker } from "@/components/admin/EmployeeManagerPicker";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
@@ -19,18 +24,10 @@ import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import {
-  getEmployeesSnapshot,
-  subscribeEmployees,
-} from "@/lib/admin/adminDataStore";
-import {
-  createBranchDepartment,
-  getBranchesSnapshot,
-  subscribeOrg,
-} from "@/lib/admin/adminOrgStore";
-import {
   createDepartmentSchema,
   type CreateDepartmentFormValues,
 } from "@/schemas/admin/org.schema";
+import type { DepartmentPayload } from "@/types/DepartmentsApiTypes";
 
 interface CreateDepartmentModalProps {
   open: boolean;
@@ -68,13 +65,10 @@ function CreateDepartmentForm({
 }: CreateDepartmentFormProps): ReactElement {
   const t = useTranslations("admin.createDepartment");
   const closeModal = useGenieModalClose(onClose);
-  const [submitting, setSubmitting] = useState(false);
-
-  useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-
-  const branches = getBranchesSnapshot();
-  const employees = getEmployeesSnapshot();
+  const [createDepartmentMutation, { isLoading: submitting }] =
+    useCreateDepartmentMutation();
+  const { data: branchesResult } = useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
+  const branches = branchesResult?.branches ?? [];
 
   const schema = useMemo(
     () =>
@@ -110,7 +104,6 @@ function CreateDepartmentForm({
   }, [open, reset]);
 
   const selectedBranchId = watch("branchId");
-  const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
 
   const branchOptions = useMemo(
     () =>
@@ -129,21 +122,36 @@ function CreateDepartmentForm({
     }
   };
 
-  const onSubmit = (values: CreateDepartmentFormValues): void => {
-    setSubmitting(true);
-    const created = createBranchDepartment({
-      branchId: values.branchId,
-      name: values.name,
-      managerEmployeeId: values.managerEmployeeId,
-    });
-    setSubmitting(false);
+  const onSubmit = async (values: CreateDepartmentFormValues): Promise<void> => {
+    const branchId = Number(values.branchId);
 
-    if (!created) {
-      setError("name", { message: t("errors.duplicate") });
+    if (!Number.isFinite(branchId)) {
+      setError("branchId", { message: t("errors.branchRequired") });
+      return;
+    }
+    const managerValue = values.managerEmployeeId.trim();
+    const managerUserId =
+      managerValue.length > 0 ? Number(managerValue) : null;
+
+    if (managerUserId !== null && !Number.isFinite(managerUserId)) {
+      setError("managerEmployeeId", { message: t("errors.managerRequired") });
       return;
     }
 
-    closeModal();
+    const body: DepartmentPayload = {
+      name: values.name.trim(),
+      branch_id: branchId,
+      manager_user_id: managerUserId,
+    };
+
+    try {
+      await createDepartmentMutation({ body }).unwrap();
+      toast.success(t("success"));
+      closeModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("errors.duplicate");
+      setError("name", { message });
+    }
   };
 
   const noBranches = branches.length === 0;
@@ -196,8 +204,7 @@ function CreateDepartmentForm({
             name="managerEmployeeId"
             render={({ field }) => (
               <EmployeeManagerPicker
-                employees={employees}
-                branchSlug={selectedBranch?.slug}
+                branchId={selectedBranchId}
                 selectedEmployeeId={field.value}
                 onSelect={(employeeId) => {
                   field.onChange(employeeId);

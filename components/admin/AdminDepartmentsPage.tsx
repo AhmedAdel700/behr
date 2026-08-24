@@ -1,101 +1,121 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactElement } from "react";
+import { useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import {
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  useGetBranchesQuery,
+} from "@/app/store/api/branches/branchesApi";
+import {
+  normalizeDepartmentsListParams,
+  useDeleteDepartmentMutation,
+  useGetDepartmentsQuery,
+} from "@/app/store/api/departments/departmentsApi";
 import { CreateDepartmentModal } from "@/components/admin/CreateDepartmentModal";
 import { EditDepartmentModal } from "@/components/admin/EditDepartmentModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
-import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
-import {
-  countDepartmentMembers,
-  getEmployeeManagerProfile,
-} from "@/lib/admin/departmentUtils";
-import {
-  getEmployeesSnapshot,
-  subscribeEmployees,
-} from "@/lib/admin/adminDataStore";
-import {
-  getBranchDepartmentsSnapshot,
-  getBranchesSnapshot,
-  subscribeOrg,
-  deleteBranchDepartment,
-  getBranchDepartmentById,
-} from "@/lib/admin/adminOrgStore";
-import { searchBranchDepartments } from "@/lib/admin/searchBranchDepartments";
+import { SearchInput } from "@/components/shared/SearchInput";
+import { TablePagination } from "@/components/shared/TablePagination";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
-import type { AdminBranchDepartmentRecord } from "@/types/AdminApiTypes";
+import type {
+  DepartmentRecord,
+  DepartmentsListQueryParams,
+  DepartmentsListResult,
+} from "@/types/DepartmentsApiTypes";
 
-export function AdminDepartmentsPage(): ReactElement {
+export function AdminDepartmentsPage({
+  initialData,
+}: {
+  initialData?: DepartmentsListResult;
+}): ReactElement {
   const t = useTranslations("admin.departmentsPage");
   const router = useRouter();
 
-  useSyncExternalStore(subscribeOrg, getBranchesSnapshot, getBranchesSnapshot);
-  useSyncExternalStore(subscribeOrg, getBranchDepartmentsSnapshot, getBranchDepartmentsSnapshot);
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-
-  const branches = getBranchesSnapshot();
-  const departments = getBranchDepartmentsSnapshot();
-  const employees = getEmployeesSnapshot();
-
   const [searchQuery, setSearchQuery] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const createDepartmentTriggerRef = useRef<HTMLButtonElement>(null);
   const { triggerRef: editDepartmentTriggerRef, bindTrigger: bindEditDepartmentTrigger } =
     useModalTriggerRef();
   const { triggerRef: deleteDepartmentTriggerRef, bindTrigger: bindDeleteDepartmentTrigger } =
     useModalTriggerRef();
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<AdminBranchDepartmentRecord | null>(null);
+  const [editing, setEditing] = useState<DepartmentRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const departmentsQueryArg: DepartmentsListQueryParams =
+    normalizeDepartmentsListParams({
+      page,
+      search: searchQuery,
+      branch_id: branchFilter === "all" ? undefined : branchFilter,
+    });
+
+  const { data: branchesResult } = useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
+  const {
+    data: departmentsResult,
+    isLoading,
+    isFetching,
+  } = useGetDepartmentsQuery(departmentsQueryArg);
+  const [deleteDepartmentMutation, { isLoading: deletingDepartment }] =
+    useDeleteDepartmentMutation();
+
+  const branches = branchesResult?.branches ?? [];
+  const departments =
+    departmentsResult?.departments ?? initialData?.departments ?? [];
+  const meta = departmentsResult?.meta ?? initialData?.meta;
 
   const branchFilterOptions = useMemo(
     () => [
       { value: "all", label: t("filters.allBranches") },
       ...branches.map((branch) => ({
         value: branch.id,
-        label: `${branch.name} · ${branch.city}`,
+        label: branch.name,
       })),
     ],
     [branches, t]
   );
 
-  const departmentsByBranch = useMemo(() => {
-    if (branchFilter === "all") return departments;
-    return departments.filter(
-      (department) => department.branchId === branchFilter
-    );
-  }, [departments, branchFilter]);
-
-  const filteredDepartments = useMemo(
-    () =>
-      searchBranchDepartments(departmentsByBranch, searchQuery, {
-        branchName: (branchId) =>
-          branches.find((branch) => branch.id === branchId)?.name ?? "—",
-        managerName: (managerEmployeeId) =>
-          getEmployeeManagerProfile(managerEmployeeId, employees)?.name ?? "—",
-      }),
-    [departmentsByBranch, searchQuery, branches, employees]
-  );
-
-  const deleteTarget = deleteId ? getBranchDepartmentById(deleteId) ?? null : null;
+  const deleteTarget = deleteId
+    ? departments.find((department) => department.id === deleteId) ?? null
+    : null;
 
   const openEdit = (
-    department: AdminBranchDepartmentRecord,
+    department: DepartmentRecord,
     event: MouseEvent<HTMLButtonElement>,
   ): void => {
     bindEditDepartmentTrigger(event);
     setEditing(department);
   };
 
-  const confirmDelete = (): boolean => {
-    if (!deleteId) return false;
-    const result = deleteBranchDepartment(deleteId);
-    return result.success;
+  const confirmDelete = async (): Promise<void> => {
+    if (!deleteId) {
+      return;
+    }
+
+    await deleteDepartmentMutation({ departmentId: deleteId }).unwrap();
+    setDeleteId(null);
   };
+
+  const handleSearch = (query: string): void => {
+    setSearchQuery(query);
+    setPage(1);
+  };
+
+  const handleBranchFilterChange = (value: string): void => {
+    setBranchFilter(value);
+    setPage(1);
+  };
+
+  const isInitialQuery =
+    page === 1 && searchQuery.trim().length === 0 && branchFilter === "all";
+  const hasSeededInitialData = Boolean(initialData?.departments?.length);
+  const isTableLoading =
+    (isLoading || isFetching) && !(isInitialQuery && hasSeededInitialData);
 
   return (
     <div className="space-y-6">
@@ -109,12 +129,9 @@ export function AdminDepartmentsPage(): ReactElement {
       <section className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
           <div className="w-full lg:max-w-xs lg:shrink-0">
-            <MainInput
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+            <SearchInput
+              onSearch={handleSearch}
               placeholder={t("searchPlaceholder")}
-              startIcon={<Search />}
               aria-label={t("searchPlaceholder")}
             />
           </div>
@@ -122,14 +139,14 @@ export function AdminDepartmentsPage(): ReactElement {
             <div className="min-w-0 flex-1 lg:w-40 lg:flex-none">
               <MainSelect
                 value={branchFilter}
-                onValueChange={setBranchFilter}
+                onValueChange={handleBranchFilterChange}
                 options={branchFilterOptions}
                 placeholder={t("filters.branch")}
               />
             </div>
             <div className="flex w-full items-center gap-3 lg:ms-auto lg:w-auto">
               <h2 className="ms-auto shrink-0 text-sm font-semibold text-ink lg:ms-0">
-                {t("departmentsTitle", { count: filteredDepartments.length })}
+                {t("departmentsTitle", { count: meta?.total ?? departments.length })}
               </h2>
               <MainButton
                 ref={createDepartmentTriggerRef}
@@ -167,34 +184,21 @@ export function AdminDepartmentsPage(): ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {filteredDepartments.length === 0 ? (
+                {isTableLoading ? (
+                  <TableSkeleton columnCount={5} />
+                ) : departments.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {departments.length === 0
-                        ? t("emptyDepartments")
-                        : t("emptySearch")}
+                      {searchQuery.trim() || branchFilter !== "all"
+                        ? t("emptySearch")
+                        : t("emptyDepartments")}
                     </td>
                   </tr>
                 ) : (
-                  filteredDepartments.map((department) => {
-                    const branch = branches.find(
-                      (item) => item.id === department.branchId
-                    );
-                    const manager = getEmployeeManagerProfile(
-                      department.managerEmployeeId,
-                      employees
-                    );
-                    const memberCount = branch
-                      ? countDepartmentMembers(
-                          branch.slug,
-                          department.slug,
-                          employees
-                        )
-                      : 0;
-
+                  departments.map((department) => {
                     return (
                       <tr
                         key={department.id}
@@ -204,16 +208,16 @@ export function AdminDepartmentsPage(): ReactElement {
                           {department.name}
                         </td>
                         <td className="px-4 py-3 text-start text-text-secondary">
-                          {branch?.name ?? "—"}
+                          {department.branchName || "—"}
                         </td>
                         <td className="px-4 py-3 text-start">
-                          <p className="text-ink">{manager?.name ?? "—"}</p>
+                          <p className="text-ink">{department.managerName || "—"}</p>
                           <p className="text-xs text-text-muted">
-                            {manager?.email ?? "—"}
+                            {department.managerEmail || "—"}
                           </p>
                         </td>
                         <td className="px-4 py-3 text-start text-text-secondary">
-                          {memberCount}
+                          {department.usersCount}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-start gap-2">
@@ -257,6 +261,19 @@ export function AdminDepartmentsPage(): ReactElement {
               </tbody>
             </table>
           </div>
+          {!isTableLoading && meta ? (
+            <TablePagination
+              page={meta.current_page}
+              pageSize={meta.per_page}
+              totalItems={meta.total}
+              onPageChange={setPage}
+              previousLabel={t("pagination.previous")}
+              nextLabel={t("pagination.next")}
+              formatSummary={({ start, end, total }) =>
+                t("pagination.summary", { start, end, total })
+              }
+            />
+          ) : null}
         </div>
       </section>
 
@@ -286,7 +303,11 @@ export function AdminDepartmentsPage(): ReactElement {
         confirmLabel={t("deleteConfirm")}
         cancelLabel={t("cancel")}
         onCancel={() => setDeleteId(null)}
-        onConfirm={confirmDelete}
+        onConfirm={() => {
+          void confirmDelete();
+          return false;
+        }}
+        loading={deletingDepartment}
         triggerRef={deleteDepartmentTriggerRef}
       />
     </div>

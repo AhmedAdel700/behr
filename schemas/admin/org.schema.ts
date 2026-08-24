@@ -50,7 +50,7 @@ export function createDepartmentSchema(
       .string()
       .min(1, { error: errors.nameRequired })
       .min(2, { error: errors.nameMin }),
-    managerEmployeeId: z.string().min(1, { error: errors.managerRequired }),
+    managerEmployeeId: z.string(),
   });
 }
 

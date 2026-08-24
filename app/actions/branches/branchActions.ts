@@ -9,7 +9,11 @@ import {
   updateBranchRequest,
 } from "@services/branches/branchesService";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
-import type { BranchPayload } from "@/types/BranchesApiTypes";
+import type {
+  BranchPayload,
+  BranchesListQueryParams,
+  BranchesPaginationMeta,
+} from "@/types/BranchesApiTypes";
 import { BranchesApiError } from "@/types/BranchesApiTypes";
 
 async function getAuthContext(): Promise<{
@@ -48,8 +52,13 @@ function toErrorMessage(error: unknown, fallback: string): string {
 
 export async function getBranchesAction(
   lang = "ar",
+  params?: BranchesListQueryParams,
 ): Promise<
-  | { success: true; branches: AdminBranchRecord[] }
+  | {
+      success: true;
+      branches: AdminBranchRecord[];
+      meta: BranchesPaginationMeta;
+    }
   | { success: false; message: string }
 > {
   try {
@@ -58,9 +67,14 @@ export async function getBranchesAction(
       authContext.accessToken,
       lang || authContext.lang,
       authContext.tokenType,
+      params,
     );
 
-    return { success: true, branches: result.branches };
+    return {
+      success: true,
+      branches: result.branches,
+      meta: result.meta,
+    };
   } catch (error) {
     return {
       success: false,
