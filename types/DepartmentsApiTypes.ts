@@ -77,8 +77,11 @@ export interface DepartmentDeleteResult {
 }
 
 export class DepartmentsApiError extends Error {
-  constructor(message: string) {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
     super(message);
     this.name = "DepartmentsApiError";
+    this.fieldErrors = fieldErrors;
   }
 }

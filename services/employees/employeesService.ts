@@ -18,6 +18,7 @@ import type {
   EmployeesListQueryParams,
   EmployeesListResult,
 } from "@/types/EmployeesApiTypes";
+import { resolveAvatarSrc } from "@/lib/employee/avatar";
 import { EmployeesApiError } from "@/types/EmployeesApiTypes";
 
 function buildAuthorizedHeaders(
@@ -229,7 +230,9 @@ function mapEmployeeFromApi(record: EmployeeApiRecord): EmployeeRecord {
     email: normalizeText(record.email),
     phone: normalizeText(record.phone),
     fingerprintNumber: normalizeText(record.fingerprint_number),
-    image: record.image,
+    image: resolveAvatarSrc(
+      typeof record.image === "string" ? record.image : null,
+    ),
     branch: mapBranch(record.branch),
     department: mapDepartment(record.department),
     jobPosition: mapJobPosition(record.job_position),

@@ -36,6 +36,7 @@ import { AttendanceHistorySection } from "@/components/employee/AttendanceHistor
 import { LeaveStatsSection } from "@/components/employee/LeaveStatsSection";
 import { EditEmployeeAssignmentModal } from "@/components/admin/EditEmployeeAssignmentModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
+import { ProfileAvatar } from "@/components/shared/AvatarUpload";
 import { MainButton } from "@/components/shared/MainButton";
 import {
   getAdminSessionSnapshot,
@@ -147,13 +148,22 @@ export function AdminEmployeeDetailPage({
         >
           {t("backToEmployees")}
         </MainButton>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {employee.fullName}
-          </h1>
-          <p className="text-sm text-text-secondary">
-            {t("subtitle", { position: positionLabel })}
-          </p>
+        <div className="flex items-center gap-4">
+          <ProfileAvatar
+            src={employee.image}
+            alt={employee.fullName}
+            width={80}
+            height={80}
+            className="size-20 shrink-0 rounded-2xl object-cover ring-2 ring-primary-100"
+          />
+          <div className="min-w-0 space-y-1">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">
+              {employee.fullName}
+            </h1>
+            <p className="text-sm text-text-secondary">
+              {t("subtitle", { position: positionLabel })}
+            </p>
+          </div>
         </div>
       </section>
 

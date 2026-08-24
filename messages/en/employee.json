@@ -7,8 +7,10 @@
   },
   "brand": "BeHR",
   "roles": {
-    "employee": "Employee"
+    "employee": "Employee",
+    "departmentManager": "Department Manager"
   },
+  "goToAdminDashboard": "Admin dashboard",
   "home": {
     "greeting": "Hello",
     "subtitle": "Here’s your day at a glance.",

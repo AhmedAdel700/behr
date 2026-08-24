@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
-import { Menu } from "lucide-react";
+import { Menu, LayoutDashboard } from "lucide-react";
 import { usePathname } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
@@ -14,6 +14,7 @@ import {
   useAdminMobileNav,
 } from "@/lib/admin/adminMobileNav";
 import { getAdminPageTitleKey } from "@/lib/admin/adminNav";
+import { canSwitchDashboards } from "@/lib/auth/roles";
 import {
   getAdminSessionSnapshot,
   subscribeAdminSession,
@@ -46,6 +47,16 @@ function AdminShellHeader(): React.ReactElement {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {admin.id && canSwitchDashboards(admin.role) ? (
+            <MainButton
+              variant="ghost-brand"
+              size="sm"
+              startIcon={<LayoutDashboard className="size-4" />}
+              link="/"
+            >
+              {t("goToEmployeeDashboard")}
+            </MainButton>
+          ) : null}
           <LocaleSwitcher tone="light" />
           <MainButton
             type="button"

@@ -26,6 +26,7 @@ import {
   updateDepartmentSchema,
   type UpdateDepartmentFormValues,
 } from "@/schemas/admin/org.schema";
+import { applyDepartmentMutationErrors } from "@/lib/admin/departmentMutationErrors";
 import type {
   DepartmentPayload,
   DepartmentRecord,
@@ -179,8 +180,12 @@ function EditDepartmentForm({
       toast.success(tPage("save"));
       closeModal();
     } catch (error) {
-      const message = error instanceof Error ? error.message : t("errors.duplicate");
-      setError("name", { message });
+      const message = applyDepartmentMutationErrors(
+        error,
+        setError,
+        t("errors.failed"),
+      );
+      toast.error(message);
     }
   };
 

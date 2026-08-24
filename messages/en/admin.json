@@ -2,6 +2,7 @@
   "brand": "Admin Dashboard",
   "signOut": "Sign out",
   "signingOut": "Signing out…",
+  "goToEmployeeDashboard": "My dashboard",
   "roles": {
     "superAdmin": "Super Admin",
     "departmentManager": "Department Manager"
@@ -390,7 +391,8 @@
       "nameRequired": "Department name is required.",
       "nameMin": "Department name must be at least 2 characters.",
       "managerRequired": "Select an employee as department manager.",
-      "duplicate": "A department with this name already exists in the selected branch."
+      "duplicate": "A department with this name already exists in the selected branch.",
+      "failed": "Could not save this department."
     }
   },
   "createLeaveType": {

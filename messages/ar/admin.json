@@ -2,6 +2,7 @@
   "brand": "لوحة الإدارة",
   "signOut": "تسجيل الخروج",
   "signingOut": "جاري تسجيل الخروج…",
+  "goToEmployeeDashboard": "لوحتي",
   "roles": {
     "superAdmin": "مدير النظام",
     "departmentManager": "مدير القسم"
@@ -390,7 +391,8 @@
       "nameRequired": "اسم القسم مطلوب.",
       "nameMin": "يجب أن يكون اسم القسم حرفين على الأقل.",
       "managerRequired": "اختر موظفاً كمدير للقسم.",
-      "duplicate": "يوجد قسم بهذا الاسم بالفعل في الفرع المحدد."
+      "duplicate": "يوجد قسم بهذا الاسم بالفعل في الفرع المحدد.",
+      "failed": "تعذر حفظ هذا القسم."
     }
   },
   "createLeaveType": {

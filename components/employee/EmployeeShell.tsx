@@ -2,21 +2,29 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { Shield } from "lucide-react";
 import { usePathname } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
 import { EmployeeTabBar } from "@/components/employee/EmployeeTabBar";
+import { MainButton } from "@/components/shared/MainButton";
+import { canSwitchDashboards, type PrimaryRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
 export function EmployeeShell({
   children,
   className,
+  primaryRole,
 }: {
   children: ReactNode;
   className?: string;
+  primaryRole?: PrimaryRole;
 }) {
   const t = useTranslations("employee");
   const pathname = usePathname();
+  const showAdminSwitch = primaryRole
+    ? canSwitchDashboards(primaryRole)
+    : false;
 
   let title = t("tabs.home");
   if (pathname.startsWith("/attendance")) title = t("attendance.title");
@@ -24,6 +32,10 @@ export function EmployeeShell({
   else if (/^\/requests\/[^/]+$/.test(pathname)) title = t("requests.detail");
   else if (pathname.startsWith("/requests")) title = t("requests.title");
   else if (pathname.startsWith("/profile")) title = t("profile.title");
+
+  const roleLabel = showAdminSwitch
+    ? t("roles.departmentManager")
+    : t("roles.employee");
 
   return (
     <div className={cn("relative min-h-dvh bg-surface-sunken", className)}>
@@ -33,10 +45,22 @@ export function EmployeeShell({
             <BrandLogo size="lg" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink">{title}</p>
-              <p className="truncate text-[11px] text-text-muted">{t("roles.employee")}</p>
+              <p className="truncate text-[11px] text-text-muted">{roleLabel}</p>
             </div>
           </div>
-          <LocaleSwitcher tone="light" className="shrink-0" />
+          <div className="flex shrink-0 items-center gap-2">
+            {showAdminSwitch ? (
+              <MainButton
+                variant="ghost-brand"
+                size="sm"
+                startIcon={<Shield className="size-4" />}
+                link="/admin-dashboard"
+              >
+                {t("goToAdminDashboard")}
+              </MainButton>
+            ) : null}
+            <LocaleSwitcher tone="light" className="shrink-0" />
+          </div>
         </div>
       </header>
 

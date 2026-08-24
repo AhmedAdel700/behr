@@ -8,7 +8,7 @@ import { isRemoteAvatarSrc } from "@/lib/employee/avatar";
 import { cn } from "@/lib/utils";
 
 interface ProfileAvatarProps {
-  src: string;
+  src?: string | null;
   alt: string;
   className?: string;
   width?: number;
@@ -22,6 +22,41 @@ export function ProfileAvatar({
   width = 80,
   height = 80,
 }: ProfileAvatarProps): ReactElement {
+  if (!src) {
+    return (
+      <span
+        className={cn(
+          "inline-grid shrink-0 place-items-center bg-primary-50 text-primary-700",
+          className,
+        )}
+        style={{ width, height }}
+        role="img"
+        aria-label={alt}
+      >
+        <UserRound className="size-1/2 max-h-10 max-w-10" aria-hidden />
+      </span>
+    );
+  }
+
+  const useNativeImg =
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:") ||
+    src.startsWith("blob:");
+
+  if (useNativeImg) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- remote API and data URLs
+      <img
+        src={src}
+        alt={alt}
+        className={className}
+        width={width}
+        height={height}
+      />
+    );
+  }
+
   if (isRemoteAvatarSrc(src)) {
     return (
       <Image

@@ -35,17 +35,58 @@ function parseCount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseFieldErrors(payload: unknown): Record<string, string> {
+  if (typeof payload !== "object" || payload === null) {
+    return {};
+  }
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.errors !== "object" || record.errors === null) {
+    return {};
+  }
+
+  const errors = record.errors as Record<string, unknown>;
+  const fieldErrors: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(errors)) {
+    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
+      fieldErrors[key] = value[0];
+      continue;
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      fieldErrors[key] = value;
+    }
+  }
+
+  return fieldErrors;
+}
+
 function parseApiMessage(payload: unknown, fallback: string): string {
+  const fieldErrors = parseFieldErrors(payload);
+  const firstFieldError = Object.values(fieldErrors)[0];
+  if (firstFieldError) {
+    return firstFieldError;
+  }
+
   if (
     typeof payload === "object" &&
     payload !== null &&
     "message" in payload &&
-    typeof payload.message === "string"
+    typeof payload.message === "string" &&
+    payload.message.trim()
   ) {
     return payload.message;
   }
 
   return fallback;
+}
+
+function throwFromPayload(payload: unknown, fallback: string): never {
+  throw new DepartmentsApiError(
+    parseApiMessage(payload, fallback),
+    parseFieldErrors(payload),
+  );
 }
 
 function assertSuccessResponse<T>(
@@ -64,7 +105,7 @@ function assertSuccessResponse<T>(
   const response = payload as { success: boolean; message: string; data: T | null };
 
   if (!response.success || response.data === null) {
-    throw new DepartmentsApiError(response.message || fallbackMessage);
+    throwFromPayload(payload, fallbackMessage);
   }
 
   return {
@@ -187,9 +228,7 @@ export async function fetchDepartments(
   const payload: unknown = await readJsonPayload(response);
 
   if (!response.ok) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to load departments."),
-    );
+    throwFromPayload(payload, "Failed to load departments.");
   }
 
   const { data } = assertSuccessResponse<DepartmentApiRecord[]>(
@@ -228,9 +267,7 @@ export async function fetchDepartmentById(
   const payload: unknown = await readJsonPayload(response);
 
   if (!response.ok) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to load department."),
-    );
+    throwFromPayload(payload, "Failed to load department.");
   }
 
   const { data } = assertSuccessResponse<DepartmentApiRecord>(
@@ -262,9 +299,7 @@ export async function createDepartmentRequest(
   const payload: unknown = await readJsonPayload(response);
 
   if (!response.ok) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to create department."),
-    );
+    throwFromPayload(payload, "Failed to create department.");
   }
 
   const { message, data } = assertSuccessResponse<DepartmentApiRecord>(
@@ -300,9 +335,7 @@ export async function updateDepartmentRequest(
   const payload: unknown = await readJsonPayload(response);
 
   if (!response.ok) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to update department."),
-    );
+    throwFromPayload(payload, "Failed to update department.");
   }
 
   const { message, data } = assertSuccessResponse<DepartmentApiRecord>(
@@ -336,9 +369,7 @@ export async function deleteDepartmentRequest(
   const payload: unknown = await readJsonPayload(response);
 
   if (!response.ok) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to delete department."),
-    );
+    throwFromPayload(payload, "Failed to delete department.");
   }
 
   if (
@@ -347,9 +378,7 @@ export async function deleteDepartmentRequest(
     "success" in payload &&
     payload.success === false
   ) {
-    throw new DepartmentsApiError(
-      parseApiMessage(payload, "Failed to delete department."),
-    );
+    throwFromPayload(payload, "Failed to delete department.");
   }
 
   return {

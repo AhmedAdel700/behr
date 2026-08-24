@@ -55,3 +55,15 @@ export function resolveAdminRole(
 export function isAdminPrimaryRole(role: PrimaryRole): boolean {
   return role === "super_admin" || role === "department_manager";
 }
+
+export function canUseAdminDashboard(role: PrimaryRole): boolean {
+  return isAdminPrimaryRole(role);
+}
+
+export function canUseEmployeeDashboard(role: PrimaryRole): boolean {
+  return role === "employee" || role === "department_manager";
+}
+
+export function canSwitchDashboards(role: PrimaryRole): boolean {
+  return role === "department_manager";
+}

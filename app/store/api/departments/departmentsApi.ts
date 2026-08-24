@@ -1,10 +1,11 @@
 import { baseApi } from "@/app/store/api/baseApi";
-import type {
-  DepartmentDeleteResult,
-  DepartmentPayload,
-  DepartmentRecord,
-  DepartmentsListQueryParams,
-  DepartmentsListResult,
+import {
+  DepartmentsApiError,
+  type DepartmentDeleteResult,
+  type DepartmentPayload,
+  type DepartmentRecord,
+  type DepartmentsListQueryParams,
+  type DepartmentsListResult,
 } from "@/types/DepartmentsApiTypes";
 import {
   createDepartmentRequest,
@@ -36,6 +37,30 @@ async function getLang(): Promise<string> {
 
 function getTokenType(tokenType: unknown): string {
   return typeof tokenType === "string" && tokenType ? tokenType : "Bearer";
+}
+
+function toQueryFnError(
+  error: unknown,
+  fallback: string,
+): {
+  error: {
+    status: "CUSTOM_ERROR";
+    error: string;
+    data?: { fieldErrors: Record<string, string> };
+  };
+} {
+  if (error instanceof DepartmentsApiError) {
+    return {
+      error: {
+        status: "CUSTOM_ERROR",
+        error: error.message,
+        data: { fieldErrors: error.fieldErrors },
+      },
+    };
+  }
+
+  const message = error instanceof Error ? error.message : fallback;
+  return { error: { status: "CUSTOM_ERROR", error: message } };
 }
 
 export function normalizeDepartmentsListParams(
@@ -94,8 +119,7 @@ export const departmentsApi = baseApi.injectEndpoints({
 
           return { data: result };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to load departments.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to load departments.");
         }
       },
       serializeQueryArgs: ({ queryArgs }) =>
@@ -132,8 +156,7 @@ export const departmentsApi = baseApi.injectEndpoints({
           );
           return { data: department };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to load department.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to load department.");
         }
       },
       providesTags: (_result, _error, departmentId) => [
@@ -161,8 +184,7 @@ export const departmentsApi = baseApi.injectEndpoints({
           );
           return { data: result.department };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to create department.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to create department.");
         }
       },
       invalidatesTags: [{ type: "Department", id: "LIST" }],
@@ -189,8 +211,7 @@ export const departmentsApi = baseApi.injectEndpoints({
           );
           return { data: result.department };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to update department.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to update department.");
         }
       },
       invalidatesTags: (_result, _error, args) => [
@@ -219,8 +240,7 @@ export const departmentsApi = baseApi.injectEndpoints({
           );
           return { data: result };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to delete department.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to delete department.");
         }
       },
       invalidatesTags: (_result, _error, args) => [

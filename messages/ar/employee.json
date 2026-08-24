@@ -7,8 +7,10 @@
   },
   "brand": "بي إتش آر",
   "roles": {
-    "employee": "موظف"
+    "employee": "موظف",
+    "departmentManager": "مدير القسم"
   },
+  "goToAdminDashboard": "لوحة الإدارة",
   "home": {
     "greeting": "مرحباً",
     "subtitle": "نظرة سريعة على يومك.",

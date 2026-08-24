@@ -1,5 +1,9 @@
 import { hasAnyPermission } from "@/lib/auth/permissions";
-import type { PrimaryRole } from "@/lib/auth/roles";
+import {
+  canUseAdminDashboard,
+  canUseEmployeeDashboard,
+  type PrimaryRole,
+} from "@/lib/auth/roles";
 import {
   homePathForRole,
   isAdminRoute,
@@ -99,8 +103,8 @@ function findMatchingRule(
   return rules.find((rule) => rule.match(pathname)) ?? null;
 }
 
-function isEmployeeUser(user: RouteAccessUser): boolean {
-  return user.primaryRole === "employee" || user.appRole === "employee";
+function isEmployeeOnlyUser(user: RouteAccessUser): boolean {
+  return user.primaryRole === "employee";
 }
 
 export function getAdminRoutePermissions(pathname: string): string[] | null {
@@ -112,7 +116,7 @@ export function canAccessAdminPath(
   pathname: string,
   user: RouteAccessUser,
 ): boolean {
-  if (isEmployeeUser(user)) {
+  if (!canUseAdminDashboard(user.primaryRole)) {
     return false;
   }
 
@@ -129,7 +133,7 @@ export function canAccessEmployeePath(
   pathname: string,
   user: RouteAccessUser,
 ): boolean {
-  if (!isEmployeeUser(user)) {
+  if (!canUseEmployeeDashboard(user.primaryRole)) {
     return false;
   }
 
@@ -137,6 +141,10 @@ export function canAccessEmployeePath(
 
   if (!rule) {
     return false;
+  }
+
+  if (user.primaryRole === "department_manager") {
+    return true;
   }
 
   return hasAnyPermission(user.permissions, rule.permissions);
@@ -158,7 +166,7 @@ export function canAccessRoute(
 }
 
 export function getPostLoginPath(user: RouteAccessUser): string {
-  if (isEmployeeUser(user)) {
+  if (isEmployeeOnlyUser(user)) {
     return "/";
   }
 
@@ -175,7 +183,7 @@ export function getAuthorizedHomePath(
   locale: string,
   user: RouteAccessUser,
 ): string {
-  if (isEmployeeUser(user)) {
+  if (isEmployeeOnlyUser(user)) {
     return homePathForRole(locale, "employee");
   }
 
