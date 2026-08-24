@@ -121,6 +121,78 @@ function isSnapshotUsable(canvas: HTMLCanvasElement): boolean {
   return false;
 }
 
+function shouldEmbedImage(img: HTMLImageElement): boolean {
+  if (!img.complete || img.naturalWidth === 0) {
+    return false;
+  }
+
+  const src = img.currentSrc || img.src;
+  if (!src || src.startsWith("data:") || src.startsWith("blob:")) {
+    return Boolean(src);
+  }
+
+  try {
+    return new URL(src, window.location.href).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function snapshotFilter(
+  includeImages: boolean,
+): (node: HTMLElement) => boolean {
+  return (node: HTMLElement): boolean => {
+    if (!(node instanceof HTMLImageElement)) {
+      return true;
+    }
+
+    return includeImages && shouldEmbedImage(node);
+  };
+}
+
+async function snapshotToCanvas(
+  node: HTMLElement,
+  width: number,
+  height: number,
+  style?: Partial<CSSStyleDeclaration>,
+): Promise<HTMLCanvasElement> {
+  const attempts: Array<{ includeImages: boolean }> = [
+    { includeImages: true },
+    { includeImages: false },
+  ];
+
+  let lastError: unknown;
+
+  for (const attempt of attempts) {
+    try {
+      const snapshot = await toCanvas(node, {
+        pixelRatio: 1,
+        cacheBust: false,
+        skipFonts: true,
+        width,
+        height,
+        style,
+        filter: snapshotFilter(attempt.includeImages),
+        imagePlaceholder:
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+        onImageErrorHandler: () => undefined,
+      });
+
+      if (isSnapshotUsable(snapshot)) {
+        return snapshot;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error("Genie snapshot was blank");
+}
+
 /**
  * Snapshot the panel WITHOUT showing it on screen and WITHOUT a page cover.
  * The live node stays opacity:0; html-to-image's clone is forced visible via `style`.
@@ -139,21 +211,22 @@ async function captureForOpen(
   const destination: GeniePoint = { x: rect.left, y: rect.top };
   const width = Math.max(Math.round(rect.width), 1);
   const height = Math.max(Math.round(rect.height), 1);
+  const visibleStyle: Partial<CSSStyleDeclaration> = {
+    opacity: "1",
+    visibility: "visible",
+    transform: "none",
+  };
 
-  let snapshot = await toCanvas(panel, {
-    pixelRatio: 1,
-    cacheBust: true,
-    width,
-    height,
-    style: {
-      opacity: "1",
-      visibility: "visible",
-      transform: "none",
-    },
-  });
+  let snapshot: HTMLCanvasElement | null = null;
+
+  try {
+    snapshot = await snapshotToCanvas(panel, width, height, visibleStyle);
+  } catch {
+    snapshot = null;
+  }
 
   // Fallback: off-screen DOM clone if the styled capture came back empty.
-  if (!isSnapshotUsable(snapshot)) {
+  if (!snapshot || !isSnapshotUsable(snapshot)) {
     const clone = panel.cloneNode(true) as HTMLElement;
     clone.removeAttribute("style");
     clone.setAttribute("aria-hidden", "true");
@@ -177,12 +250,7 @@ async function captureForOpen(
     });
 
     try {
-      snapshot = await toCanvas(clone, {
-        pixelRatio: 1,
-        cacheBust: true,
-        width,
-        height,
-      });
+      snapshot = await snapshotToCanvas(clone, width, height);
     } finally {
       clone.remove();
     }
@@ -190,7 +258,7 @@ async function captureForOpen(
 
   hidePanelHard(panel);
 
-  if (!isSnapshotUsable(snapshot)) {
+  if (!snapshot || !isSnapshotUsable(snapshot)) {
     throw new Error("Genie open snapshot was blank");
   }
 
@@ -198,7 +266,12 @@ async function captureForOpen(
 }
 
 async function captureForClose(panel: HTMLElement): Promise<HTMLCanvasElement> {
-  return toCanvas(panel, { pixelRatio: 1, cacheBust: true });
+  const rect = panel.getBoundingClientRect();
+  return snapshotToCanvas(
+    panel,
+    Math.max(Math.round(rect.width), 1),
+    Math.max(Math.round(rect.height), 1),
+  );
 }
 
 export function GenieModalShell({
@@ -226,6 +299,7 @@ export function GenieModalShell({
   const closingRef = useRef(false);
   const openRunRef = useRef(0);
   const capturingRef = useRef(false);
+  const triggerPointRef = useRef<GeniePoint | null>(null);
 
   const resolvedPanelClassName = cn(
     "relative z-10 w-full max-w-md rounded-2xl border border-border bg-surface p-4 shadow-md",
@@ -267,7 +341,8 @@ export function GenieModalShell({
 
       setupCanvas();
 
-      const source = getTriggerCenter(triggerRef.current);
+      const source =
+        triggerPointRef.current ?? getTriggerCenter(triggerRef.current);
       const destination =
         destinationOverride ?? getPanelOrigin(panelRef.current);
       const panelW = snapshot.width;
@@ -395,8 +470,20 @@ export function GenieModalShell({
   useEffect(() => {
     if (!useGenie || !open) return;
     if (phase !== "idle") return;
+    triggerPointRef.current = getTriggerCenter(triggerRef.current);
     setPhase("prepare-open");
-  }, [open, phase, useGenie]);
+  }, [open, phase, useGenie, triggerRef]);
+
+  useEffect(() => {
+    if (open || !useGenie) return;
+    if (phase !== "prepare-open" && phase !== "opening") return;
+
+    openRunRef.current += 1;
+    capturingRef.current = false;
+    cancelAnimationFrame(rafRef.current);
+    clearCanvas();
+    setPhase("idle");
+  }, [open, phase, useGenie, clearCanvas]);
 
   useEffect(() => {
     if (!useGenie || open) return;

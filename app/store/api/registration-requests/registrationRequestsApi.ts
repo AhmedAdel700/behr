@@ -98,10 +98,10 @@ export const registrationRequestsApi = baseApi.injectEndpoints({
           return { error: { status: "CUSTOM_ERROR", error: message } };
         }
       },
-      serializeQueryArgs: ({ queryArgs }) =>
-        serializeRegistrationRequestsListParams(
+      serializeQueryArgs: ({ queryArgs, endpointName }) =>
+        `${endpointName}(${serializeRegistrationRequestsListParams(
           normalizeRegistrationRequestsListParams(queryArgs),
-        ),
+        )})`,
       providesTags: (result) =>
         result
           ? [

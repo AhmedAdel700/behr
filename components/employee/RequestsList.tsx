@@ -228,7 +228,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+        "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold leading-none",
         status === "pending" && "bg-warning-50 text-warning-700",
         status === "approved" && "bg-success-50 text-success-700",
         status === "rejected" && "bg-danger-50 text-danger-700",

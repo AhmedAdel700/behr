@@ -1,6 +1,8 @@
 import { buildJsonHeaders } from "@services/auth/shared";
 import {
+  leaveRequestApproveUrl,
   leaveRequestItemUrl,
+  leaveRequestRejectUrl,
   leaveRequestsCollectionUrl,
 } from "@services/leave-requests/leaveRequestsPaths";
 import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
@@ -9,11 +11,13 @@ import type {
   LeaveRequestMutationResult,
   LeaveRequestPayload,
   LeaveRequestRecord,
+  LeaveRequestApproval,
   LeaveRequestReviewerSummary,
   LeaveRequestsListQueryParams,
   LeaveRequestsListResult,
   LeaveRequestStatus,
   LeaveRequestTypeSummary,
+  RejectLeaveRequestPayload,
 } from "@/types/LeaveRequestsApiTypes";
 import { LeaveRequestsApiError } from "@/types/LeaveRequestsApiTypes";
 
@@ -122,19 +126,22 @@ function assertSuccessResponse<T>(
 function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
   const record = asRecord(payload);
   const meta = record ? asRecord(record.meta) : null;
+  const currentPage = meta ? readPositiveInt(meta.current_page) : null;
+  const lastPage = meta ? readPositiveInt(meta.last_page) : null;
+  const perPage = meta ? readPositiveInt(meta.per_page) : null;
+  const total = meta ? readPositiveInt(meta.total) : null;
 
   if (
-    meta &&
-    typeof meta.current_page === "number" &&
-    typeof meta.last_page === "number" &&
-    typeof meta.per_page === "number" &&
-    typeof meta.total === "number"
+    currentPage !== null &&
+    lastPage !== null &&
+    perPage !== null &&
+    total !== null
   ) {
     return {
-      current_page: meta.current_page,
-      last_page: meta.last_page,
-      per_page: meta.per_page,
-      total: meta.total,
+      current_page: currentPage,
+      last_page: lastPage,
+      per_page: perPage,
+      total,
     };
   }
 
@@ -144,6 +151,21 @@ function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
     per_page: 15,
     total: 0,
   };
+}
+
+function readPositiveInt(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function wrapNetworkError(error: unknown, fallback: string): never {
@@ -202,6 +224,12 @@ function mapEmployeeSummary(
     id,
     fullName: normalizeText(record.full_name),
     email: normalizeText(record.email),
+    phone: normalizeText(record.phone),
+    fingerprintNumber: readId(record.fingerprint_number) ?? "",
+    image:
+      typeof record.image === "string" && record.image.trim()
+        ? record.image.trim()
+        : null,
   };
 }
 
@@ -216,6 +244,39 @@ function mapReviewerSummary(value: unknown): LeaveRequestReviewerSummary | null 
     id,
     fullName: normalizeText(record.full_name),
   };
+}
+
+function mapApproval(value: unknown): LeaveRequestApproval | null {
+  const record = asRecord(value);
+  const id = record ? readId(record.id) : null;
+  if (!record || !id) {
+    return null;
+  }
+
+  return {
+    id,
+    leaveRequestId: readId(record.leave_request_id) ?? "",
+    approverId: readId(record.approver_id) ?? "",
+    approver: mapReviewerSummary(record.approver),
+    level: parseDuration(record.level),
+    status: isLeaveRequestStatus(record.status) ? record.status : "pending",
+    comment: normalizeText(record.comment),
+    actionAt:
+      typeof record.action_at === "string" && record.action_at.trim()
+        ? record.action_at
+        : null,
+    createdAt: normalizeText(record.created_at),
+  };
+}
+
+function mapApprovals(value: unknown): LeaveRequestApproval[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => mapApproval(item))
+    .filter((item): item is LeaveRequestApproval => item !== null);
 }
 
 function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
@@ -244,6 +305,7 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
         ? record.reviewed_at
         : null,
     rejectionReason: normalizeText(record.rejection_reason),
+    approvals: mapApprovals(record.approvals),
     createdAt: normalizeText(record.created_at),
     updatedAt: normalizeText(record.updated_at),
   };
@@ -251,6 +313,15 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
 
 function buildLeaveRequestsListUrl(params?: LeaveRequestsListQueryParams): string {
   const searchParams = new URLSearchParams();
+  const search = params?.search?.trim();
+
+  if (search) {
+    searchParams.set("search", search);
+  }
+
+  if (params?.status) {
+    searchParams.set("status", params.status);
+  }
 
   if (params?.page && params.page > 1) {
     searchParams.set("page", String(params.page));
@@ -399,4 +470,70 @@ export async function createLeaveRequestRequest(
     message,
     leaveRequest: mapLeaveRequestFromApi(data),
   };
+}
+
+async function postLeaveRequestReview(
+  url: string,
+  accessToken: string,
+  lang: string,
+  fallback: string,
+  tokenType = "Bearer",
+  body?: RejectLeaveRequestPayload,
+): Promise<LeaveRequestMutationResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (error) {
+    wrapNetworkError(error, fallback);
+  }
+
+  const payload: unknown = await readJsonPayload(response);
+
+  if (!response.ok) {
+    throwFromPayload(payload, fallback);
+  }
+
+  const { message, data } = assertSuccessResponse<unknown>(payload, fallback);
+
+  return {
+    message,
+    leaveRequest: mapLeaveRequestFromApi(data),
+  };
+}
+
+export async function approveLeaveRequestRequest(
+  accessToken: string,
+  lang: string,
+  leaveRequestId: string,
+  tokenType = "Bearer",
+): Promise<LeaveRequestMutationResult> {
+  return postLeaveRequestReview(
+    leaveRequestApproveUrl(leaveRequestId),
+    accessToken,
+    lang,
+    "Failed to approve leave request.",
+    tokenType,
+  );
+}
+
+export async function rejectLeaveRequestRequest(
+  accessToken: string,
+  lang: string,
+  leaveRequestId: string,
+  body: RejectLeaveRequestPayload,
+  tokenType = "Bearer",
+): Promise<LeaveRequestMutationResult> {
+  return postLeaveRequestReview(
+    leaveRequestRejectUrl(leaveRequestId),
+    accessToken,
+    lang,
+    "Failed to reject leave request.",
+    tokenType,
+    body,
+  );
 }

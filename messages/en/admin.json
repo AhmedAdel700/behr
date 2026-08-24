@@ -224,9 +224,18 @@
     "title": "Leave requests",
     "subtitle": "Review and approve employee leave and time-off requests.",
     "pendingTitle": "Pending ({count})",
-    "emptyPending": "No pending leave requests.",
-    "searchPlaceholder": "Search by employee, type, department…",
+    "resultsTitle": "Requests ({count})",
+    "emptyPending": "No leave requests.",
+    "searchPlaceholder": "Search by employee, type, or reason…",
     "noSearchResults": "No leave requests match your search.",
+    "loading": "Loading leave requests…",
+    "loadError": "Could not load leave requests.",
+    "detailLoading": "Loading request details…",
+    "detailError": "Could not load this leave request.",
+    "reviewError": "Could not update this leave request.",
+    "rejectReasonLabel": "Rejection reason",
+    "rejectReasonPlaceholder": "Explain why this request is being declined.",
+    "rejectReasonRequired": "A rejection reason is required.",
     "pagination": {
       "previous": "Previous",
       "next": "Next",
@@ -251,6 +260,7 @@
       "department": "Department",
       "branch": "Branch",
       "submitted": "Submitted",
+      "status": "Status",
       "actions": "Actions"
     }
   },

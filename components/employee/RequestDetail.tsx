@@ -107,7 +107,7 @@ export function RequestDetail({
           </div>
           <span
             className={cn(
-              "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+              "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold leading-none",
               item.status === "pending" && "bg-warning-50 text-warning-700",
               item.status === "approved" && "bg-success-50 text-success-700",
               item.status === "rejected" && "bg-danger-50 text-danger-700",

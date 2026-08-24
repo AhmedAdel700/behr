@@ -6,6 +6,7 @@ import { baseApi } from "./api/baseApi";
 import { publicApi } from "./api/publicApi";
 import "@/app/store/api/branches/branchesApi";
 import "@/app/store/api/employees/employeesApi";
+import "@/app/store/api/leave-requests/leaveRequestsApi";
 import "@/app/store/api/leave-types/leaveTypesApi";
 import "@/app/store/api/public/publicOrgApi";
 

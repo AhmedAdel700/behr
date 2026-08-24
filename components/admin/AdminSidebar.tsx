@@ -20,18 +20,34 @@ import {
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
-import { filterLeaveRequestsForAdmin } from "@/lib/admin/permissions";
-import {
-  getRequestsSnapshot,
-  subscribeRequests,
-} from "@/lib/employee/requestsStore";
 import { useAdminSidebarExpanded } from "@/lib/admin/useAdminSidebarPreference";
 import { useAdminMobileDrawerMount, useAdminMobileNav } from "@/lib/admin/adminMobileNav";
 import { cn } from "@/lib/utils";
 import {
+  PENDING_LEAVE_REQUESTS_LIST_PARAMS,
+  useGetLeaveRequestsQuery,
+} from "@/app/store/api/leave-requests/leaveRequestsApi";
+import {
   DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS,
   useGetRegistrationRequestsQuery,
 } from "@/app/store/api/registration-requests/registrationRequestsApi";
+import type { LeaveRequestsListResult } from "@/types/LeaveRequestsApiTypes";
+
+function pendingLeaveRequestCount(
+  result: LeaveRequestsListResult | undefined,
+): number {
+  if (!result) {
+    return 0;
+  }
+
+  if (result.meta.total > 0) {
+    return result.meta.total;
+  }
+
+  return result.leaveRequests.filter(
+    (request) => request.status === "pending",
+  ).length;
+}
 
 function AdminNavLinks({
   expanded,
@@ -121,14 +137,13 @@ export function AdminSidebar(): ReactElement {
   useSyncExternalStore(subscribeAdminSession, isAdminLoggingOut, () => false);
   const admin = getAdminSessionSnapshot();
   const signingOut = isAdminLoggingOut();
-  useSyncExternalStore(subscribeRequests, getRequestsSnapshot, getRequestsSnapshot);
   const { data: registrationRequestsResult } =
     useGetRegistrationRequestsQuery(DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS);
+  const { data: leaveRequestsResult } = useGetLeaveRequestsQuery(
+    PENDING_LEAVE_REQUESTS_LIST_PARAMS,
+  );
   const pendingRegistrationCount = registrationRequestsResult?.meta.total ?? 0;
-  const pendingLeaveCount = filterLeaveRequestsForAdmin(
-    admin,
-    getRequestsSnapshot()
-  ).filter((item) => item.status === "pending").length;
+  const pendingLeaveCount = pendingLeaveRequestCount(leaveRequestsResult);
 
   const pendingCounts: Partial<Record<AdminNavItem["key"], number>> = {
     registrations: pendingRegistrationCount,

@@ -1,24 +1,46 @@
 "use client";
 
+import { useRef, type ReactElement, type ReactNode, type RefObject } from "react";
+import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
-import type { ReactElement, ReactNode, RefObject } from "react";
+import {
+  leaveRequestsApi,
+  useGetLeaveRequestQuery,
+} from "@/app/store/api/leave-requests/leaveRequestsApi";
+import type { AppDispatch } from "@/app/store/store";
+import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
 import { MainButton } from "@/components/shared/MainButton";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
-import { leaveTypeSurface, type DemoRequest } from "@/lib/employee/demo-data";
-import { formatStoredTime12, resolveTimeLocale } from "@/lib/formatTime";
+import { ProfileAvatar } from "@/components/shared/AvatarUpload";
+import { resolveAvatarSrc } from "@/lib/employee/avatar";
+import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
+import type {
+  LeaveRequestRecord,
+  LeaveRequestStatus,
+} from "@/types/LeaveRequestsApiTypes";
 
 interface LeaveRequestViewModalProps {
+  requestId: string | null;
+  initialRequest?: LeaveRequestRecord | null;
   open: boolean;
-  request: DemoRequest | null;
-  superAdmin: boolean;
   onClose: () => void;
   triggerRef?: RefObject<HTMLElement | null>;
 }
 
-function formatRequestDates(from: string, to: string): string {
-  return from === to ? from : `${from} → ${to}`;
+function formatTimestamp(value: string | null, locale: string): string {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return formatDateTime12(date, resolveTimeLocale(locale));
 }
 
 function DetailField({
@@ -38,16 +60,35 @@ function DetailField({
   );
 }
 
+function StatusBadge({
+  status,
+  label,
+}: {
+  status: LeaveRequestStatus;
+  label: string;
+}): ReactElement {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-7 w-[6.75rem] shrink-0 items-center justify-center rounded-none px-1 text-center text-[11px] font-semibold leading-none",
+        status === "pending" && "bg-warning-50 text-warning-700",
+        status === "approved" && "bg-success-50 text-success-700",
+        status === "rejected" && "bg-danger-50 text-danger-700",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function LeaveRequestViewModal({
+  requestId,
+  initialRequest,
   open,
-  request,
-  superAdmin,
   onClose,
   triggerRef,
 }: LeaveRequestViewModalProps): ReactElement | null {
   const t = useTranslations("admin.leaveRequests");
-
-  if (!request) return null;
 
   return (
     <ModalShell
@@ -61,105 +102,169 @@ export function LeaveRequestViewModal({
       panelClassName="flex max-w-lg max-h-[calc(100dvh-2rem)] flex-col overflow-hidden p-0"
     >
       <LeaveRequestViewContent
-        request={request}
-        superAdmin={superAdmin}
+        requestId={requestId}
+        initialRequest={initialRequest}
         onClose={onClose}
       />
     </ModalShell>
   );
 }
 
-interface LeaveRequestViewContentProps {
-  request: DemoRequest;
-  superAdmin: boolean;
-  onClose: () => void;
-}
-
 function LeaveRequestViewContent({
-  request,
-  superAdmin,
+  requestId,
+  initialRequest,
   onClose,
-}: LeaveRequestViewContentProps): ReactElement {
+}: {
+  requestId: string | null;
+  initialRequest?: LeaveRequestRecord | null;
+  onClose: () => void;
+}): ReactElement {
   const t = useTranslations("admin.leaveRequests");
-  const closeModal = useGenieModalClose(onClose);
   const locale = useLocale();
-  const tFields = useTranslations("employee.requests");
-  const tDept = useTranslations("admin.departments");
-  const tBranch = useTranslations("auth.branchOptions");
-  const tType = useTranslations("employee.requests.types");
+  const closeModal = useGenieModalClose(onClose);
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
+
+  if (
+    initialRequest &&
+    requestId === initialRequest.id &&
+    !didSeedCache.current
+  ) {
+    didSeedCache.current = true;
+    dispatch(
+      leaveRequestsApi.util.upsertQueryData(
+        "getLeaveRequest",
+        initialRequest.id,
+        initialRequest,
+      ),
+    );
+  }
+
+  if (requestId !== initialRequest?.id) {
+    didSeedCache.current = false;
+  }
+
+  const { data: request, isFetching } = useGetLeaveRequestQuery(
+    requestId ?? "",
+    { skip: !requestId },
+  );
+  const resolved = request ?? initialRequest ?? null;
 
   return (
-    <>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                leaveTypeSurface[request.type].soft,
-              )}
-            >
-              {tType(request.type)}
-            </span>
-            <h2
-              id="leave-request-view-title"
-              className="text-base font-semibold text-ink"
-            >
-              {t("detailTitle")}
-            </h2>
-          </div>
-
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-3 rounded-xl border border-border bg-surface-muted/30 p-3 sm:grid-cols-2">
-            <DetailField label={t("columns.employee")}>
-              <span className="font-medium">{request.employeeName}</span>
-            </DetailField>
-            <DetailField label={tFields("dates")}>
-              <span className="font-medium">
-                {formatRequestDates(request.from, request.to)}
-              </span>
-            </DetailField>
-            {request.startTime && request.endTime ? (
-              <DetailField label={tFields("hours")}>
-                <span className="font-medium">
-                  {formatStoredTime12(request.startTime, resolveTimeLocale(locale))} →{" "}
-                  {formatStoredTime12(request.endTime, resolveTimeLocale(locale))}
-                </span>
-              </DetailField>
-            ) : null}
-            {superAdmin ? (
-              <>
-                <DetailField label={t("columns.branch")}>
-                  <span className="text-text-secondary">
-                    {tBranch(request.branch)}
-                  </span>
-                </DetailField>
-                <DetailField label={t("columns.department")}>
-                  <span className="text-text-secondary">
-                    {tDept(request.department)}
-                  </span>
-                </DetailField>
-              </>
-            ) : null}
-            <DetailField label={tFields("createdAt")}>
-              <span className="font-medium">{request.createdAt}</span>
-            </DetailField>
-            <DetailField label={tFields("reason")} className="sm:col-span-2">
-              <span className="text-text-secondary">{request.reason}</span>
-            </DetailField>
-            {request.note ? (
-              <DetailField label={tFields("note")} className="sm:col-span-2">
-                <span className="text-text-secondary">{request.note}</span>
-              </DetailField>
-            ) : null}
-          </dl>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-border px-5 py-4">
+        <h2
+          id="leave-request-view-title"
+          className="text-base font-semibold text-ink"
+        >
+          {t("detailTitle")}
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          {resolved?.employee?.fullName ?? t("detailLoading")}
+        </p>
       </div>
 
-      <div className="shrink-0 border-t border-border p-4">
-        <MainButton variant="neutral" block onClick={closeModal}>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {isFetching && !resolved ? (
+          <p className="text-sm text-text-muted">{t("detailLoading")}</p>
+        ) : resolved ? (
+          <RequestDetails request={resolved} locale={locale} />
+        ) : (
+          <p className="text-sm text-text-muted">{t("detailError")}</p>
+        )}
+      </div>
+
+      <div className="border-t border-border px-5 py-3">
+        <MainButton variant="neutral" size="sm" onClick={closeModal}>
           {t("close")}
         </MainButton>
       </div>
-    </>
+    </div>
+  );
+}
+
+function RequestDetails({
+  request,
+  locale,
+}: {
+  request: LeaveRequestRecord;
+  locale: string;
+}): ReactElement {
+  const t = useTranslations("admin.leaveRequests");
+  const tFields = useTranslations("employee.requests");
+  const employeeName = request.employee?.fullName ?? "—";
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <LeaveTypeBadge
+          className="h-7 w-[6.75rem] justify-center rounded-none px-1 text-center"
+          leaveTypeId={request.leaveType.id}
+          name={request.leaveType.name}
+        />
+        <StatusBadge
+          status={request.status}
+          label={tFields(`status.${request.status}`)}
+        />
+      </div>
+
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+        <DetailField label={t("columns.employee")} className="sm:col-span-2">
+          <span className="flex items-center gap-2.5">
+            <ProfileAvatar
+              src={resolveAvatarSrc(request.employee?.image)}
+              alt={employeeName}
+              width={36}
+              height={36}
+              className="size-9 rounded-full object-cover"
+            />
+            <span className="min-w-0">
+              <span className="block font-medium">{employeeName}</span>
+              {request.employee?.email ? (
+                <span className="block text-xs text-text-muted">
+                  {request.employee.email}
+                </span>
+              ) : null}
+            </span>
+          </span>
+        </DetailField>
+        <DetailField label={tFields("dates")}>
+          <span className="font-medium">
+            {formatLeaveRequestRange(
+              request.startAt,
+              request.endAt,
+              locale,
+              request.leaveType.unit,
+            )}
+          </span>
+        </DetailField>
+        <DetailField label={tFields("createdAt")}>
+          <span className="font-medium">
+            {formatTimestamp(request.createdAt, locale)}
+          </span>
+        </DetailField>
+        <DetailField label={tFields("reason")} className="sm:col-span-2">
+          <span className="text-text-secondary">{request.reason || "—"}</span>
+        </DetailField>
+        {request.reviewer ? (
+          <DetailField label={tFields("reviewer")}>
+            {request.reviewer.fullName}
+          </DetailField>
+        ) : null}
+        {request.reviewedAt ? (
+          <DetailField label={tFields("reviewedAt")}>
+            {formatTimestamp(request.reviewedAt, locale)}
+          </DetailField>
+        ) : null}
+        {request.rejectionReason ? (
+          <DetailField
+            label={tFields("rejectionReason")}
+            className="sm:col-span-2"
+          >
+            <span className="text-text-secondary">{request.rejectionReason}</span>
+          </DetailField>
+        ) : null}
+      </dl>
+    </div>
   );
 }

@@ -35,6 +35,25 @@ export interface LeaveRequestApiLeaveType {
 export interface LeaveRequestApiReviewer {
   id: number;
   full_name: string;
+  email?: string;
+  phone?: string | null;
+  fingerprint_number?: string | null;
+  image?: string | null;
+  email_verified_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LeaveRequestApiApproval {
+  id: number | string;
+  leave_request_id: number | string;
+  approver_id: number | string;
+  approver: LeaveRequestApiReviewer | null;
+  level: number;
+  status: string;
+  comment: string | null;
+  action_at: string | null;
+  created_at: string;
 }
 
 export interface LeaveRequestApiRecord {
@@ -52,6 +71,7 @@ export interface LeaveRequestApiRecord {
   reviewer?: LeaveRequestApiReviewer | null;
   reviewed_at: string | null;
   rejection_reason: string | null;
+  approvals?: LeaveRequestApiApproval[];
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +80,9 @@ export interface LeaveRequestEmployeeSummary {
   id: string;
   fullName: string;
   email: string;
+  phone: string;
+  fingerprintNumber: string;
+  image: string | null;
 }
 
 export interface LeaveRequestTypeSummary {
@@ -72,6 +95,18 @@ export interface LeaveRequestTypeSummary {
 export interface LeaveRequestReviewerSummary {
   id: string;
   fullName: string;
+}
+
+export interface LeaveRequestApproval {
+  id: string;
+  leaveRequestId: string;
+  approverId: string;
+  approver: LeaveRequestReviewerSummary | null;
+  level: number;
+  status: LeaveRequestStatus;
+  comment: string;
+  actionAt: string | null;
+  createdAt: string;
 }
 
 export interface LeaveRequestRecord {
@@ -88,12 +123,15 @@ export interface LeaveRequestRecord {
   reviewer: LeaveRequestReviewerSummary | null;
   reviewedAt: string | null;
   rejectionReason: string;
+  approvals: LeaveRequestApproval[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface LeaveRequestsListQueryParams {
   page?: number;
+  search?: string;
+  status?: LeaveRequestStatus;
 }
 
 export interface LeaveRequestsListResult {
@@ -106,6 +144,11 @@ export interface LeaveRequestPayload {
   start_at: string;
   end_at: string;
   reason: string;
+}
+
+export interface RejectLeaveRequestPayload {
+  comment: string;
+  rejection_reason: string;
 }
 
 export interface LeaveRequestMutationResult {

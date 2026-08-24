@@ -14,3 +14,11 @@ export function leaveRequestItemUrl(leaveRequestId: string): string {
 
   return `${leaveRequestsCollectionUrl()}/${encodeURIComponent(normalizedId)}`;
 }
+
+export function leaveRequestApproveUrl(leaveRequestId: string): string {
+  return `${leaveRequestItemUrl(leaveRequestId)}/approve`;
+}
+
+export function leaveRequestRejectUrl(leaveRequestId: string): string {
+  return `${leaveRequestItemUrl(leaveRequestId)}/reject`;
+}

@@ -224,9 +224,18 @@
     "title": "طلبات الإجازة",
     "subtitle": "مراجعة والموافقة على طلبات الإجازة والاستئذان من الموظفين.",
     "pendingTitle": "معلقة ({count})",
-    "emptyPending": "لا توجد طلبات إجازة معلقة.",
-    "searchPlaceholder": "ابحث بالموظف أو النوع أو القسم…",
+    "resultsTitle": "الطلبات ({count})",
+    "emptyPending": "لا توجد طلبات إجازة.",
+    "searchPlaceholder": "ابحث بالموظف أو النوع أو السبب…",
     "noSearchResults": "لا توجد طلبات تطابق بحثك.",
+    "loading": "جاري تحميل طلبات الإجازة…",
+    "loadError": "تعذر تحميل طلبات الإجازة.",
+    "detailLoading": "جاري تحميل تفاصيل الطلب…",
+    "detailError": "تعذر تحميل طلب الإجازة.",
+    "reviewError": "تعذر تحديث طلب الإجازة.",
+    "rejectReasonLabel": "سبب الرفض",
+    "rejectReasonPlaceholder": "اكتب سبب رفض هذا الطلب.",
+    "rejectReasonRequired": "سبب الرفض مطلوب.",
     "pagination": {
       "previous": "السابق",
       "next": "التالي",
@@ -251,6 +260,7 @@
       "department": "القسم",
       "branch": "الفرع",
       "submitted": "تاريخ الإرسال",
+      "status": "الحالة",
       "actions": "إجراءات"
     }
   },

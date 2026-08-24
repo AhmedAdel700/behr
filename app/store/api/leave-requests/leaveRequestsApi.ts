@@ -5,18 +5,30 @@ import type {
   LeaveRequestRecord,
   LeaveRequestsListQueryParams,
   LeaveRequestsListResult,
+  RejectLeaveRequestPayload,
 } from "@/types/LeaveRequestsApiTypes";
 import {
+  approveLeaveRequestRequest,
   createLeaveRequestRequest,
   fetchAllLeaveRequests,
   fetchLeaveRequest,
   fetchLeaveRequests,
+  rejectLeaveRequestRequest,
 } from "@services/leave-requests/leaveRequestsService";
 import { getCookie } from "cookies-next";
 import { getSession } from "next-auth/react";
 
 interface CreateLeaveRequestArgs {
   body: LeaveRequestPayload;
+}
+
+interface ReviewLeaveRequestArgs {
+  leaveRequestId: string;
+}
+
+interface RejectLeaveRequestArgs {
+  leaveRequestId: string;
+  body: RejectLeaveRequestPayload;
 }
 
 async function getLang(): Promise<string> {
@@ -32,7 +44,14 @@ export function normalizeLeaveRequestsListParams(
   arg?: LeaveRequestsListQueryParams | void,
 ): LeaveRequestsListQueryParams {
   const page = arg?.page && arg.page > 1 ? arg.page : 1;
-  return { page };
+  const search = arg?.search?.trim();
+  const status = arg?.status;
+
+  return {
+    page,
+    ...(search ? { search } : {}),
+    ...(status ? { status } : {}),
+  };
 }
 
 export function serializeLeaveRequestsListParams(
@@ -40,11 +59,18 @@ export function serializeLeaveRequestsListParams(
 ): string {
   return JSON.stringify({
     page: params.page ?? 1,
+    search: params.search?.trim() ?? "",
+    status: params.status ?? "",
   });
 }
 
 export const DEFAULT_LEAVE_REQUESTS_LIST_PARAMS: LeaveRequestsListQueryParams = {
   page: 1,
+};
+
+export const PENDING_LEAVE_REQUESTS_LIST_PARAMS: LeaveRequestsListQueryParams = {
+  page: 1,
+  status: "pending",
 };
 
 export const leaveRequestsApi = baseApi.injectEndpoints({
@@ -81,10 +107,10 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
           return { error: { status: "CUSTOM_ERROR", error: message } };
         }
       },
-      serializeQueryArgs: ({ queryArgs }) =>
-        serializeLeaveRequestsListParams(
+      serializeQueryArgs: ({ queryArgs, endpointName }) =>
+        `${endpointName}(${serializeLeaveRequestsListParams(
           normalizeLeaveRequestsListParams(queryArgs),
-        ),
+        )})`,
       providesTags: (result) =>
         result
           ? [
@@ -199,6 +225,79 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
       },
       invalidatesTags: [{ type: "LeaveRequest", id: "LIST" }],
     }),
+    approveLeaveRequest: builder.mutation<
+      LeaveRequestMutationResult,
+      ReviewLeaveRequestArgs
+    >({
+      async queryFn({ leaveRequestId }) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const result = await approveLeaveRequestRequest(
+            session.accessToken,
+            await getLang(),
+            leaveRequestId,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to approve leave request.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: (_result, _error, { leaveRequestId }) => [
+        { type: "LeaveRequest", id: leaveRequestId },
+        { type: "LeaveRequest", id: "LIST" },
+      ],
+    }),
+    rejectLeaveRequest: builder.mutation<
+      LeaveRequestMutationResult,
+      RejectLeaveRequestArgs
+    >({
+      async queryFn({ leaveRequestId, body }) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const result = await rejectLeaveRequestRequest(
+            session.accessToken,
+            await getLang(),
+            leaveRequestId,
+            body,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to reject leave request.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: (_result, _error, { leaveRequestId }) => [
+        { type: "LeaveRequest", id: leaveRequestId },
+        { type: "LeaveRequest", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -207,4 +306,6 @@ export const {
   useGetAllLeaveRequestsQuery,
   useGetLeaveRequestQuery,
   useCreateLeaveRequestMutation,
+  useApproveLeaveRequestMutation,
+  useRejectLeaveRequestMutation,
 } = leaveRequestsApi;
