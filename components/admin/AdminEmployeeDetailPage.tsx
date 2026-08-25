@@ -46,14 +46,20 @@ import { canManageEmployees, isSuperAdmin } from "@/lib/admin/permissions";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { DISPLAY_DATETIME_VALUE_CLASS } from "@/lib/tableCells";
 import { cn } from "@/lib/utils";
+import type { AttendanceHistoryResult } from "@/types/AttendanceApiTypes";
+import type { LeaveBalanceRecord } from "@/types/LeaveBalancesApiTypes";
 import type { EmployeeRecord } from "@/types/EmployeesApiTypes";
 
 export function AdminEmployeeDetailPage({
   employeeId,
   initialData,
+  attendanceHistoryInitialData,
+  leaveBalancesInitialData,
 }: {
   employeeId: string;
   initialData?: EmployeeRecord;
+  attendanceHistoryInitialData?: AttendanceHistoryResult;
+  leaveBalancesInitialData?: LeaveBalanceRecord[];
 }): ReactElement {
   const t = useTranslations("admin.employeeDetailPage");
   const tEmployees = useTranslations("admin.employees");
@@ -229,9 +235,15 @@ export function AdminEmployeeDetailPage({
         </InfoCard>
       </div>
 
-      <LeaveStatsSection employeeId={employee.id} />
+      <LeaveStatsSection
+        employeeId={employee.id}
+        initialData={leaveBalancesInitialData}
+      />
 
-      <AttendanceHistorySection employeeId={employee.id} />
+      <AttendanceHistorySection
+        userId={employee.id}
+        initialData={attendanceHistoryInitialData}
+      />
 
       {canEdit || canDelete ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

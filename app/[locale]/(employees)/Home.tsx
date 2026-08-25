@@ -6,12 +6,15 @@ import { auth } from "@/auth";
 import { AttendanceHistorySection } from "@/components/employee/AttendanceHistorySection";
 import { ComingSoonCard } from "@/components/employee/ComingSoonCard";
 import { fetchAllLeaveRequests } from "@services/leave-requests/leaveRequestsService";
+import { fetchAttendanceHistory } from "@services/attendance/attendanceService";
+import type { AttendanceHistoryResult } from "@/types/AttendanceApiTypes";
 
 export async function EmployeeHome(): Promise<ReactElement> {
   const t = await getTranslations("employee");
   const session = await auth();
   const locale = await getLocale();
   let openCount = 0;
+  let attendanceHistory: AttendanceHistoryResult | undefined;
 
   if (session?.accessToken) {
     try {
@@ -25,6 +28,16 @@ export async function EmployeeHome(): Promise<ReactElement> {
       ).length;
     } catch {
       openCount = 0;
+    }
+
+    try {
+      attendanceHistory = await fetchAttendanceHistory(
+        session.accessToken,
+        locale,
+        session.tokenType,
+      );
+    } catch {
+      attendanceHistory = undefined;
     }
   }
 
@@ -75,7 +88,7 @@ export async function EmployeeHome(): Promise<ReactElement> {
         </div>
       </section>
 
-      <AttendanceHistorySection employeeId={session?.user?.id} />
+      <AttendanceHistorySection initialData={attendanceHistory} />
     </div>
   );
 }

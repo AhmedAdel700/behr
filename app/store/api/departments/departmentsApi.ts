@@ -14,7 +14,7 @@ import {
   fetchDepartments,
   updateDepartmentRequest,
 } from "@services/departments/departmentsService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface CreateDepartmentArgs {
@@ -28,11 +28,6 @@ interface UpdateDepartmentArgs {
 
 interface DeleteDepartmentArgs {
   departmentId: string;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -112,7 +107,7 @@ export const departmentsApi = baseApi.injectEndpoints({
         try {
           const result = await fetchDepartments(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizeDepartmentsListParams(arg),
           );
@@ -150,7 +145,7 @@ export const departmentsApi = baseApi.injectEndpoints({
         try {
           const department = await fetchDepartmentById(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             departmentId,
             getTokenType(session.tokenType),
           );
@@ -178,7 +173,7 @@ export const departmentsApi = baseApi.injectEndpoints({
         try {
           const result = await createDepartmentRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             body,
             getTokenType(session.tokenType),
           );
@@ -204,7 +199,7 @@ export const departmentsApi = baseApi.injectEndpoints({
         try {
           const result = await updateDepartmentRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             departmentId,
             body,
             getTokenType(session.tokenType),
@@ -234,7 +229,7 @@ export const departmentsApi = baseApi.injectEndpoints({
         try {
           const result = await deleteDepartmentRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             departmentId,
             getTokenType(session.tokenType),
           );

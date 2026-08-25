@@ -13,7 +13,7 @@ import {
   fetchPositions,
   updatePositionRequest,
 } from "@services/positions/positionsService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface CreatePositionArgs {
@@ -27,11 +27,6 @@ interface UpdatePositionArgs {
 
 interface DeletePositionArgs {
   positionId: string;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -84,7 +79,7 @@ export const positionsApi = baseApi.injectEndpoints({
         try {
           const result = await fetchPositions(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizePositionsListParams(arg),
           );
@@ -125,7 +120,7 @@ export const positionsApi = baseApi.injectEndpoints({
         try {
           const positions = await fetchAllPositions(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
           );
           return { data: positions };
@@ -161,7 +156,7 @@ export const positionsApi = baseApi.injectEndpoints({
         try {
           const result = await createPositionRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             body,
             getTokenType(session.tokenType),
           );
@@ -189,7 +184,7 @@ export const positionsApi = baseApi.injectEndpoints({
         try {
           const result = await updatePositionRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             positionId,
             body,
             getTokenType(session.tokenType),
@@ -221,7 +216,7 @@ export const positionsApi = baseApi.injectEndpoints({
         try {
           const result = await deletePositionRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             positionId,
             getTokenType(session.tokenType),
           );

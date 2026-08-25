@@ -13,7 +13,7 @@ import {
   fetchLeaveTypes,
   updateLeaveTypeRequest,
 } from "@services/leave-types/leaveTypesService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface CreateLeaveTypeArgs {
@@ -27,11 +27,6 @@ interface UpdateLeaveTypeArgs {
 
 interface DeleteLeaveTypeArgs {
   leaveTypeId: string;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -84,7 +79,7 @@ export const leaveTypesApi = baseApi.injectEndpoints({
         try {
           const result = await fetchLeaveTypes(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizeLeaveTypesListParams(arg),
           );
@@ -127,7 +122,7 @@ export const leaveTypesApi = baseApi.injectEndpoints({
         try {
           const data = await fetchLeaveType(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveTypeId,
             getTokenType(session.tokenType),
           );
@@ -159,7 +154,7 @@ export const leaveTypesApi = baseApi.injectEndpoints({
         try {
           const result = await createLeaveTypeRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             body,
             getTokenType(session.tokenType),
           );
@@ -189,7 +184,7 @@ export const leaveTypesApi = baseApi.injectEndpoints({
         try {
           const result = await updateLeaveTypeRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveTypeId,
             body,
             getTokenType(session.tokenType),
@@ -223,7 +218,7 @@ export const leaveTypesApi = baseApi.injectEndpoints({
         try {
           const result = await deleteLeaveTypeRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveTypeId,
             getTokenType(session.tokenType),
           );

@@ -18,7 +18,6 @@ import {
 } from "@/lib/employee/groupRequestsByMonth";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { cn } from "@/lib/utils";
-import { DISPLAY_DATE_RANGE_VALUE_CLASS } from "@/lib/tableCells";
 import type {
   LeaveRequestRecord,
   LeaveRequestStatus,
@@ -189,31 +188,33 @@ function RequestCard({
     <li>
       <Link
         href={`/requests/${item.id}`}
-        className="block rounded-2xl border border-border bg-surface p-4 shadow-xs transition-colors hover:border-border-strong"
+        className="block rounded-2xl border border-border bg-surface p-4 shadow-xs transition-colors hover:border-border-strong hover:bg-surface-muted/20"
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1.5">
-            <LeaveTypeBadge
-              leaveTypeId={item.leaveType.id}
-              name={item.leaveType.name}
-            />
-            <p className={cn("text-sm font-medium text-ink", DISPLAY_DATE_RANGE_VALUE_CLASS)}>
-              {formatLeaveRequestRange(
-                item.startAt,
-                item.endAt,
-                locale,
-                item.leaveType.unit,
-              )}
-            </p>
-            <p className="line-clamp-2 text-xs text-text-secondary">
-              {item.reason}
-            </p>
-          </div>
+          <LeaveTypeBadge
+            leaveTypeId={item.leaveType.id}
+            name={item.leaveType.name}
+          />
           <StatusBadge
             status={item.status}
             label={t(`status.${item.status}`)}
           />
         </div>
+
+        <p className="mt-2.5 text-sm font-semibold text-ink tabular-nums">
+          {formatLeaveRequestRange(
+            item.startAt,
+            item.endAt,
+            locale,
+            item.leaveType.unit,
+          )}
+        </p>
+
+        {item.reason.trim() ? (
+          <p className="mt-1.5 line-clamp-2 text-sm text-text-secondary">
+            {item.reason}
+          </p>
+        ) : null}
       </Link>
     </li>
   );

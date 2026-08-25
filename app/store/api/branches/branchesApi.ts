@@ -12,7 +12,7 @@ import type {
   BranchesListResult,
 } from "@/types/BranchesApiTypes";
 import { fetchBranches } from "@services/branches/branchesService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface BranchMutationArgs {
@@ -25,11 +25,6 @@ interface UpdateBranchArgs extends BranchMutationArgs {
 
 interface DeleteBranchArgs {
   branchId: string;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 export function normalizeBranchesListParams(
@@ -75,7 +70,7 @@ export const branchesApi = baseApi.injectEndpoints({
           };
         }
 
-        const lang = await getLang();
+        const lang = await getRequestLang();
         const tokenType =
           typeof session.tokenType === "string" && session.tokenType
             ? session.tokenType
@@ -105,7 +100,7 @@ export const branchesApi = baseApi.injectEndpoints({
     }),
     getBranchById: builder.query<AdminBranchRecord, string>({
       async queryFn(branchId) {
-        const result = await getBranchByIdAction(branchId, await getLang());
+        const result = await getBranchByIdAction(branchId, await getRequestLang());
 
         if (!result.success) {
           return { error: { status: "CUSTOM_ERROR", error: result.message } };
@@ -119,7 +114,7 @@ export const branchesApi = baseApi.injectEndpoints({
     }),
     createBranch: builder.mutation<AdminBranchRecord, BranchMutationArgs>({
       async queryFn({ body }) {
-        const result = await createBranchAction(body, await getLang());
+        const result = await createBranchAction(body, await getRequestLang());
 
         if (!result.success) {
           return { error: { status: "CUSTOM_ERROR", error: result.message } };
@@ -145,7 +140,7 @@ export const branchesApi = baseApi.injectEndpoints({
         const result = await updateBranchAction(
           normalizedBranchId,
           body,
-          await getLang(),
+          await getRequestLang(),
         );
 
         if (!result.success) {
@@ -161,7 +156,7 @@ export const branchesApi = baseApi.injectEndpoints({
     }),
     deleteBranch: builder.mutation<void, DeleteBranchArgs>({
       async queryFn({ branchId }) {
-        const result = await deleteBranchAction(branchId, await getLang());
+        const result = await deleteBranchAction(branchId, await getRequestLang());
 
         if (!result.success) {
           return { error: { status: "CUSTOM_ERROR", error: result.message } };

@@ -11,7 +11,6 @@ export const DEMO_EMPLOYEE_PROFILE: EmployeeProfile = {
   branch: "Riyadh",
   lineManager: "Noura Al-Harbi",
   lineManagerRole: "People Operations Lead",
-  employmentType: "Full-time",
   employeeId: "EMP-1042",
   joinDate: "14 Mar 2023",
 };

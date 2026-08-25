@@ -11,19 +11,14 @@ import {
   fetchPublicBranches,
   parsePublicNamedList,
 } from "@services/public/publicOrgService";
-import { getCookie } from "cookies-next";
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
-}
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 
 export const publicOrgApi = publicApi.injectEndpoints({
   endpoints: (builder) => ({
     getPublicBranches: builder.query<PublicNamedRecord[], void>({
       async queryFn() {
         try {
-          const data = await fetchPublicBranches(await getLang());
+          const data = await fetchPublicBranches(await getRequestLang());
           return { data };
         } catch (error) {
           const message =
@@ -37,7 +32,7 @@ export const publicOrgApi = publicApi.injectEndpoints({
       async queryFn(branchId) {
         try {
           const data = await fetchPublicBranchDepartments(
-            await getLang(),
+            await getRequestLang(),
             branchId,
           );
           return { data };
@@ -62,7 +57,7 @@ export const publicOrgApi = publicApi.injectEndpoints({
     registerAccount: builder.mutation<RegisterResult, RegisterPayload>({
       async queryFn(body) {
         try {
-          const data = await registerWithDetails(body, await getLang());
+          const data = await registerWithDetails(body, await getRequestLang());
           return { data };
         } catch (error) {
           if (error instanceof RegisterApiError) {

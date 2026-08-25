@@ -3,6 +3,10 @@
 import { getCookie } from "cookies-next";
 import { getSession } from "next-auth/react";
 import { getAdminSessionSnapshot } from "@/lib/admin/adminSessionStore";
+import {
+  applyLangHeader,
+  normalizeLangHeader,
+} from "@services/auth/shared";
 import { buildStubFingerprintRecords } from "@/lib/admin/demo-fingerprint-imports";
 import {
   getFingerprintImportFile,
@@ -77,6 +81,31 @@ function mergeMonthData(
   };
 }
 
+async function buildBackendHeaders(
+  includeAuth = false,
+): Promise<HeadersInit> {
+  const locale = await getCookie("NEXT_LOCALE");
+  const session = includeAuth ? await getSession() : null;
+  const headers = new Headers({
+    Accept: "application/json",
+  });
+
+  applyLangHeader(
+    headers,
+    normalizeLangHeader(typeof locale === "string" ? locale : undefined),
+  );
+  headers.delete("Accept-Language");
+
+  if (session?.accessToken) {
+    headers.set(
+      "Authorization",
+      `${session.tokenType} ${session.accessToken}`,
+    );
+  }
+
+  return headers;
+}
+
 async function fetchMonthFromBackend(
   branchId: string,
   year: number,
@@ -94,7 +123,7 @@ async function fetchMonthFromBackend(
 
   const response = await fetch(url.toString(), {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: await buildBackendHeaders(true),
   });
 
   if (!response.ok) {
@@ -143,8 +172,13 @@ async function uploadToBackend(
   formData.append("year", String(request.year));
   formData.append("month", String(request.month));
 
+  const uploadHeaders = new Headers(await buildBackendHeaders(true));
+  uploadHeaders.delete("Content-Type");
+  uploadHeaders.delete("Accept-Language");
+
   const response = await fetch(`${baseUrl}/admin/fingerprint-import`, {
     method: "POST",
+    headers: uploadHeaders,
     body: formData,
   });
 
@@ -238,13 +272,21 @@ async function uploadStub(
 async function buildDownloadHeaders(): Promise<HeadersInit> {
   const session = await getSession();
   const locale = await getCookie("NEXT_LOCALE");
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     Accept: "*/*",
-    lang: String(locale || "ar"),
-  };
+  });
+
+  applyLangHeader(
+    headers,
+    normalizeLangHeader(typeof locale === "string" ? locale : undefined),
+  );
+  headers.delete("Accept-Language");
 
   if (session?.accessToken) {
-    headers.Authorization = `${session.tokenType} ${session.accessToken}`;
+    headers.set(
+      "Authorization",
+      `${session.tokenType} ${session.accessToken}`,
+    );
   }
 
   return headers;

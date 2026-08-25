@@ -47,7 +47,7 @@ export function createProfileSchema(errors: ProfileErrorMessages) {
     fingerprintNumber: z
       .string()
       .min(1, { error: errors.fingerprintRequired })
-      .regex(/^[0-9]{1,20}$/, { error: errors.fingerprintInvalid }),
+      .regex(/^[A-Za-z0-9]{1,20}$/, { error: errors.fingerprintInvalid }),
     avatar: optionalAvatarSchema(errors),
   });
 }

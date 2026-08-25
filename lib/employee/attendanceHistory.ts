@@ -4,14 +4,21 @@ export type AttendanceHistoryMark = "worked" | "remote" | "absent" | "off";
 
 export interface AttendanceHistoryDay {
   date: string;
-  mark: AttendanceHistoryMark;
+  mark: AttendanceHistoryMark | null;
+}
+
+export interface AttendanceHistoryMonthSummary {
+  workedDays: number;
+  absentDays: number;
 }
 
 export interface AttendanceHistoryMonth {
   key: string;
   year: number;
   month: number;
+  label?: string;
   days: AttendanceHistoryDay[];
+  summary?: AttendanceHistoryMonthSummary;
 }
 
 /** Request types that count as a worked day on the attendance calendar. */
@@ -234,11 +241,30 @@ export function countMarks(
 ): Record<AttendanceHistoryMark, number> {
   return days.reduce(
     (acc, day) => {
-      acc[day.mark] += 1;
+      if (day.mark) {
+        acc[day.mark] += 1;
+      }
       return acc;
     },
     { worked: 0, remote: 0, absent: 0, off: 0 }
   );
+}
+
+export function getMonthWorkedCount(month: AttendanceHistoryMonth): number {
+  if (month.summary) {
+    return month.summary.workedDays;
+  }
+
+  const counts = countMarks(month.days);
+  return counts.worked + counts.remote;
+}
+
+export function getMonthAbsentCount(month: AttendanceHistoryMonth): number {
+  if (month.summary) {
+    return month.summary.absentDays;
+  }
+
+  return countMarks(month.days).absent;
 }
 
 /** Stable demo months relative to the app’s demo “today” (Aug 2026). */

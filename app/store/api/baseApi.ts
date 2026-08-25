@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getSession } from "next-auth/react";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
+import { applyLangHeader } from "@services/auth/shared";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
@@ -11,11 +12,11 @@ export const baseApi = createApi({
     baseUrl: API_BASE_URL,
 
     prepareHeaders: async (headers) => {
-      const locale = await getCookie("NEXT_LOCALE");
       const session = await getSession();
 
       headers.set("Accept", "application/json");
-      headers.set("lang", String(locale || "ar"));
+      applyLangHeader(headers, await getRequestLang());
+      headers.delete("Accept-Language");
 
       if (session?.accessToken) {
         headers.set(
@@ -36,6 +37,9 @@ export const baseApi = createApi({
     "LeaveType",
     "Position",
     "RegistrationRequest",
+    "Attendance",
+    "Profile",
+    "LeaveBalance",
   ],
 
   endpoints: () => ({}),

@@ -15,11 +15,17 @@ import {
   fetchLeaveRequest,
   fetchLeaveRequests,
   rejectLeaveRequestRequest,
+  updateLeaveRequestRequest,
 } from "@services/leave-requests/leaveRequestsService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface CreateLeaveRequestArgs {
+  body: LeaveRequestPayload;
+}
+
+interface UpdateLeaveRequestArgs {
+  leaveRequestId: string;
   body: LeaveRequestPayload;
 }
 
@@ -30,11 +36,6 @@ interface ReviewLeaveRequestArgs {
 interface RejectLeaveRequestArgs {
   leaveRequestId: string;
   body: RejectLeaveRequestPayload;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -105,7 +106,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await fetchLeaveRequests(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizeLeaveRequestsListParams(arg),
           );
@@ -148,7 +149,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const leaveRequests = await fetchAllLeaveRequests(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
           );
           return { data: leaveRequests };
@@ -186,7 +187,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const leaveRequest = await fetchLeaveRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveRequestId,
             getTokenType(session.tokenType),
           );
@@ -221,7 +222,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await createLeaveRequestRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             body,
             getTokenType(session.tokenType),
           );
@@ -235,6 +236,43 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         }
       },
       invalidatesTags: [{ type: "LeaveRequest", id: "LIST" }],
+    }),
+    updateLeaveRequest: builder.mutation<
+      LeaveRequestMutationResult,
+      UpdateLeaveRequestArgs
+    >({
+      async queryFn({ leaveRequestId, body }) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const result = await updateLeaveRequestRequest(
+            session.accessToken,
+            await getRequestLang(),
+            leaveRequestId,
+            body,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to update leave request.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: (_result, _error, { leaveRequestId }) => [
+        { type: "LeaveRequest", id: leaveRequestId },
+        { type: "LeaveRequest", id: "LIST" },
+      ],
     }),
     approveLeaveRequest: builder.mutation<
       LeaveRequestMutationResult,
@@ -254,7 +292,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await approveLeaveRequestRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveRequestId,
             getTokenType(session.tokenType),
           );
@@ -290,7 +328,7 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await rejectLeaveRequestRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             leaveRequestId,
             body,
             getTokenType(session.tokenType),
@@ -317,6 +355,7 @@ export const {
   useGetAllLeaveRequestsQuery,
   useGetLeaveRequestQuery,
   useCreateLeaveRequestMutation,
+  useUpdateLeaveRequestMutation,
   useApproveLeaveRequestMutation,
   useRejectLeaveRequestMutation,
 } = leaveRequestsApi;

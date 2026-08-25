@@ -1,4 +1,4 @@
-import { EditRequest } from "@/components/employee/EditRequest";
+import { EditRequestPageView } from "./EditRequestPage";
 
 export default async function EditRequestRoute({
   params,
@@ -6,5 +6,5 @@ export default async function EditRequestRoute({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <EditRequest id={id} />;
+  return <EditRequestPageView id={id} />;
 }

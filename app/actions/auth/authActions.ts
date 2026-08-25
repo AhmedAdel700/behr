@@ -16,6 +16,7 @@ import {
   isActiveSession,
   sessionToAuthSessionUser,
 } from "@/lib/auth/sessionUser";
+import { DEFAULT_LANG } from "@services/auth/shared";
 import {
   isAccessTokenExpired,
   isAccessTokenStale,
@@ -130,7 +131,7 @@ export async function loginAction(values: {
 }
 
 export async function refreshTokenAction(
-  lang = "ar",
+  lang = DEFAULT_LANG,
   options: { force?: boolean } = {},
 ): Promise<
   | { success: true; user: AuthSessionWithToken }
@@ -190,7 +191,7 @@ export async function refreshTokenAction(
   };
 }
 
-export async function logoutAction(lang = "ar"): Promise<void> {
+export async function logoutAction(lang = DEFAULT_LANG): Promise<void> {
   const session = await auth();
 
   if (session?.accessToken) {

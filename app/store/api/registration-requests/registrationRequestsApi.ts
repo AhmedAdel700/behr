@@ -12,7 +12,7 @@ import {
   fetchRegistrationRequests,
   rejectRegistrationRequest as rejectRegistrationRequestCall,
 } from "@services/registration-requests/registrationRequestsService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface ReviewRegistrationArgs {
@@ -22,11 +22,6 @@ interface ReviewRegistrationArgs {
 interface RejectRegistrationArgs {
   requestId: string;
   body?: RejectRegistrationPayload;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -84,7 +79,7 @@ export const registrationRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await fetchRegistrationRequests(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizeRegistrationRequestsListParams(arg),
           );
@@ -128,7 +123,7 @@ export const registrationRequestsApi = baseApi.injectEndpoints({
         try {
           const request = await fetchRegistrationRequestById(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             requestId,
             getTokenType(session.tokenType),
           );
@@ -163,7 +158,7 @@ export const registrationRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await acceptRegistrationRequestCall(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             requestId,
             getTokenType(session.tokenType),
           );
@@ -199,7 +194,7 @@ export const registrationRequestsApi = baseApi.injectEndpoints({
         try {
           const result = await rejectRegistrationRequestCall(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             requestId,
             body,
             getTokenType(session.tokenType),

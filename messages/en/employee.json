@@ -37,7 +37,10 @@
       "legendRemote": "Remote work",
       "legendAbsent": "Did not work",
       "legendOff": "Holiday / leave / weekend",
-      "monthSummary": "{worked} worked · {absent} absent"
+      "monthSummary": "{worked} worked · {absent} absent",
+      "loading": "Loading attendance history…",
+      "loadError": "Could not load attendance history.",
+      "empty": "No attendance history yet."
     }
   },
   "attendance": {
@@ -75,6 +78,7 @@
     "unitHintDay": "Choose the start and end dates for this leave.",
     "unitHintHour": "Choose the date and the hours you need away.",
     "submitSuccess": "Leave request submitted.",
+    "updateSuccess": "Leave request updated.",
     "notFoundTitle": "Request not found",
     "notFoundDescription": "This request does not exist or is not available.",
     "rejectionReason": "Rejection reason",
@@ -213,18 +217,23 @@
     "avatarHint": "JPG, PNG, or WebP up to 5 MB",
     "avatarUpload": "Upload photo",
     "avatarChange": "Change photo",
-    "avatarRemove": "Remove"
+    "avatarRemove": "Remove",
+    "loading": "Loading profile…",
+    "loadError": "Could not load profile.",
+    "notAvailable": "—"
   },
   "leave": {
     "title": "Leave balance",
     "subtitle": "Used and remaining leave for this period",
     "usedLabel": "used",
     "remainingLabel": "left",
+    "loading": "Loading leave balances…",
+    "loadError": "Could not load leave balances.",
+    "empty": "No leave balances available.",
     "groups": {
-      "core": "Time off",
-      "family": "Family",
-      "flexibility": "Work flexibility",
-      "special": "Special leave"
+      "yearly": "Annual entitlements",
+      "monthly": "Monthly allowances",
+      "none": "Other leave"
     },
     "types": {
       "annual": "Annual leave",

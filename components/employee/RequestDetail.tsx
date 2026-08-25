@@ -3,7 +3,7 @@
 import { useRef, type ReactElement } from "react";
 import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import {
   leaveRequestsApi,
   useGetLeaveRequestQuery,
@@ -90,9 +90,21 @@ export function RequestDetail({
             leaveTypeId={item.leaveType.id}
             name={item.leaveType.name}
           />
-          <h1 className="text-xl font-semibold tracking-tight text-ink">
-            {t("detail")}
-          </h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl font-semibold tracking-tight text-ink">
+              {t("detail")}
+            </h1>
+            {item.status === "pending" ? (
+              <MainButton
+                variant="edit-soft"
+                size="sm"
+                startIcon={<Pencil className="size-4" />}
+                link={`/requests/${item.id}/edit`}
+              >
+                {t("edit")}
+              </MainButton>
+            ) : null}
+          </div>
         </div>
       </section>
 

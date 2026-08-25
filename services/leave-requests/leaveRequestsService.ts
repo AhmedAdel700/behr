@@ -294,6 +294,47 @@ export async function createLeaveRequestRequest(
   };
 }
 
+function buildLeaveRequestFormData(body: LeaveRequestPayload): FormData {
+  const formData = new FormData();
+  formData.append("leave_type_id", String(body.leave_type_id));
+  formData.append("start_at", body.start_at);
+  formData.append("end_at", body.end_at);
+  formData.append("reason", body.reason);
+  return formData;
+}
+
+export async function updateLeaveRequestRequest(
+  accessToken: string,
+  lang: string,
+  leaveRequestId: string,
+  body: LeaveRequestPayload,
+  tokenType = "Bearer",
+): Promise<LeaveRequestMutationResult> {
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveRequestItemUrl(leaveRequestId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body: buildLeaveRequestFormData(body),
+    fallbackMessage: "Failed to update leave request.",
+  });
+
+  if (!response.ok) {
+    api.throwFromPayload(payload, "Failed to update leave request.");
+  }
+
+  const { message, data } = api.assertSuccessResponse<unknown>(
+    payload,
+    "Failed to update leave request.",
+  );
+
+  return {
+    message,
+    leaveRequest: mapLeaveRequestFromApi(data),
+  };
+}
+
 async function postLeaveRequestReview(
   url: string,
   accessToken: string,

@@ -9,7 +9,6 @@ export interface EmployeeProfile {
   branch: string;
   lineManager: string;
   lineManagerRole: string;
-  employmentType: string;
   employeeId: string;
   joinDate: string;
 }

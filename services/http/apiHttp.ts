@@ -1,6 +1,7 @@
 import {
   buildAuthorizedHeaders,
   buildJsonHeaders,
+  applyLangHeader,
 } from "@services/auth/shared";
 import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
 
@@ -225,9 +226,20 @@ export function createApiHttp(
       useJsonHeadersOnly = false,
     } = options;
 
-    const headers = useJsonHeadersOnly
+    const headerInit = useJsonHeadersOnly
       ? buildJsonHeaders(lang)
       : buildAuthorizedHeaders(accessToken ?? "", lang, tokenType);
+    const headers = new Headers(headerInit);
+    applyLangHeader(headers, lang);
+    headers.delete("Accept-Language");
+
+    let requestBody: BodyInit | undefined;
+    if (body instanceof FormData) {
+      headers.delete("Content-Type");
+      requestBody = body;
+    } else if (body !== undefined) {
+      requestBody = JSON.stringify(body);
+    }
 
     let response: Response;
 
@@ -235,7 +247,7 @@ export function createApiHttp(
       response = await fetch(url, {
         method,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: requestBody,
         cache: cache ?? (method === "GET" ? "no-store" : undefined),
       });
     } catch (error) {

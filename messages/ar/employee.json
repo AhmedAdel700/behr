@@ -37,7 +37,10 @@
       "legendRemote": "عمل عن بُعد",
       "legendAbsent": "غياب",
       "legendOff": "عطلة / إجازة / نهاية الأسبوع",
-      "monthSummary": "{worked} حضور · {absent} غياب"
+      "monthSummary": "{worked} حضور · {absent} غياب",
+      "loading": "جاري تحميل سجل الحضور…",
+      "loadError": "تعذر تحميل سجل الحضور.",
+      "empty": "لا يوجد سجل حضور بعد."
     }
   },
   "attendance": {
@@ -75,6 +78,7 @@
     "unitHintDay": "اختر تاريخ بداية ونهاية هذه الإجازة.",
     "unitHintHour": "اختر التاريخ والساعات التي تحتاجها.",
     "submitSuccess": "تم تقديم طلب الإجازة.",
+    "updateSuccess": "تم تحديث طلب الإجازة.",
     "notFoundTitle": "الطلب غير موجود",
     "notFoundDescription": "هذا الطلب غير موجود أو غير متاح.",
     "rejectionReason": "سبب الرفض",
@@ -213,18 +217,23 @@
     "avatarHint": "JPG أو PNG أو WebP حتى 5 م.ب",
     "avatarUpload": "رفع صورة",
     "avatarChange": "تغيير الصورة",
-    "avatarRemove": "إزالة"
+    "avatarRemove": "إزالة",
+    "loading": "جاري تحميل الملف الشخصي…",
+    "loadError": "تعذر تحميل الملف الشخصي.",
+    "notAvailable": "—"
   },
   "leave": {
     "title": "رصيد الإجازات",
     "subtitle": "الإجازات المستخدمة والمتبقية خلال هذه الفترة",
     "usedLabel": "مستخدم",
     "remainingLabel": "متبقي",
+    "loading": "جاري تحميل أرصدة الإجازات…",
+    "loadError": "تعذر تحميل أرصدة الإجازات.",
+    "empty": "لا توجد أرصدة إجازات متاحة.",
     "groups": {
-      "core": "الإجازات الأساسية",
-      "family": "إجازات عائلية",
-      "flexibility": "مرونة العمل",
-      "special": "إجازات خاصة"
+      "yearly": "الاستحقاقات السنوية",
+      "monthly": "البدلات الشهرية",
+      "none": "إجازات أخرى"
     },
     "types": {
       "annual": "إجازة سنوية",

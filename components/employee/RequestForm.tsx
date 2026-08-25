@@ -7,13 +7,14 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
-import { useCreateLeaveRequestMutation } from "@/app/store/api/leave-requests/leaveRequestsApi";
+import { useCreateLeaveRequestMutation, useUpdateLeaveRequestMutation } from "@/app/store/api/leave-requests/leaveRequestsApi";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainDatePicker } from "@/components/shared/MainDatePicker";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainTimeInput } from "@/components/shared/MainTimeInput";
 import {
   buildLeaveRequestDateTime,
+  buildLeaveRequestUpdatePayload,
   DEFAULT_DAY_END_TIME,
   DEFAULT_DAY_START_TIME,
   getLeaveRequestMutationError,
@@ -42,6 +43,9 @@ export function RequestForm({
   const isEdit = mode === "edit";
   const [createLeaveRequest, { isLoading: creating }] =
     useCreateLeaveRequestMutation();
+  const [updateLeaveRequest, { isLoading: updating }] =
+    useUpdateLeaveRequestMutation();
+  const submitting = creating || updating;
 
   const schema = useMemo(
     () =>
@@ -88,13 +92,28 @@ export function RequestForm({
     : undefined;
 
   const onSubmit = async (values: RequestFormValues): Promise<void> => {
-    if (isEdit) {
-      return;
-    }
-
     const leaveTypeId = Number(leaveType.id);
     if (!Number.isFinite(leaveTypeId)) {
       toast.error(t("errors.failed"));
+      return;
+    }
+
+    if (isEdit) {
+      if (!requestId) {
+        toast.error(t("errors.failed"));
+        return;
+      }
+
+      try {
+        const result = await updateLeaveRequest({
+          leaveRequestId: requestId,
+          body: buildLeaveRequestUpdatePayload(leaveTypeId, values, leaveType.unit),
+        }).unwrap();
+        toast.success(result.message || t("updateSuccess"));
+        router.push(`/requests/${requestId}`);
+      } catch (error) {
+        toast.error(getLeaveRequestMutationError(error, t("errors.failed")));
+      }
       return;
     }
 
@@ -240,7 +259,7 @@ export function RequestForm({
           variant="primary"
           block
           className="mt-1"
-          loading={creating}
+          loading={submitting}
         >
           {isEdit ? t("save") : t("submit")}
         </MainButton>

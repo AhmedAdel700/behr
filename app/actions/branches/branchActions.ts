@@ -1,6 +1,8 @@
 "use server";
 
+import { getLocale } from "next-intl/server";
 import { auth } from "@/auth";
+import { DEFAULT_LANG, normalizeLangHeader } from "@services/auth/shared";
 import {
   createBranchRequest,
   deleteBranchRequest,
@@ -30,7 +32,7 @@ async function getAuthContext(): Promise<{
   return {
     accessToken: session.accessToken,
     tokenType: session.tokenType || "Bearer",
-    lang: "ar",
+    lang: normalizeLangHeader(await getLocale()),
   };
 }
 
@@ -51,7 +53,7 @@ function toErrorMessage(error: unknown, fallback: string): string {
 }
 
 export async function getBranchesAction(
-  lang = "ar",
+  lang = DEFAULT_LANG,
   params?: BranchesListQueryParams,
 ): Promise<
   | {
@@ -85,7 +87,7 @@ export async function getBranchesAction(
 
 export async function getBranchByIdAction(
   branchId: string,
-  lang = "ar",
+  lang = DEFAULT_LANG,
 ): Promise<
   | { success: true; branch: AdminBranchRecord }
   | { success: false; message: string }
@@ -110,7 +112,7 @@ export async function getBranchByIdAction(
 
 export async function createBranchAction(
   body: BranchPayload,
-  lang = "ar",
+  lang = DEFAULT_LANG,
 ): Promise<
   | { success: true; branch: AdminBranchRecord; message: string }
   | { success: false; message: string }
@@ -140,7 +142,7 @@ export async function createBranchAction(
 export async function updateBranchAction(
   branchId: string,
   body: BranchPayload,
-  lang = "ar",
+  lang = DEFAULT_LANG,
 ): Promise<
   | { success: true; branch: AdminBranchRecord; message: string }
   | { success: false; message: string }
@@ -170,7 +172,7 @@ export async function updateBranchAction(
 
 export async function deleteBranchAction(
   branchId: string,
-  lang = "ar",
+  lang = DEFAULT_LANG,
 ): Promise<
   | { success: true; message: string }
   | { success: false; message: string }

@@ -1,25 +1,29 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, type ReactElement } from "react";
+import { useMemo, useRef, useState, type ReactElement } from "react";
+import { useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth/authActions";
+import {
+  profileApi,
+  useGetProfileQuery,
+} from "@/app/store/api/profile/profileApi";
+import type { AppDispatch } from "@/app/store/store";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
 import { LeaveBalanceSection } from "@/components/employee/LeaveBalanceSection";
 import { AvatarUpload, ProfileAvatar } from "@/components/shared/AvatarUpload";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
-import {
-  getEmployeeProfileSnapshot,
-  subscribeEmployeeProfile,
-  updateEmployeeProfile,
-} from "@/lib/employee/employeeProfileStore";
+import { fileToDataUrl } from "@/lib/employee/employeeProfileStore";
 import {
   createProfileSchema,
   type ProfileFormValues,
 } from "@/schemas/employee/profile.schema";
+import type { LeaveBalanceRecord } from "@/types/LeaveBalancesApiTypes";
+import type { ProfileResult } from "@/types/ProfileApiTypes";
 
 function DetailRow({
   label,
@@ -43,21 +47,38 @@ function DetailRow({
   );
 }
 
-export function ProfilePageContent(): ReactElement {
+interface ProfilePageContentProps {
+  initialProfile?: ProfileResult;
+  initialLeaveBalances?: LeaveBalanceRecord[];
+}
+
+export function ProfilePageContent({
+  initialProfile,
+  initialLeaveBalances,
+}: ProfilePageContentProps): ReactElement {
   const t = useTranslations("employee.profile");
   const tLabel = useTranslations("employee.profile.labels");
   const tAuth = useTranslations("auth.errors");
   const locale = useLocale();
-
-  useSyncExternalStore(
-    subscribeEmployeeProfile,
-    getEmployeeProfileSnapshot,
-    getEmployeeProfileSnapshot,
-  );
-
-  const profile = getEmployeeProfileSnapshot();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
   const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  if (initialProfile && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      profileApi.util.upsertQueryData("getProfile", undefined, initialProfile),
+    );
+  }
+
+  const {
+    data: profileData,
+    isLoading,
+    isError,
+  } = useGetProfileQuery();
+
+  const profile = profileData ?? initialProfile;
 
   const schema = useMemo(
     () =>
@@ -85,15 +106,19 @@ export function ProfilePageContent(): ReactElement {
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: profile.name,
-      email: profile.email,
-      phone: profile.phone,
-      fingerprintNumber: profile.fingerprintNumber,
+      name: profile?.name ?? "",
+      email: profile?.email ?? "",
+      phone: profile?.phone ?? "",
+      fingerprintNumber: profile?.fingerprintNumber ?? "",
       avatar: undefined,
     },
   });
 
   const openEdit = (): void => {
+    if (!profile) {
+      return;
+    }
+
     reset({
       name: profile.name,
       email: profile.email,
@@ -109,17 +134,49 @@ export function ProfilePageContent(): ReactElement {
   };
 
   const onSubmit = async (values: ProfileFormValues): Promise<void> => {
+    if (!profile) {
+      return;
+    }
+
     setSubmitting(true);
-    await updateEmployeeProfile({
-      name: values.name,
-      email: values.email,
-      phone: values.phone,
-      fingerprintNumber: values.fingerprintNumber,
-      avatarFile: values.avatar,
-    });
+
+    let avatarSrc = profile.avatarSrc;
+    if (values.avatar) {
+      avatarSrc = await fileToDataUrl(values.avatar);
+    }
+
+    const nextProfile: ProfileResult = {
+      ...profile,
+      name: values.name.trim(),
+      email: values.email.trim(),
+      phone: values.phone.trim(),
+      fingerprintNumber: values.fingerprintNumber.trim(),
+      avatarSrc,
+    };
+
+    dispatch(
+      profileApi.util.upsertQueryData("getProfile", undefined, nextProfile),
+    );
+
     setSubmitting(false);
     setEditing(false);
   };
+
+  if (isLoading && !profile) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+        {t("loading")}
+      </p>
+    );
+  }
+
+  if ((isError && !profile) || !profile) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+        {t("loadError")}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -245,8 +302,9 @@ export function ProfilePageContent(): ReactElement {
               <DetailRow
                 label={tLabel("lineManager")}
                 value={profile.lineManager}
-                hint={profile.lineManagerRole}
+                hint={profile.lineManagerRole || undefined}
               />
+              <DetailRow label={tLabel("joinDate")} value={profile.joinDate} />
             </dl>
           </section>
 
@@ -261,21 +319,10 @@ export function ProfilePageContent(): ReactElement {
               />
             </dl>
           </section>
-
-          <section className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
-            <h2 className="mb-3 text-sm font-semibold text-ink">{tLabel("employment")}</h2>
-            <dl className="space-y-3">
-              <DetailRow
-                label={tLabel("employmentType")}
-                value={profile.employmentType}
-              />
-              <DetailRow label={tLabel("joinDate")} value={profile.joinDate} />
-            </dl>
-          </section>
         </>
       )}
 
-      <LeaveBalanceSection />
+      <LeaveBalanceSection initialData={initialLeaveBalances} />
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
         <div className="flex items-center justify-between gap-3">

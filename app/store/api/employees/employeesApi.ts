@@ -12,7 +12,7 @@ import {
   fetchEmployees,
   updateEmployeeRequest,
 } from "@services/employees/employeesService";
-import { getCookie } from "cookies-next";
+import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
 interface UpdateEmployeeArgs {
@@ -22,11 +22,6 @@ interface UpdateEmployeeArgs {
 
 interface DeleteEmployeeArgs {
   employeeId: string;
-}
-
-async function getLang(): Promise<string> {
-  const localeCookie = await getCookie("NEXT_LOCALE");
-  return typeof localeCookie === "string" ? localeCookie : "ar";
 }
 
 function getTokenType(tokenType: unknown): string {
@@ -85,7 +80,7 @@ export const employeesApi = baseApi.injectEndpoints({
         try {
           const result = await fetchEmployees(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             getTokenType(session.tokenType),
             normalizeEmployeesListParams(arg),
           );
@@ -126,7 +121,7 @@ export const employeesApi = baseApi.injectEndpoints({
         try {
           const data = await fetchEmployee(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             employeeId,
             getTokenType(session.tokenType),
           );
@@ -158,7 +153,7 @@ export const employeesApi = baseApi.injectEndpoints({
         try {
           const result = await updateEmployeeRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             employeeId,
             body,
             getTokenType(session.tokenType),
@@ -192,7 +187,7 @@ export const employeesApi = baseApi.injectEndpoints({
         try {
           const result = await deleteEmployeeRequest(
             session.accessToken,
-            await getLang(),
+            await getRequestLang(),
             employeeId,
             getTokenType(session.tokenType),
           );
