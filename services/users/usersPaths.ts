@@ -1,6 +1,10 @@
 import { getApiBaseUrl } from "@services/auth/shared";
 import { EmployeesApiError } from "@/types/EmployeesApiTypes";
 
+export function usersCollectionUrl(): string {
+  return `${getApiBaseUrl()}/users`;
+}
+
 export function userItemUrl(userId: string): string {
   const normalizedUserId = userId.trim();
 
@@ -8,5 +12,5 @@ export function userItemUrl(userId: string): string {
     throw new EmployeesApiError("User id is required.");
   }
 
-  return `${getApiBaseUrl()}/users/${encodeURIComponent(normalizedUserId)}`;
+  return `${usersCollectionUrl()}/${encodeURIComponent(normalizedUserId)}`;
 }

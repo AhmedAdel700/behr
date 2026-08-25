@@ -53,13 +53,67 @@ function parseDuration(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function isLeaveRequestStatus(value: unknown): value is LeaveRequestStatus {
-  return (
-    value === "pending" ||
-    value === "approved" ||
-    value === "rejected" ||
-    value === "cancelled"
+function parseLeaveRequestStatus(value: unknown): LeaveRequestStatus {
+  if (typeof value !== "string") {
+    return "pending";
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "pending") {
+    return "pending";
+  }
+
+  if (normalized === "approved" || normalized === "accepted") {
+    return "approved";
+  }
+
+  if (normalized === "rejected" || normalized === "declined") {
+    return "rejected";
+  }
+
+  if (normalized === "cancelled" || normalized === "canceled") {
+    return "cancelled";
+  }
+
+  return "pending";
+}
+
+function resolveReviewMetadata(
+  record: Record<string, unknown>,
+  approvals: LeaveRequestApproval[],
+): {
+  reviewer: LeaveRequestReviewerSummary | null;
+  reviewedAt: string | null;
+  rejectionReason: string;
+} {
+  const reviewer = mapReviewerSummary(record.reviewer);
+  const reviewedAt =
+    typeof record.reviewed_at === "string" && record.reviewed_at.trim()
+      ? record.reviewed_at
+      : null;
+  const rejectionReason = normalizeText(record.rejection_reason);
+
+  const actedApproval = approvals.find(
+    (approval) =>
+      approval.approver !== null &&
+      approval.actionAt !== null &&
+      approval.status !== "pending",
   );
+  const fallbackApproval = approvals.find(
+    (approval) => approval.approver !== null,
+  );
+  const resolvedApproval = actedApproval ?? fallbackApproval;
+
+  return {
+    reviewer: reviewer ?? resolvedApproval?.approver ?? null,
+    reviewedAt: reviewedAt ?? resolvedApproval?.actionAt ?? null,
+    rejectionReason:
+      rejectionReason ||
+      (parseLeaveRequestStatus(record.status) === "rejected"
+        ? resolvedApproval?.comment ?? ""
+        : ""),
+  };
 }
 
 function mapLeaveTypeSummary(
@@ -125,7 +179,7 @@ function mapApproval(value: unknown): LeaveRequestApproval | null {
     approverId: readId(record.approver_id) ?? "",
     approver: mapReviewerSummary(record.approver),
     level: parseDuration(record.level),
-    status: isLeaveRequestStatus(record.status) ? record.status : "pending",
+    status: parseLeaveRequestStatus(record.status),
     comment: normalizeText(record.comment),
     actionAt:
       typeof record.action_at === "string" && record.action_at.trim()
@@ -154,6 +208,9 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
     throw new LeaveRequestsApiError("Unexpected leave request response.");
   }
 
+  const approvals = mapApprovals(record.approvals);
+  const review = resolveReviewMetadata(record, approvals);
+
   return {
     id,
     employeeId: readId(record.employee_id) ?? "",
@@ -163,15 +220,12 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
     startAt: normalizeText(record.start_at),
     endAt: normalizeText(record.end_at),
     durationMinutes: parseDuration(record.duration_minutes),
-    status: isLeaveRequestStatus(record.status) ? record.status : "pending",
+    status: parseLeaveRequestStatus(record.status),
     reason: normalizeText(record.reason),
-    reviewer: mapReviewerSummary(record.reviewer),
-    reviewedAt:
-      typeof record.reviewed_at === "string" && record.reviewed_at.trim()
-        ? record.reviewed_at
-        : null,
-    rejectionReason: normalizeText(record.rejection_reason),
-    approvals: mapApprovals(record.approvals),
+    reviewer: review.reviewer,
+    reviewedAt: review.reviewedAt,
+    rejectionReason: review.rejectionReason,
+    approvals,
     createdAt: normalizeText(record.created_at),
     updatedAt: normalizeText(record.updated_at),
   };

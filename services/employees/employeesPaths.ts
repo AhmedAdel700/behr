@@ -1,8 +1,11 @@
-import { getApiBaseUrl } from "@services/auth/shared";
 import { EmployeesApiError } from "@/types/EmployeesApiTypes";
+import {
+  userItemUrl,
+  usersCollectionUrl,
+} from "@services/users/usersPaths";
 
 export function employeesCollectionUrl(): string {
-  return `${getApiBaseUrl()}/employees`;
+  return usersCollectionUrl();
 }
 
 export function employeeItemUrl(employeeId: string): string {
@@ -12,5 +15,5 @@ export function employeeItemUrl(employeeId: string): string {
     throw new EmployeesApiError("Employee id is required.");
   }
 
-  return `${employeesCollectionUrl()}/${encodeURIComponent(normalizedEmployeeId)}`;
+  return userItemUrl(normalizedEmployeeId);
 }

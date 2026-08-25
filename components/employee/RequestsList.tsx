@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect, type ReactElement } from "react";
+import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import {
+  leaveRequestsApi,
   useGetAllLeaveRequestsQuery,
 } from "@/app/store/api/leave-requests/leaveRequestsApi";
+import type { AppDispatch } from "@/app/store/store";
 import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
 import { MainButton } from "@/components/shared/MainButton";
 import {
@@ -21,6 +24,12 @@ import type {
   LeaveRequestStatus,
 } from "@/types/LeaveRequestsApiTypes";
 
+function buildOpenMonthKeys(
+  requests: readonly LeaveRequestRecord[],
+): ReadonlySet<string> {
+  return new Set(groupRequestsByMonth(requests).map((group) => group.key));
+}
+
 export function RequestsList({
   initialData,
 }: {
@@ -28,6 +37,19 @@ export function RequestsList({
 }): ReactElement {
   const t = useTranslations("employee.requests");
   const locale = useLocale();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
+
+  if (initialData && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      leaveRequestsApi.util.upsertQueryData(
+        "getAllLeaveRequests",
+        undefined,
+        initialData,
+      ),
+    );
+  }
 
   const {
     data: leaveRequests,
@@ -35,6 +57,8 @@ export function RequestsList({
     isError,
   } = useGetAllLeaveRequestsQuery(undefined, {
     refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
 
   const requests = leaveRequests ?? initialData ?? [];
@@ -43,10 +67,9 @@ export function RequestsList({
     [requests],
   );
 
-  const [openMonths, setOpenMonths] = useState<ReadonlySet<string>>(() => {
-    const newest = groupRequestsByMonth(initialData ?? [])[0]?.key;
-    return newest ? new Set([newest]) : new Set();
-  });
+  const [openMonths, setOpenMonths] = useState<ReadonlySet<string>>(() =>
+    buildOpenMonthKeys(initialData ?? []),
+  );
   const didAutoOpen = useRef((initialData ?? []).length > 0);
 
   useEffect(() => {
@@ -54,14 +77,13 @@ export function RequestsList({
       return;
     }
 
-    const newest = monthGroups[0]?.key;
-    if (!newest) {
+    if (requests.length === 0) {
       return;
     }
 
     didAutoOpen.current = true;
-    setOpenMonths((prev) => (prev.size > 0 ? prev : new Set([newest])));
-  }, [monthGroups]);
+    setOpenMonths(buildOpenMonthKeys(requests));
+  }, [requests]);
 
   const toggleMonth = (key: string): void => {
     setOpenMonths((prev) => {

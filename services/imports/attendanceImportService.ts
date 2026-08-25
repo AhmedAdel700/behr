@@ -14,6 +14,8 @@ import { AttendanceImportApiError } from "@/types/AttendanceImportApiTypes";
 
 const api = createApiHttp(AttendanceImportApiError, "attendance import server");
 
+const ATTENDANCE_IMPORT_CONFIRM_TOKEN_FIELD = "token";
+
 export async function previewAttendanceImport(
   request: AttendanceImportPreviewRequest,
   accessToken: string,
@@ -60,7 +62,7 @@ export async function confirmAttendanceImport(
   }
 
   const formData = new FormData();
-  formData.append("import_token", normalizedToken);
+  formData.append(ATTENDANCE_IMPORT_CONFIRM_TOKEN_FIELD, normalizedToken);
 
   const { response, payload } = await api.authorizedFetch({
     url: attendanceImportConfirmUrl(),
