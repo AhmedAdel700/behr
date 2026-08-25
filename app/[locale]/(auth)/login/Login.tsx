@@ -1,4 +1,4 @@
-import { CalendarDays, ShieldCheck, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, Users } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthSplitCard } from "@/components/auth/AuthSplitCard";
@@ -14,7 +14,7 @@ export async function Login({
   const highlights = [
     { icon: CalendarDays, text: t("login.highlightLeave") },
     { icon: Users, text: t("login.highlightTeam") },
-    { icon: ShieldCheck, text: t("login.highlightSecure") },
+    { icon: ClipboardList, text: t("login.highlightSecure") },
   ];
 
   return (

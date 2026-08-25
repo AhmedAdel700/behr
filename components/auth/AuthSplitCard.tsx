@@ -32,19 +32,24 @@ function BrandPanelHeadline({
   subtitle: string;
 }): ReactElement {
   return (
-    <div className="space-y-6">
-      <h2 className="max-w-[28rem] text-pretty text-[1.875rem] font-semibold leading-[1.12] tracking-tight xl:text-[2.75rem]">
-        <span className="block text-white/90">{line1}</span>
-        {line2 ? (
-          <span className="mt-2 block">
-            <span className="bg-linear-to-r from-primary-200 via-primary-300 to-primary-400 bg-clip-text text-transparent">
-              {line2}
-            </span>
-          </span>
-        ) : null}
-      </h2>
+    <div className="space-y-5">
+      <div>
+        <span
+          aria-hidden
+          className="mb-4 inline-block h-1 w-10 rounded-full bg-primary-500"
+        />
+        <h2 className="max-w-[32rem] text-pretty text-[1.875rem] font-semibold leading-[1.18] tracking-tight text-white xl:text-[2.625rem]">
+          {line1}
+          {line2 ? (
+            <>
+              <br />
+              <span className="text-primary-500">{line2}</span>
+            </>
+          ) : null}
+        </h2>
+      </div>
 
-      <p className="max-w-[26rem] border-s-2 border-primary-500/40 ps-4 text-[0.9375rem] leading-relaxed text-neutral-400">
+      <p className="max-w-[28rem] text-base leading-relaxed text-neutral-400">
         {subtitle}
       </p>
     </div>
