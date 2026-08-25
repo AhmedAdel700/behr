@@ -3,6 +3,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { FilePlus2, Files } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { auth } from "@/auth";
+import { AttendanceHistorySection } from "@/components/employee/AttendanceHistorySection";
 import { ComingSoonCard } from "@/components/employee/ComingSoonCard";
 import { fetchAllLeaveRequests } from "@services/leave-requests/leaveRequestsService";
 
@@ -73,6 +74,8 @@ export async function EmployeeHome(): Promise<ReactElement> {
           </Link>
         </div>
       </section>
+
+      <AttendanceHistorySection employeeId={session?.user?.id} />
     </div>
   );
 }

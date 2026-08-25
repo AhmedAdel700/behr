@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { Lock, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { loginAction } from "@/app/actions/auth/authActions";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -94,7 +94,6 @@ export function LoginForm({
           type="password"
           autoComplete="current-password"
           placeholder={t("login.passwordPlaceholder")}
-          startIcon={<Lock />}
           error={errors.password?.message}
           {...register("password")}
         />

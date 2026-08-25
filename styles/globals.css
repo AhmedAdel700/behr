@@ -149,6 +149,11 @@
     @apply bg-background text-foreground;
   }
 
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
   html.admin-dashboard,
   html.admin-dashboard * {
     scrollbar-width: none;
