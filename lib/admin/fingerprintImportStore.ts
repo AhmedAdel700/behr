@@ -6,7 +6,7 @@ import type {
   FingerprintImportMonthKey,
 } from "@/types/FingerprintImportApiTypes";
 
-const STORAGE_KEY = "behr-fingerprint-imports-v2";
+const STORAGE_KEY = "behr-fingerprint-imports-v3";
 
 const listeners = new Set<() => void>();
 
@@ -18,12 +18,20 @@ function emit(): void {
   }
 }
 
-function toMonthKey(year: number, month: number): FingerprintImportMonthKey {
-  return `${year}-${month}`;
+function toMonthKey(
+  branchId: string,
+  year: number,
+  month: number,
+): FingerprintImportMonthKey {
+  return `${branchId}-${year}-${month}`;
 }
 
-function emptyMonthData(year: number, month: number): FingerprintImportMonthData {
-  return { year, month, uploads: [], records: [] };
+function emptyMonthData(
+  branchId: string,
+  year: number,
+  month: number,
+): FingerprintImportMonthData {
+  return { branchId, year, month, uploads: [], records: [] };
 }
 
 function readStoredMonths(): FingerprintImportMonthData[] {
@@ -40,11 +48,23 @@ function readStoredMonths(): FingerprintImportMonthData[] {
   }
 }
 
-function isFingerprintImportMonthData(value: unknown): value is FingerprintImportMonthData {
+function isFingerprintImportMonthData(
+  value: unknown,
+): value is FingerprintImportMonthData {
   if (typeof value !== "object" || value === null) return false;
-  if (!("year" in value) || !("month" in value)) return false;
-  if (!("uploads" in value) || !("records" in value)) return false;
+  if (
+    !("branchId" in value) ||
+    !("year" in value) ||
+    !("month" in value) ||
+    !("uploads" in value) ||
+    !("records" in value)
+  ) {
+    return false;
+  }
+
   return (
+    typeof value.branchId === "string" &&
+    value.branchId.trim().length > 0 &&
     typeof value.year === "number" &&
     typeof value.month === "number" &&
     Array.isArray(value.uploads) &&
@@ -59,7 +79,10 @@ function writeStoredMonths(months: readonly FingerprintImportMonthData[]): void 
 
 function rebuildMapFromArray(months: readonly FingerprintImportMonthData[]): void {
   monthDataMap = new Map(
-    months.map((item) => [toMonthKey(item.year, item.month), item])
+    months.map((item) => [
+      toMonthKey(item.branchId, item.year, item.month),
+      item,
+    ]),
   );
 }
 
@@ -84,21 +107,37 @@ export function hydrateFingerprintImports(): void {
 }
 
 export function getFingerprintImportMonthSnapshot(
+  branchId: string,
   year: number,
-  month: number
+  month: number,
 ): FingerprintImportMonthData {
-  return monthDataMap.get(toMonthKey(year, month)) ?? emptyMonthData(year, month);
+  if (!branchId.trim()) {
+    return emptyMonthData(branchId, year, month);
+  }
+
+  return (
+    monthDataMap.get(toMonthKey(branchId, year, month)) ??
+    emptyMonthData(branchId, year, month)
+  );
 }
 
-export function getAllFingerprintImportMonthsSnapshot(): FingerprintImportMonthData[] {
-  return Array.from(monthDataMap.values()).sort((a, b) => {
-    if (a.year !== b.year) return b.year - a.year;
-    return b.month - a.month;
-  });
+export function getAllFingerprintImportMonthsSnapshot(
+  branchId?: string,
+): FingerprintImportMonthData[] {
+  const normalizedBranchId = branchId?.trim();
+
+  return Array.from(monthDataMap.values())
+    .filter((item) =>
+      normalizedBranchId ? item.branchId === normalizedBranchId : true,
+    )
+    .sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
 }
 
 export function upsertFingerprintImportMonth(data: FingerprintImportMonthData): void {
-  monthDataMap.set(toMonthKey(data.year, data.month), data);
+  monthDataMap.set(toMonthKey(data.branchId, data.year, data.month), data);
   persistMap();
   emit();
 }

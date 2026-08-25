@@ -23,15 +23,17 @@ export interface FingerprintImportUpload {
 }
 
 export interface FingerprintImportMonthData {
+  branchId: string;
   year: number;
   month: number;
   uploads: FingerprintImportUpload[];
   records: FingerprintAttendanceRecord[];
 }
 
-export type FingerprintImportMonthKey = `${number}-${number}`;
+export type FingerprintImportMonthKey = `${string}-${number}-${number}`;
 
 export interface FingerprintImportUploadRequest {
+  branchId: string;
   file: File;
   year: number;
   month: number;

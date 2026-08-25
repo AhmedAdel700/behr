@@ -39,6 +39,7 @@ const previousYear =
 
 export const MOCK_FINGERPRINT_IMPORT_MONTHS: FingerprintImportMonthData[] = [
   {
+    branchId: "1",
     year: previousYear,
     month: previousMonth,
     uploads: [

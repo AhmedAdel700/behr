@@ -9,7 +9,11 @@ import {
   type ReactElement,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Calendar, Fingerprint, History, Search, UploadCloud } from "lucide-react";
+import { Calendar, Fingerprint, History, MapPinned, Search, UploadCloud } from "lucide-react";
+import {
+  DEFAULT_BRANCHES_LIST_PARAMS,
+  useGetBranchesQuery,
+} from "@/app/store/api/branches/branchesApi";
 import { CustomUpload } from "@/components/shared/CustomUpload";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
@@ -65,6 +69,7 @@ export function AdminFingerprintImportPage(): ReactElement {
 
   const [year, setYear] = useState(String(now.getFullYear()));
   const [month, setMonth] = useState(String(now.getMonth() + 1));
+  const [branchId, setBranchId] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -82,6 +87,27 @@ export function AdminFingerprintImportPage(): ReactElement {
 
   const parsedYear = Number(year);
   const parsedMonth = Number(month);
+
+  const { data: branchesResult, isLoading: isLoadingBranches } =
+    useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
+  const branches = branchesResult?.branches ?? [];
+
+  const branchOptions = useMemo(
+    () =>
+      branches.map((branch) => ({
+        value: branch.id,
+        label: branch.city ? `${branch.name} · ${branch.city}` : branch.name,
+      })),
+    [branches],
+  );
+
+  useEffect(() => {
+    if (branchId || branches.length === 0) {
+      return;
+    }
+
+    setBranchId(branches[0]?.id ?? "");
+  }, [branchId, branches]);
 
   const yearOptions = useMemo(
     () =>
@@ -102,22 +128,34 @@ export function AdminFingerprintImportPage(): ReactElement {
   );
 
   const loadMonthData = useCallback(async (): Promise<void> => {
-    if (!Number.isFinite(parsedYear) || !Number.isFinite(parsedMonth)) return;
+    if (
+      !branchId.trim() ||
+      !Number.isFinite(parsedYear) ||
+      !Number.isFinite(parsedMonth)
+    ) {
+      return;
+    }
 
     setLoadingMonth(true);
     setFetchError(null);
 
-    const response = await fetchFingerprintImportMonth(parsedYear, parsedMonth);
+    const response = await fetchFingerprintImportMonth(
+      branchId,
+      parsedYear,
+      parsedMonth,
+    );
 
     if (response.ok) {
       setMonthData(response.data);
     } else {
       setFetchError(response.message);
-      setMonthData(getFingerprintImportMonthSnapshot(parsedYear, parsedMonth));
+      setMonthData(
+        getFingerprintImportMonthSnapshot(branchId, parsedYear, parsedMonth),
+      );
     }
 
     setLoadingMonth(false);
-  }, [parsedMonth, parsedYear]);
+  }, [branchId, parsedMonth, parsedYear]);
 
   useEffect(() => {
     hydrateFingerprintImports();
@@ -130,16 +168,16 @@ export function AdminFingerprintImportPage(): ReactElement {
   useEffect(() => {
     setRecordsSearchQuery("");
     setRecordsPage(1);
-  }, [parsedYear, parsedMonth]);
+  }, [branchId, parsedYear, parsedMonth]);
 
   useEffect(() => {
-    if (monthData) return;
-    setMonthData(getFingerprintImportMonthSnapshot(parsedYear, parsedMonth));
-  }, [monthData, parsedMonth, parsedYear]);
+    if (monthData || !branchId.trim()) return;
+    setMonthData(getFingerprintImportMonthSnapshot(branchId, parsedYear, parsedMonth));
+  }, [branchId, monthData, parsedMonth, parsedYear]);
 
   const uploads = monthData?.uploads ?? [];
   const records = monthData?.records ?? [];
-  const allMonths = getAllFingerprintImportMonthsSnapshot();
+  const allMonths = getAllFingerprintImportMonthsSnapshot(branchId);
 
   const filteredRecords = useMemo(
     () => searchFingerprintRecords(records, recordsSearchQuery),
@@ -166,6 +204,11 @@ export function AdminFingerprintImportPage(): ReactElement {
   };
 
   const handleUpload = async (): Promise<void> => {
+    if (!branchId.trim()) {
+      setUploadError(t("errors.noBranch"));
+      return;
+    }
+
     if (!selectedFile) {
       setUploadError(t("errors.noFile"));
       return;
@@ -175,6 +218,7 @@ export function AdminFingerprintImportPage(): ReactElement {
     setUploadError(null);
 
     const response = await submitFingerprintImport({
+      branchId,
       file: selectedFile,
       year: parsedYear,
       month: parsedMonth,
@@ -210,7 +254,22 @@ export function AdminFingerprintImportPage(): ReactElement {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <MainSelect
+            label={t("fields.branch")}
+            value={branchId}
+            onValueChange={(value) => {
+              setBranchId(value);
+              setMonthData(null);
+              setSelectedFile(undefined);
+              setUploadError(null);
+              setFetchError(null);
+            }}
+            options={branchOptions}
+            placeholder={t("placeholders.branch")}
+            startIcon={<MapPinned className="size-4" />}
+            disabled={isLoadingBranches || branchOptions.length === 0}
+          />
           <MainSelect
             label={t("fields.year")}
             value={year}
@@ -227,6 +286,10 @@ export function AdminFingerprintImportPage(): ReactElement {
           />
         </div>
 
+        {branchOptions.length === 0 && !isLoadingBranches ? (
+          <p className="mt-3 text-sm text-text-muted">{t("noBranches")}</p>
+        ) : null}
+
         <div className="mt-5">
           <CustomUpload
             label={t("fields.file")}
@@ -241,7 +304,7 @@ export function AdminFingerprintImportPage(): ReactElement {
               setUploadError(null);
             }}
             error={uploadError ?? undefined}
-            disabled={uploading || loadingMonth}
+            disabled={uploading || loadingMonth || !branchId.trim()}
           />
         </div>
 
@@ -250,7 +313,9 @@ export function AdminFingerprintImportPage(): ReactElement {
             variant="primary"
             startIcon={<UploadCloud className="size-4" />}
             loading={uploading}
-            disabled={!selectedFile || uploading || loadingMonth}
+            disabled={
+              !branchId.trim() || !selectedFile || uploading || loadingMonth
+            }
             onClick={() => {
               void handleUpload();
             }}

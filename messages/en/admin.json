@@ -631,8 +631,9 @@
     "title": "Fingerprint import",
     "subtitle": "Upload attendance sheets from the fingerprint machine and review imported records by month.",
     "uploadSectionTitle": "Upload attendance sheet",
-    "uploadSectionSubtitle": "Select the year and month, then drop the Excel export from your fingerprint device.",
+    "uploadSectionSubtitle": "Select the branch, year, and month, then drop the Excel export from your fingerprint device.",
     "fields": {
+      "branch": "Branch",
       "year": "Year",
       "month": "Month",
       "file": "Spreadsheet file",
@@ -660,6 +661,10 @@
       "submit": "Upload and import"
     },
     "loadingMonth": "Loading data for selected month…",
+    "noBranches": "No branches available. Create a branch before importing attendance.",
+    "placeholders": {
+      "branch": "Select branch"
+    },
     "historyTitle": "Upload history ({count})",
     "historyEmpty": "No sheets uploaded for this month yet.",
     "historyColumns": {
@@ -696,6 +701,7 @@
       "summary": "Showing {start}–{end} of {total}"
     },
     "errors": {
+      "noBranch": "Select a branch before uploading.",
       "noFile": "Choose a spreadsheet file before uploading."
     }
   }

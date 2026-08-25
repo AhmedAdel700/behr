@@ -50,7 +50,7 @@ function parseErrorMessage(payload: unknown, fallback: string): string {
 function mergeMonthData(
   existing: FingerprintImportMonthData,
   upload: FingerprintImportUpload,
-  newRecords: FingerprintAttendanceRecord[]
+  newRecords: FingerprintAttendanceRecord[],
 ): FingerprintImportMonthData {
   const uploads = [upload, ...existing.uploads.filter((item) => item.id !== upload.id)];
   const recordMap = new Map(existing.records.map((record) => [record.id, record]));
@@ -60,18 +60,20 @@ function mergeMonthData(
   }
 
   return {
+    branchId: existing.branchId,
     year: existing.year,
     month: existing.month,
     uploads,
     records: Array.from(recordMap.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
+      a.date.localeCompare(b.date),
     ),
   };
 }
 
 async function fetchMonthFromBackend(
+  branchId: string,
   year: number,
-  month: number
+  month: number,
 ): Promise<FingerprintImportFetchResponse> {
   const baseUrl = getBackendBaseUrl();
   if (!baseUrl) {
@@ -79,6 +81,7 @@ async function fetchMonthFromBackend(
   }
 
   const url = new URL(`${baseUrl}/admin/fingerprint-import`);
+  url.searchParams.set("branch_id", branchId);
   url.searchParams.set("year", String(year));
   url.searchParams.set("month", String(month));
 
@@ -88,6 +91,10 @@ async function fetchMonthFromBackend(
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      return fetchMonthStub(branchId, year, month);
+    }
+
     let message = "Failed to load fingerprint import data.";
     try {
       const payload: unknown = await response.json();
@@ -111,8 +118,8 @@ async function fetchMonthFromBackend(
   }
 
   const data = payload as FingerprintImportMonthData;
-  upsertFingerprintImportMonth(data);
-  return { ok: true, data };
+  upsertFingerprintImportMonth({ ...data, branchId: data.branchId || branchId });
+  return { ok: true, data: { ...data, branchId: data.branchId || branchId } };
 }
 
 async function uploadToBackend(
@@ -125,6 +132,7 @@ async function uploadToBackend(
 
   const formData = new FormData();
   formData.append("file", request.file);
+  formData.append("branch_id", request.branchId);
   formData.append("year", String(request.year));
   formData.append("month", String(request.month));
 
@@ -134,6 +142,10 @@ async function uploadToBackend(
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      return uploadStub(request);
+    }
+
     let message = "Failed to upload fingerprint sheet.";
     try {
       const payload: unknown = await response.json();
@@ -157,16 +169,21 @@ async function uploadToBackend(
   }
 
   const data = payload as FingerprintImportMonthData;
-  upsertFingerprintImportMonth(data);
-  return { ok: true, data };
+  const normalizedData = {
+    ...data,
+    branchId: data.branchId || request.branchId,
+  };
+  upsertFingerprintImportMonth(normalizedData);
+  return { ok: true, data: normalizedData };
 }
 
 async function fetchMonthStub(
+  branchId: string,
   year: number,
-  month: number
+  month: number,
 ): Promise<FingerprintImportFetchResponse> {
   await delay(STUB_DELAY_MS);
-  const data = getFingerprintImportMonthSnapshot(year, month);
+  const data = getFingerprintImportMonthSnapshot(branchId, year, month);
   return { ok: true, data };
 }
 
@@ -182,7 +199,11 @@ async function uploadStub(
 
   await delay(STUB_DELAY_MS);
 
-  const existing = getFingerprintImportMonthSnapshot(request.year, request.month);
+  const existing = getFingerprintImportMonthSnapshot(
+    request.branchId,
+    request.year,
+    request.month,
+  );
   const admin = getAdminSessionSnapshot();
   const newRecords = buildStubFingerprintRecords(
     request.year,
@@ -206,19 +227,30 @@ async function uploadStub(
 }
 
 export async function fetchFingerprintImportMonth(
+  branchId: string,
   year: number,
-  month: number
+  month: number,
 ): Promise<FingerprintImportFetchResponse> {
+  const normalizedBranchId = branchId.trim();
+  if (!normalizedBranchId) {
+    return { ok: false, message: "Branch is required." };
+  }
+
   const baseUrl = getBackendBaseUrl();
   if (baseUrl) {
-    return fetchMonthFromBackend(year, month);
+    return fetchMonthFromBackend(normalizedBranchId, year, month);
   }
-  return fetchMonthStub(year, month);
+  return fetchMonthStub(normalizedBranchId, year, month);
 }
 
 export async function submitFingerprintImport(
   request: FingerprintImportUploadRequest
 ): Promise<FingerprintImportUploadResponse> {
+  const normalizedBranchId = request.branchId.trim();
+  if (!normalizedBranchId) {
+    return { ok: false, message: "Branch is required." };
+  }
+
   if (!isAcceptedSpreadsheet(request.file)) {
     return {
       ok: false,
