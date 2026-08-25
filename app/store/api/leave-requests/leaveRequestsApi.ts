@@ -3,6 +3,7 @@ import type {
   LeaveRequestMutationResult,
   LeaveRequestPayload,
   LeaveRequestRecord,
+  LeaveRequestStatus,
   LeaveRequestsListQueryParams,
   LeaveRequestsListResult,
   RejectLeaveRequestPayload,
@@ -45,13 +46,23 @@ export function normalizeLeaveRequestsListParams(
 ): LeaveRequestsListQueryParams {
   const page = arg?.page && arg.page > 1 ? arg.page : 1;
   const search = arg?.search?.trim();
-  const status = arg?.status;
+  const status = parseLeaveRequestStatusFilter(arg?.status);
 
   return {
     page,
     ...(search ? { search } : {}),
     ...(status ? { status } : {}),
   };
+}
+
+export function parseLeaveRequestStatusFilter(
+  value: string | LeaveRequestStatus | undefined | null,
+): LeaveRequestStatus | undefined {
+  if (value === "pending" || value === "approved" || value === "rejected") {
+    return value;
+  }
+
+  return undefined;
 }
 
 export function serializeLeaveRequestsListParams(

@@ -7,6 +7,8 @@ import { MainButton } from "@/components/shared/MainButton";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import { DISPLAY_DATETIME_VALUE_CLASS } from "@/lib/tableCells";
+import { cn } from "@/lib/utils";
 import type { RegistrationRequestRecord } from "@/types/RegistrationRequestsApiTypes";
 
 interface RegistrationRequestViewModalProps {
@@ -157,10 +159,14 @@ function RequestDetails({
       </DetailField>
       <DetailField label={t("columns.status")}>{statusLabel}</DetailField>
       <DetailField label={t("columns.submitted")}>
-        {formatTimestamp(request.createdAt, locale)}
+        <span className={DISPLAY_DATETIME_VALUE_CLASS}>
+          {formatTimestamp(request.createdAt, locale)}
+        </span>
       </DetailField>
       <DetailField label={t("fields.reviewedAt")}>
-        {formatTimestamp(request.reviewedAt, locale)}
+        <span className={DISPLAY_DATETIME_VALUE_CLASS}>
+          {formatTimestamp(request.reviewedAt, locale)}
+        </span>
       </DetailField>
       {request.reviewerName ? (
         <DetailField label={t("fields.reviewer")}>

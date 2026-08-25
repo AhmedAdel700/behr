@@ -35,6 +35,13 @@ import type {
   FingerprintImportMonthData,
 } from "@/types/FingerprintImportApiTypes";
 import { cn } from "@/lib/utils";
+import {
+  TABLE_DATE_CELL_CLASS,
+  TABLE_DATE_RANGE_CELL_CLASS,
+  TABLE_DATETIME_CELL_CLASS,
+  TABLE_PERIOD_CELL_CLASS,
+  TABLE_TIME_CELL_CLASS,
+} from "@/lib/tableCells";
 
 const RECORDS_PAGE_SIZE = 31;
 const RECORDS_COLUMN_COUNT = 8;
@@ -278,10 +285,10 @@ export function AdminFingerprintImportPage(): ReactElement {
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("historyColumns.fileName")}
                   </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                  <th className={cn("px-4 py-4 text-start text-xs font-semibold text-text-muted", TABLE_PERIOD_CELL_CLASS)}>
                     {t("historyColumns.period")}
                   </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                  <th className={cn("px-4 py-4 text-start text-xs font-semibold text-text-muted", TABLE_DATETIME_CELL_CLASS)}>
                     {t("historyColumns.uploadedAt")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
@@ -311,10 +318,10 @@ export function AdminFingerprintImportPage(): ReactElement {
                       )}
                     >
                       <td className="px-4 py-3 font-medium text-ink">{upload.fileName}</td>
-                      <td className="px-4 py-3 text-text-secondary">
+                      <td className={cn("px-4 py-3 text-text-secondary", TABLE_PERIOD_CELL_CLASS)}>
                         {t(`months.${upload.month}` as "months.1")} {upload.year}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">
+                      <td className={cn("px-4 py-3 text-text-secondary", TABLE_DATETIME_CELL_CLASS)}>
                         {formatDateTime12(
                           new Date(upload.uploadedAt),
                           resolveTimeLocale(locale)
@@ -396,13 +403,13 @@ export function AdminFingerprintImportPage(): ReactElement {
                   <th className={recordsTableHeaderClass}>
                     {t("recordsColumns.fingerprintSerial")}
                   </th>
-                  <th className={recordsTableHeaderClass}>
+                  <th className={cn(recordsTableHeaderClass, TABLE_TIME_CELL_CLASS)}>
                     {t("recordsColumns.clockIn")}
                   </th>
-                  <th className={recordsTableHeaderClass}>
+                  <th className={cn(recordsTableHeaderClass, TABLE_TIME_CELL_CLASS)}>
                     {t("recordsColumns.clockOut")}
                   </th>
-                  <th className={recordsTableHeaderClass}>
+                  <th className={cn(recordsTableHeaderClass, TABLE_DATE_CELL_CLASS)}>
                     {t("recordsColumns.date")}
                   </th>
                   <th className={recordsTableHeaderClass}>
@@ -432,13 +439,13 @@ export function AdminFingerprintImportPage(): ReactElement {
                       <td className={cn(recordsTableCellClass, "tabular-nums text-text-secondary")} title={record.fingerprintSerial ?? undefined}>
                         {record.fingerprintSerial ?? "—"}
                       </td>
-                      <td className={cn(recordsTableCellClass, "tabular-nums text-text-secondary")}>
+                      <td className={cn(recordsTableCellClass, TABLE_TIME_CELL_CLASS, "tabular-nums text-text-secondary")}>
                         {formatStoredTime12(record.clockIn, resolveTimeLocale(locale))}
                       </td>
-                      <td className={cn(recordsTableCellClass, "tabular-nums text-text-secondary")}>
+                      <td className={cn(recordsTableCellClass, TABLE_TIME_CELL_CLASS, "tabular-nums text-text-secondary")}>
                         {formatStoredTime12(record.clockOut, resolveTimeLocale(locale))}
                       </td>
-                      <td className={cn(recordsTableCellClass, "text-text-secondary")} title={record.date}>
+                      <td className={cn(recordsTableCellClass, TABLE_DATE_CELL_CLASS, "text-text-secondary")} title={record.date}>
                         {formatStoredDate(record.date, resolveTimeLocale(locale))}
                       </td>
                       <td className={recordsTableCellClass}>

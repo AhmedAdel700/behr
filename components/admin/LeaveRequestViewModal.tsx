@@ -26,6 +26,10 @@ import { resolveAvatarSrc } from "@/lib/employee/avatar";
 import { leaveTypeDotStyle } from "@/lib/employee/leaveTypeColors";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import {
+  DISPLAY_DATE_RANGE_VALUE_CLASS,
+  DISPLAY_DATETIME_VALUE_CLASS,
+} from "@/lib/tableCells";
 import { cn } from "@/lib/utils";
 import type {
   LeaveRequestRecord,
@@ -304,10 +308,14 @@ function RequestDetails({
             />
           </DetailField>
           <DetailField label={tFields("dates")} icon={CalendarDays}>
-            <span className="font-medium">{dateRange}</span>
+            <span className={cn("font-medium", DISPLAY_DATE_RANGE_VALUE_CLASS)}>
+              {dateRange}
+            </span>
           </DetailField>
           <DetailField label={tFields("createdAt")} icon={Clock}>
-            <span className="font-medium">{submittedAt}</span>
+            <span className={cn("font-medium", DISPLAY_DATETIME_VALUE_CLASS)}>
+              {submittedAt}
+            </span>
           </DetailField>
         </dl>
       </DetailSection>
@@ -330,7 +338,9 @@ function RequestDetails({
             ) : null}
             {reviewedAt ? (
               <DetailField label={tFields("reviewedAt")} icon={CalendarClock}>
-                <span className="font-medium">{reviewedAt}</span>
+                <span className={cn("font-medium", DISPLAY_DATETIME_VALUE_CLASS)}>
+                  {reviewedAt}
+                </span>
               </DetailField>
             ) : null}
             {request.rejectionReason ? (

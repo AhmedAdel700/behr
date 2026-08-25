@@ -44,6 +44,8 @@ import {
 } from "@/lib/admin/adminSessionStore";
 import { canManageEmployees, isSuperAdmin } from "@/lib/admin/permissions";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import { DISPLAY_DATETIME_VALUE_CLASS } from "@/lib/tableCells";
+import { cn } from "@/lib/utils";
 import type { EmployeeRecord } from "@/types/EmployeesApiTypes";
 
 export function AdminEmployeeDetailPage({
@@ -222,6 +224,7 @@ export function AdminEmployeeDetailPage({
             label={t("fields.joinDate")}
             value={formatJoinDate(employee.createdAt, locale)}
             icon={CalendarDays}
+            valueClassName={DISPLAY_DATETIME_VALUE_CLASS}
           />
         </InfoCard>
       </div>
@@ -334,11 +337,13 @@ function DetailField({
   value,
   icon: Icon,
   action,
+  valueClassName,
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
   action?: ReactNode;
+  valueClassName?: string;
 }): ReactElement {
   return (
     <div className="rounded-xl border border-border/80 bg-surface-muted/30 px-3 py-2.5">
@@ -347,7 +352,12 @@ function DetailField({
         {label}
       </dt>
       <dd className="mt-1.5 flex items-center justify-between gap-2">
-        <span className="min-w-0 break-words text-sm font-medium text-ink">
+        <span
+          className={cn(
+            "min-w-0 text-sm font-medium text-ink",
+            valueClassName ?? "break-words",
+          )}
+        >
           {value}
         </span>
         {action}

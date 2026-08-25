@@ -13,6 +13,10 @@ import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
 import { MainButton } from "@/components/shared/MainButton";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import {
+  DISPLAY_DATE_RANGE_VALUE_CLASS,
+  DISPLAY_DATETIME_VALUE_CLASS,
+} from "@/lib/tableCells";
 import { cn } from "@/lib/utils";
 import type { LeaveRequestRecord } from "@/types/LeaveRequestsApiTypes";
 
@@ -96,7 +100,7 @@ export function RequestDetail({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <dt className="text-xs text-text-muted">{t("dates")}</dt>
-            <dd className="mt-1 text-sm font-medium text-ink">
+            <dd className={cn("mt-1 text-sm font-medium text-ink", DISPLAY_DATE_RANGE_VALUE_CLASS)}>
               {formatLeaveRequestRange(
                 item.startAt,
                 item.endAt,
@@ -139,12 +143,16 @@ export function RequestDetail({
         {reviewedAt ? (
           <div>
             <dt className="text-xs text-text-muted">{t("reviewedAt")}</dt>
-            <dd className="mt-1 text-sm font-medium text-ink">{reviewedAt}</dd>
+            <dd className={cn("mt-1 text-sm font-medium text-ink", DISPLAY_DATETIME_VALUE_CLASS)}>
+              {reviewedAt}
+            </dd>
           </div>
         ) : null}
         <div>
           <dt className="text-xs text-text-muted">{t("createdAt")}</dt>
-          <dd className="mt-1 text-sm font-medium text-ink">{submittedAt}</dd>
+          <dd className={cn("mt-1 text-sm font-medium text-ink", DISPLAY_DATETIME_VALUE_CLASS)}>
+            {submittedAt}
+          </dd>
         </div>
       </dl>
     </div>

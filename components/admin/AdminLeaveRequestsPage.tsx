@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, Eye, X } from "lucide-react";
 import {
-  DEFAULT_LEAVE_REQUESTS_LIST_PARAMS,
-  leaveRequestsApi,
   normalizeLeaveRequestsListParams,
+  leaveRequestsApi,
+  serializeLeaveRequestsListParams,
   useApproveLeaveRequestMutation,
   useGetLeaveRequestsQuery,
   useRejectLeaveRequestMutation,
@@ -28,6 +28,10 @@ import { formatLeaveRequestRange, getLeaveRequestMutationError } from "@/lib/emp
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import { cn } from "@/lib/utils";
+import {
+  TABLE_DATE_RANGE_CELL_CLASS,
+  TABLE_DATETIME_CELL_CLASS,
+} from "@/lib/tableCells";
 import type {
   LeaveRequestRecord,
   LeaveRequestStatus,
@@ -69,10 +73,31 @@ function employeeNameOf(request: LeaveRequestRecord): string {
   return request.employee?.fullName?.trim() || request.employeeId;
 }
 
+type StatusFilter = "all" | LeaveRequestStatus;
+
+function syncStatusQueryParam(status: StatusFilter): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  if (status === "all") {
+    url.searchParams.delete("status");
+  } else {
+    url.searchParams.set("status", status);
+  }
+
+  window.history.replaceState(null, "", url);
+}
+
 export function AdminLeaveRequestsPage({
   initialData,
+  initialStatus,
+  initialSearch = "",
 }: {
   initialData?: LeaveRequestsListResult;
+  initialStatus?: LeaveRequestStatus;
+  initialSearch?: string;
 }): ReactElement {
   const t = useTranslations("admin.leaveRequests");
   const tStatus = useTranslations("employee.requests.status");
@@ -87,7 +112,10 @@ export function AdminLeaveRequestsPage({
   const { triggerRef: rejectRequestTriggerRef, bindTrigger: bindRejectRequestTrigger } =
     useModalTriggerRef();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    initialStatus ?? "all",
+  );
   const [page, setPage] = useState(1);
   const [approveId, setApproveId] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -96,14 +124,29 @@ export function AdminLeaveRequestsPage({
   const queryArg: LeaveRequestsListQueryParams = normalizeLeaveRequestsListParams({
     page,
     search: searchQuery,
+    status: statusFilter === "all" ? undefined : statusFilter,
   });
+
+  const initialQueryArg = useMemo(
+    (): LeaveRequestsListQueryParams =>
+      normalizeLeaveRequestsListParams({
+        page: 1,
+        search: initialSearch,
+        status: initialStatus,
+      }),
+    [initialSearch, initialStatus],
+  );
+
+  const matchesInitialQuery =
+    serializeLeaveRequestsListParams(queryArg) ===
+    serializeLeaveRequestsListParams(initialQueryArg);
 
   if (initialData && !didSeedCache.current) {
     didSeedCache.current = true;
     dispatch(
       leaveRequestsApi.util.upsertQueryData(
         "getLeaveRequests",
-        DEFAULT_LEAVE_REQUESTS_LIST_PARAMS,
+        initialQueryArg,
         initialData,
       ),
     );
@@ -114,15 +157,18 @@ export function AdminLeaveRequestsPage({
     isLoading,
     isFetching,
     isError,
-  } = useGetLeaveRequestsQuery(queryArg);
+  } = useGetLeaveRequestsQuery(queryArg, { refetchOnMountOrArgChange: true });
   const [approveLeaveRequest, { isLoading: approving }] =
     useApproveLeaveRequestMutation();
   const [rejectLeaveRequest, { isLoading: rejecting }] =
     useRejectLeaveRequestMutation();
 
-  const leaveRequests =
-    leaveRequestsResult?.leaveRequests ?? initialData?.leaveRequests ?? [];
-  const meta = leaveRequestsResult?.meta ?? initialData?.meta;
+  const leaveRequests = matchesInitialQuery
+    ? (leaveRequestsResult?.leaveRequests ?? initialData?.leaveRequests ?? [])
+    : (leaveRequestsResult?.leaveRequests ?? []);
+  const meta = matchesInitialQuery
+    ? (leaveRequestsResult?.meta ?? initialData?.meta)
+    : leaveRequestsResult?.meta;
 
   const viewRequest = viewId
     ? (leaveRequests.find((item) => item.id === viewId) ?? null)
@@ -138,6 +184,34 @@ export function AdminLeaveRequestsPage({
     setSearchQuery(query);
     setPage(1);
   };
+
+  const handleStatusFilterChange = (nextStatus: StatusFilter): void => {
+    setStatusFilter(nextStatus);
+    setPage(1);
+    syncStatusQueryParam(nextStatus);
+  };
+
+  const statusFilters = useMemo(
+    (): Array<{ value: StatusFilter; label: string }> => [
+      { value: "all", label: t("filters.all") },
+      { value: "pending", label: tStatus("pending") },
+      { value: "approved", label: tStatus("approved") },
+      { value: "rejected", label: tStatus("rejected") },
+    ],
+    [t, tStatus],
+  );
+
+  const emptyMessage = ((): string => {
+    if (searchQuery.trim()) {
+      return t("noSearchResults");
+    }
+
+    if (statusFilter !== "all") {
+      return t(`empty.${statusFilter}`);
+    }
+
+    return t("emptyPending");
+  })();
 
   const openView = (
     request: LeaveRequestRecord,
@@ -183,7 +257,7 @@ export function AdminLeaveRequestsPage({
     }
   };
 
-  const isInitialQuery = page === 1 && searchQuery.trim().length === 0;
+  const isInitialQuery = matchesInitialQuery && page === 1;
   const hasSeededInitialData = initialData !== undefined;
   const isTableLoading =
     (isLoading || isFetching) && !(isInitialQuery && hasSeededInitialData);
@@ -201,6 +275,7 @@ export function AdminLeaveRequestsPage({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="w-full lg:max-w-xs">
             <SearchInput
+              defaultValue={initialSearch}
               onSearch={handleSearch}
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchPlaceholder")}
@@ -209,6 +284,25 @@ export function AdminLeaveRequestsPage({
           <h2 className="self-end text-sm font-semibold text-ink lg:self-auto">
             {t("resultsTitle", { count: meta?.total ?? leaveRequests.length })}
           </h2>
+        </div>
+
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("filters.status")}
+        >
+          {statusFilters.map((filter) => (
+            <MainButton
+              key={filter.value}
+              type="button"
+              size="sm"
+              variant={statusFilter === filter.value ? "primary" : "neutral"}
+              aria-pressed={statusFilter === filter.value}
+              onClick={() => handleStatusFilterChange(filter.value)}
+            >
+              {filter.label}
+            </MainButton>
+          ))}
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
@@ -222,13 +316,13 @@ export function AdminLeaveRequestsPage({
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("columns.type")}
                   </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                  <th className={cn("px-4 py-4 text-start text-xs font-semibold text-text-muted", TABLE_DATE_RANGE_CELL_CLASS)}>
                     {t("columns.dates")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("columns.status")}
                   </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                  <th className={cn("px-4 py-4 text-start text-xs font-semibold text-text-muted", TABLE_DATETIME_CELL_CLASS)}>
                     {t("columns.submitted")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
@@ -254,7 +348,7 @@ export function AdminLeaveRequestsPage({
                       colSpan={6}
                       className="px-4 py-10 text-center text-sm text-text-muted"
                     >
-                      {searchQuery.trim() ? t("noSearchResults") : t("emptyPending")}
+                      {emptyMessage}
                     </td>
                   </tr>
                 ) : (
@@ -293,7 +387,7 @@ export function AdminLeaveRequestsPage({
                             name={request.leaveType.name}
                           />
                         </td>
-                        <td className="px-4 py-3 text-start text-text-secondary">
+                        <td className={cn("px-4 py-3 text-start text-text-secondary", TABLE_DATE_RANGE_CELL_CLASS)}>
                           {formatLeaveRequestRange(
                             request.startAt,
                             request.endAt,
@@ -307,7 +401,7 @@ export function AdminLeaveRequestsPage({
                             label={tStatus(request.status)}
                           />
                         </td>
-                        <td className="px-4 py-3 text-start text-text-secondary">
+                        <td className={cn("px-4 py-3 text-start text-text-secondary", TABLE_DATETIME_CELL_CLASS)}>
                           {formatSubmittedAt(request.createdAt, locale)}
                         </td>
                         <td className="px-4 py-3">

@@ -21,6 +21,8 @@ import { SearchInput } from "@/components/shared/SearchInput";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
+import { TABLE_DATETIME_CELL_CLASS } from "@/lib/tableCells";
+import { cn } from "@/lib/utils";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import type {
   RegistrationRequestRecord,
@@ -194,7 +196,7 @@ export function AdminRegistrationsPage({
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("columns.branch")}
                   </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
+                  <th className={cn("px-4 py-4 text-start text-xs font-semibold text-text-muted", TABLE_DATETIME_CELL_CLASS)}>
                     {t("columns.submitted")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
@@ -241,7 +243,7 @@ export function AdminRegistrationsPage({
                       <td className="px-4 py-3 text-start text-text-secondary">
                         {request.branchName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-start text-text-secondary">
+                      <td className={cn("px-4 py-3 text-start text-text-secondary", TABLE_DATETIME_CELL_CLASS)}>
                         {formatSubmittedAt(request.createdAt, locale)}
                       </td>
                       <td className="px-4 py-3">

@@ -228,6 +228,15 @@
     "emptyPending": "No leave requests.",
     "searchPlaceholder": "Search by employee, type, or reason…",
     "noSearchResults": "No leave requests match your search.",
+    "filters": {
+      "all": "All",
+      "status": "Filter by status"
+    },
+    "empty": {
+      "pending": "No pending leave requests.",
+      "approved": "No approved leave requests.",
+      "rejected": "No rejected leave requests."
+    },
     "loading": "Loading leave requests…",
     "loadError": "Could not load leave requests.",
     "detailLoading": "Loading request details…",

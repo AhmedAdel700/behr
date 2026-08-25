@@ -18,6 +18,7 @@ import {
 } from "@/lib/employee/groupRequestsByMonth";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { cn } from "@/lib/utils";
+import { DISPLAY_DATE_RANGE_VALUE_CLASS } from "@/lib/tableCells";
 import type {
   LeaveRequestRecord,
   LeaveRequestStatus,
@@ -196,7 +197,7 @@ function RequestCard({
               leaveTypeId={item.leaveType.id}
               name={item.leaveType.name}
             />
-            <p className="text-sm font-medium text-ink">
+            <p className={cn("text-sm font-medium text-ink", DISPLAY_DATE_RANGE_VALUE_CLASS)}>
               {formatLeaveRequestRange(
                 item.startAt,
                 item.endAt,
