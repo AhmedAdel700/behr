@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/drawer";
 import { MainButton } from "@/components/shared/MainButton";
 import {
-  getAdminSessionSnapshot,
   isAdminLoggingOut,
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
+import { useAdminUser } from "@/lib/admin/useAdminUser";
 import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
 import { useAdminSidebarExpanded } from "@/lib/admin/useAdminSidebarPreference";
 import { useAdminMobileDrawerMount, useAdminMobileNav } from "@/lib/admin/adminMobileNav";
@@ -133,9 +133,8 @@ export function AdminSidebar(): ReactElement {
     }
   }, [drawerOpen]);
 
-  useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
   useSyncExternalStore(subscribeAdminSession, isAdminLoggingOut, () => false);
-  const admin = getAdminSessionSnapshot();
+  const admin = useAdminUser();
   const signingOut = isAdminLoggingOut();
   const { data: registrationRequestsResult } =
     useGetRegistrationRequestsQuery(DEFAULT_REGISTRATION_REQUESTS_LIST_PARAMS);

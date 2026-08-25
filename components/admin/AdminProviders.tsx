@@ -6,6 +6,7 @@ import {
   hydrateAdminSession,
   seedAdminSession,
 } from "@/lib/admin/adminSessionStore";
+import { AdminInitialUserContext } from "@/lib/admin/useAdminUser";
 import { markSidebarPreferenceReady } from "@/lib/admin/useAdminSidebarPreference";
 import type { AdminUser } from "@/types/AdminApiTypes";
 
@@ -35,9 +36,9 @@ export function AdminProviders({
   }, []);
 
   return (
-    <>
+    <AdminInitialUserContext.Provider value={initialAdminUser}>
       <AdminSessionSync />
       {children}
-    </>
+    </AdminInitialUserContext.Provider>
   );
 }

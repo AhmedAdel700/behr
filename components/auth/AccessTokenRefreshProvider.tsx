@@ -3,10 +3,8 @@
 import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useLocale } from "next-intl";
-import {
-  logoutAction,
-  refreshTokenAction,
-} from "@/app/actions/auth/authActions";
+import { refreshTokenAction } from "@/app/actions/auth/authActions";
+import { performClientLogout } from "@/lib/admin/runAdminLogout";
 import { REFRESH_ACCESS_TOKEN_ERROR } from "@/lib/auth/refreshJwtAccessToken";
 import { isAccessTokenStale } from "@/lib/auth/tokenExpiry";
 
@@ -29,7 +27,7 @@ export function AccessTokenRefreshProvider({
     }
 
     if (session.error === REFRESH_ACCESS_TOKEN_ERROR) {
-      void logoutAction(locale);
+      performClientLogout(locale);
       return;
     }
 
@@ -58,7 +56,7 @@ export function AccessTokenRefreshProvider({
         }
 
         if (result.shouldLogout) {
-          await logoutAction(locale);
+          performClientLogout(locale);
         }
       } finally {
         refreshingRef.current = false;

@@ -89,6 +89,7 @@ export function seedAdminSession(user: AdminUser): void {
     ...user,
     permissions: user.permissions ?? [],
   };
+  emit();
 }
 
 export function setAdminSession(user: AdminUser): void {

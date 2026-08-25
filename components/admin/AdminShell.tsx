@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { Menu, LayoutDashboard } from "lucide-react";
 import { usePathname } from "@/i18n/navigation";
@@ -14,11 +13,8 @@ import {
   useAdminMobileNav,
 } from "@/lib/admin/adminMobileNav";
 import { getAdminPageTitleKey } from "@/lib/admin/adminNav";
+import { useAdminUser } from "@/lib/admin/useAdminUser";
 import { canSwitchDashboards } from "@/lib/auth/roles";
-import {
-  getAdminSessionSnapshot,
-  subscribeAdminSession,
-} from "@/lib/admin/adminSessionStore";
 import { cn } from "@/lib/utils";
 
 function AdminShellHeader(): React.ReactElement {
@@ -27,8 +23,7 @@ function AdminShellHeader(): React.ReactElement {
   const pageKey = getAdminPageTitleKey(pathname);
   const { setOpen } = useAdminMobileNav();
 
-  useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
-  const admin = getAdminSessionSnapshot();
+  const admin = useAdminUser();
   const roleLabel =
     admin.role === "super_admin"
       ? t("roles.superAdmin")

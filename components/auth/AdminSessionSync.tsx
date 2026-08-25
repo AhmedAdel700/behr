@@ -3,7 +3,6 @@
 import { useLayoutEffect, type ReactElement } from "react";
 import { useSession } from "next-auth/react";
 import {
-  clearAdminSession,
   isAdminLoggingOut,
   setAdminSession,
 } from "@/lib/admin/adminSessionStore";
@@ -13,7 +12,7 @@ export function AdminSessionSync(): ReactElement | null {
   const { data: session, status } = useSession();
 
   useLayoutEffect(() => {
-    if (status === "loading") {
+    if (status === "loading" || isAdminLoggingOut()) {
       return;
     }
 
@@ -21,14 +20,7 @@ export function AdminSessionSync(): ReactElement | null {
 
     if (sessionUser?.appRole === "admin") {
       setAdminSession(mapSessionUserToAdminUser(sessionUser));
-      return;
     }
-
-    if (isAdminLoggingOut()) {
-      return;
-    }
-
-    clearAdminSession();
   }, [session, status]);
 
   return null;
