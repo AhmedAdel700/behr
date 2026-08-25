@@ -1,15 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect, type ReactElement } from "react";
-import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import {
-  leaveRequestsApi,
   useGetAllLeaveRequestsQuery,
 } from "@/app/store/api/leave-requests/leaveRequestsApi";
-import type { AppDispatch } from "@/app/store/store";
 import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
 import { MainButton } from "@/components/shared/MainButton";
 import {
@@ -30,25 +27,14 @@ export function RequestsList({
 }): ReactElement {
   const t = useTranslations("employee.requests");
   const locale = useLocale();
-  const dispatch = useDispatch<AppDispatch>();
-  const didSeedCache = useRef(false);
-
-  if (initialData && !didSeedCache.current) {
-    didSeedCache.current = true;
-    dispatch(
-      leaveRequestsApi.util.upsertQueryData(
-        "getAllLeaveRequests",
-        undefined,
-        initialData,
-      ),
-    );
-  }
 
   const {
     data: leaveRequests,
     isLoading,
     isError,
-  } = useGetAllLeaveRequestsQuery();
+  } = useGetAllLeaveRequestsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
 
   const requests = leaveRequests ?? initialData ?? [];
   const monthGroups = useMemo(
