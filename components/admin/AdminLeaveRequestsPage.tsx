@@ -25,6 +25,9 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { resolveAvatarSrc } from "@/lib/employee/avatar";
 import { formatLeaveRequestRange, getLeaveRequestMutationError } from "@/lib/employee/leaveRequestDisplay";
+import {
+  leaveRequestStatusBadgeClass,
+} from "@/lib/employee/leaveRequestStatusStyles";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import { cn } from "@/lib/utils";
@@ -59,9 +62,7 @@ function StatusBadge({
     <span
       className={cn(
         "inline-flex h-7 w-[6.75rem] shrink-0 items-center justify-center rounded-none px-1 text-center text-[11px] font-semibold leading-none",
-        status === "pending" && "bg-warning-50 text-warning-700",
-        status === "approved" && "bg-success-50 text-success-700",
-        status === "rejected" && "bg-danger-50 text-danger-700",
+        leaveRequestStatusBadgeClass(status),
       )}
     >
       {label}
@@ -197,6 +198,7 @@ export function AdminLeaveRequestsPage({
       { value: "pending", label: tStatus("pending") },
       { value: "approved", label: tStatus("approved") },
       { value: "rejected", label: tStatus("rejected") },
+      { value: "cancelled", label: tStatus("cancelled") },
     ],
     [t, tStatus],
   );

@@ -25,6 +25,10 @@ import { ProfileAvatar } from "@/components/shared/AvatarUpload";
 import { resolveAvatarSrc } from "@/lib/employee/avatar";
 import { leaveTypeDotStyle } from "@/lib/employee/leaveTypeColors";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import {
+  leaveRequestStatusDotClass,
+  leaveRequestStatusTextClass,
+} from "@/lib/employee/leaveRequestStatusStyles";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import {
   DISPLAY_DATE_RANGE_VALUE_CLASS,
@@ -87,17 +91,13 @@ function StatusValue({
     <span
       className={cn(
         "inline-flex items-center gap-2 font-medium",
-        status === "pending" && "text-warning-700",
-        status === "approved" && "text-success-700",
-        status === "rejected" && "text-danger-700",
+        leaveRequestStatusTextClass(status),
       )}
     >
       <span
         className={cn(
           "size-2 shrink-0 rounded-full",
-          status === "pending" && "bg-warning-500",
-          status === "approved" && "bg-success-500",
-          status === "rejected" && "bg-danger-500",
+          leaveRequestStatusDotClass(status),
         )}
         aria-hidden
       />

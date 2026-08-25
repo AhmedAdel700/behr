@@ -1,17 +1,25 @@
 "use client";
 
-import { useRef, type ReactElement } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { ArrowLeft, Pencil } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import {
   leaveRequestsApi,
+  useCancelLeaveRequestMutation,
   useGetLeaveRequestQuery,
 } from "@/app/store/api/leave-requests/leaveRequestsApi";
 import type { AppDispatch } from "@/app/store/store";
 import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
+import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
-import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import {
+  formatLeaveRequestRange,
+  getLeaveRequestMutationError,
+} from "@/lib/employee/leaveRequestDisplay";
+import { leaveRequestStatusBadgeClass } from "@/lib/employee/leaveRequestStatusStyles";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import {
   DISPLAY_DATE_RANGE_VALUE_CLASS,
@@ -29,8 +37,12 @@ export function RequestDetail({
 }): ReactElement {
   const t = useTranslations("employee.requests");
   const locale = useLocale();
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const didSeedCache = useRef(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelLeaveRequest, { isLoading: cancelling }] =
+    useCancelLeaveRequestMutation();
 
   if (initialData && id && !didSeedCache.current) {
     didSeedCache.current = true;
@@ -43,7 +55,10 @@ export function RequestDetail({
     data: leaveRequest,
     isLoading,
     isError,
-  } = useGetLeaveRequestQuery(id, { skip: !id });
+  } = useGetLeaveRequestQuery(id, {
+    skip: !id,
+    refetchOnMountOrArgChange: true,
+  });
 
   const item = leaveRequest ?? initialData;
 
@@ -74,6 +89,17 @@ export function RequestDetail({
     ? formatTimestamp(item.reviewedAt, locale)
     : null;
 
+  const handleCancel = async (): Promise<void> => {
+    try {
+      const result = await cancelLeaveRequest({ leaveRequestId: item.id }).unwrap();
+      toast.success(result.message || t("cancelSuccess"));
+      setCancelOpen(false);
+      router.push("/requests");
+    } catch (error) {
+      toast.error(getLeaveRequestMutationError(error, t("errors.failed")));
+    }
+  };
+
   return (
     <div className="space-y-5">
       <section className="space-y-3">
@@ -95,14 +121,24 @@ export function RequestDetail({
               {t("detail")}
             </h1>
             {item.status === "pending" ? (
-              <MainButton
-                variant="edit-soft"
-                size="sm"
-                startIcon={<Pencil className="size-4" />}
-                link={`/requests/${item.id}/edit`}
-              >
-                {t("edit")}
-              </MainButton>
+              <div className="flex flex-wrap items-center gap-2">
+                <MainButton
+                  variant="edit-soft"
+                  size="sm"
+                  startIcon={<Pencil className="size-4" />}
+                  link={`/requests/${item.id}/edit`}
+                >
+                  {t("edit")}
+                </MainButton>
+                <MainButton
+                  variant="delete-soft"
+                  size="sm"
+                  onClick={() => setCancelOpen(true)}
+                  disabled={cancelling}
+                >
+                  {t("cancelRequest")}
+                </MainButton>
+              </div>
             ) : null}
           </div>
         </div>
@@ -124,9 +160,7 @@ export function RequestDetail({
           <span
             className={cn(
               "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold leading-none",
-              item.status === "pending" && "bg-warning-50 text-warning-700",
-              item.status === "approved" && "bg-success-50 text-success-700",
-              item.status === "rejected" && "bg-danger-50 text-danger-700",
+              leaveRequestStatusBadgeClass(item.status),
             )}
           >
             {t(`status.${item.status}`)}
@@ -167,6 +201,20 @@ export function RequestDetail({
           </dd>
         </div>
       </dl>
+
+      <DeleteConfirmModal
+        open={cancelOpen}
+        title={t("cancelTitle")}
+        description={t("cancelDescription")}
+        confirmLabel={t("cancelConfirm")}
+        cancelLabel={t("cancelDismiss")}
+        onConfirm={() => {
+          void handleCancel();
+          return false;
+        }}
+        onCancel={() => setCancelOpen(false)}
+        loading={cancelling}
+      />
     </div>
   );
 }

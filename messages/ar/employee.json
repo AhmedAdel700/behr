@@ -89,12 +89,14 @@
       "all": "الكل",
       "pending": "قيد المراجعة",
       "approved": "مقبول",
-      "rejected": "مرفوض"
+      "rejected": "مرفوض",
+      "cancelled": "ملغى"
     },
     "status": {
       "pending": "قيد المراجعة",
       "approved": "مقبول",
-      "rejected": "مرفوض"
+      "rejected": "مرفوض",
+      "cancelled": "ملغى"
     },
     "types": {
       "annual": "إجازة سنوية",
@@ -152,11 +154,12 @@
     "save": "حفظ التعديلات",
     "edit": "تعديل الطلب",
     "editTitle": "تعديل الطلب",
-    "delete": "حذف الطلب",
-    "deleteTitle": "حذف هذا الطلب؟",
-    "deleteDescription": "لا يمكن التراجع عن هذا الإجراء. يمكن حذف الطلبات المعلقة فقط.",
-    "deleteConfirm": "حذف",
-    "deleteCancel": "إلغاء",
+    "cancelRequest": "إلغاء الطلب",
+    "cancelTitle": "إلغاء هذا الطلب؟",
+    "cancelDescription": "سيتم إلغاء طلبك المعلق. لا يمكن التراجع عن هذا الإجراء.",
+    "cancelConfirm": "إلغاء الطلب",
+    "cancelDismiss": "الإبقاء على الطلب",
+    "cancelSuccess": "تم إلغاء طلب الإجازة.",
     "back": "رجوع",
     "createdAt": "تاريخ الإرسال",
     "placeholders": {

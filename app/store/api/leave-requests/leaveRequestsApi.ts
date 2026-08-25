@@ -1,5 +1,6 @@
 import { baseApi } from "@/app/store/api/baseApi";
 import type {
+  LeaveRequestCancelResult,
   LeaveRequestMutationResult,
   LeaveRequestPayload,
   LeaveRequestRecord,
@@ -15,6 +16,7 @@ import {
   fetchLeaveRequest,
   fetchLeaveRequests,
   rejectLeaveRequestRequest,
+  cancelLeaveRequestRequest,
   updateLeaveRequestRequest,
 } from "@services/leave-requests/leaveRequestsService";
 import { getRequestLang } from "@/lib/i18n/getRequestLang";
@@ -30,6 +32,10 @@ interface UpdateLeaveRequestArgs {
 }
 
 interface ReviewLeaveRequestArgs {
+  leaveRequestId: string;
+}
+
+interface CancelLeaveRequestArgs {
   leaveRequestId: string;
 }
 
@@ -59,7 +65,12 @@ export function normalizeLeaveRequestsListParams(
 export function parseLeaveRequestStatusFilter(
   value: string | LeaveRequestStatus | undefined | null,
 ): LeaveRequestStatus | undefined {
-  if (value === "pending" || value === "approved" || value === "rejected") {
+  if (
+    value === "pending" ||
+    value === "approved" ||
+    value === "rejected" ||
+    value === "cancelled"
+  ) {
     return value;
   }
 
@@ -347,6 +358,42 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
         { type: "LeaveRequest", id: "LIST" },
       ],
     }),
+    cancelLeaveRequest: builder.mutation<
+      LeaveRequestCancelResult,
+      CancelLeaveRequestArgs
+    >({
+      async queryFn({ leaveRequestId }) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const result = await cancelLeaveRequestRequest(
+            session.accessToken,
+            await getRequestLang(),
+            leaveRequestId,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to cancel leave request.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: (_result, _error, { leaveRequestId }) => [
+        { type: "LeaveRequest", id: leaveRequestId },
+        { type: "LeaveRequest", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -358,4 +405,5 @@ export const {
   useUpdateLeaveRequestMutation,
   useApproveLeaveRequestMutation,
   useRejectLeaveRequestMutation,
+  useCancelLeaveRequestMutation,
 } = leaveRequestsApi;

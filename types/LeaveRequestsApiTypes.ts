@@ -1,7 +1,11 @@
 import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
 import type { LeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
 
-export type LeaveRequestStatus = "pending" | "approved" | "rejected";
+export type LeaveRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled";
 
 export interface LeaveRequestApiEmployee {
   id: number;
@@ -153,6 +157,10 @@ export interface RejectLeaveRequestPayload {
 
 export interface LeaveRequestMutationResult {
   leaveRequest: LeaveRequestRecord;
+  message: string;
+}
+
+export interface LeaveRequestCancelResult {
   message: string;
 }
 

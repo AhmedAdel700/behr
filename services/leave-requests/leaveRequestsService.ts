@@ -8,6 +8,7 @@ import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import { parseLeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
 import type {
+  LeaveRequestCancelResult,
   LeaveRequestMutationResult,
   LeaveRequestPayload,
   LeaveRequestRecord,
@@ -53,7 +54,12 @@ function parseDuration(value: unknown): number {
 }
 
 function isLeaveRequestStatus(value: unknown): value is LeaveRequestStatus {
-  return value === "pending" || value === "approved" || value === "rejected";
+  return (
+    value === "pending" ||
+    value === "approved" ||
+    value === "rejected" ||
+    value === "cancelled"
+  );
 }
 
 function mapLeaveTypeSummary(
@@ -395,4 +401,34 @@ export async function rejectLeaveRequestRequest(
     tokenType,
     body,
   );
+}
+
+export async function cancelLeaveRequestRequest(
+  accessToken: string,
+  lang: string,
+  leaveRequestId: string,
+  tokenType = "Bearer",
+): Promise<LeaveRequestCancelResult> {
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveRequestItemUrl(leaveRequestId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to cancel leave request.",
+  });
+
+  if (!response.ok) {
+    api.throwFromPayload(payload, "Failed to cancel leave request.");
+  }
+
+  api.assertDeleteSuccess(payload, "Failed to cancel leave request.");
+
+  return {
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to cancel leave request.",
+      "Leave request cancelled.",
+    ),
+  };
 }

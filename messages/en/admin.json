@@ -235,7 +235,8 @@
     "empty": {
       "pending": "No pending leave requests.",
       "approved": "No approved leave requests.",
-      "rejected": "No rejected leave requests."
+      "rejected": "No rejected leave requests.",
+      "cancelled": "No cancelled leave requests."
     },
     "loading": "Loading leave requests…",
     "loadError": "Could not load leave requests.",

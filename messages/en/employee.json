@@ -89,12 +89,14 @@
       "all": "All",
       "pending": "Pending",
       "approved": "Approved",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
     },
     "status": {
       "pending": "Pending",
       "approved": "Approved",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
     },
     "types": {
       "annual": "Annual leave",
@@ -152,11 +154,12 @@
     "save": "Save changes",
     "edit": "Edit request",
     "editTitle": "Edit request",
-    "delete": "Delete request",
-    "deleteTitle": "Delete this request?",
-    "deleteDescription": "This cannot be undone. Only pending requests can be deleted.",
-    "deleteConfirm": "Delete",
-    "deleteCancel": "Cancel",
+    "cancelRequest": "Cancel request",
+    "cancelTitle": "Cancel this request?",
+    "cancelDescription": "Your pending request will be cancelled. This cannot be undone.",
+    "cancelConfirm": "Cancel request",
+    "cancelDismiss": "Keep request",
+    "cancelSuccess": "Leave request cancelled.",
     "back": "Back",
     "createdAt": "Submitted",
     "placeholders": {

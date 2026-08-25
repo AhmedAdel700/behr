@@ -14,6 +14,7 @@ import {
   groupRequestsByMonth,
 } from "@/lib/employee/groupRequestsByMonth";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import { leaveRequestStatusBadgeClass } from "@/lib/employee/leaveRequestStatusStyles";
 import { cn } from "@/lib/utils";
 import type {
   LeaveRequestRecord,
@@ -217,9 +218,7 @@ function StatusBadge({
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold leading-none",
-        status === "pending" && "bg-warning-50 text-warning-700",
-        status === "approved" && "bg-success-50 text-success-700",
-        status === "rejected" && "bg-danger-50 text-danger-700",
+        leaveRequestStatusBadgeClass(status),
       )}
     >
       {label}
