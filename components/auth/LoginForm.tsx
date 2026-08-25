@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { Mail } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { loginAction } from "@/app/actions/auth/authActions";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -19,7 +19,7 @@ export function LoginForm({
   showRegisterLink = true,
 }: {
   showRegisterLink?: boolean;
-}) {
+}): React.JSX.Element {
   const t = useTranslations("auth");
   const locale = useLocale();
   const router = useRouter();
@@ -75,44 +75,47 @@ export function LoginForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-5"
       noValidate
     >
-      <MainInput
-        label={t("login.email")}
-        type="email"
-        autoComplete="email"
-        placeholder={t("login.emailPlaceholder")}
-        startIcon={<Mail />}
-        error={errors.email?.message}
-        {...register("email")}
-      />
+      <div className="space-y-4">
+        <MainInput
+          label={t("login.email")}
+          type="email"
+          autoComplete="email"
+          placeholder={t("login.emailPlaceholder")}
+          startIcon={<Mail />}
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
-      <MainInput
-        label={t("login.password")}
-        type="password"
-        autoComplete="current-password"
-        placeholder={t("login.passwordPlaceholder")}
-        error={errors.password?.message}
-        {...register("password")}
-      />
+        <MainInput
+          label={t("login.password")}
+          type="password"
+          autoComplete="current-password"
+          placeholder={t("login.passwordPlaceholder")}
+          startIcon={<Lock />}
+          error={errors.password?.message}
+          {...register("password")}
+        />
+      </div>
 
       <MainButton
         type="submit"
         variant="primary"
+        size="lg"
         block
-        className="mt-1"
         loading={submitting}
       >
         {t("login.submit")}
       </MainButton>
 
       {showRegisterLink ? (
-        <p className="text-center text-sm text-text-secondary">
+        <p className="border-t border-border/80 pt-5 text-center text-sm text-text-secondary">
           {t("login.noAccount")}{" "}
           <Link
             href="/register"
-            className="font-medium text-primary-600 hover:text-primary-700"
+            className="font-semibold text-primary-600 transition-colors hover:text-primary-700"
           >
             {t("login.registerLink")}
           </Link>

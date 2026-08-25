@@ -1,42 +1,86 @@
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactElement, ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
 import { cn } from "@/lib/utils";
 
+export interface AuthHighlight {
+  icon: LucideIcon;
+  text: string;
+}
+
 type AuthSplitCardProps = {
   title: string;
   subtitle: string;
+  brandTitleLine1?: string;
+  brandTitleLine2?: string;
+  brandSubtitle?: string;
+  highlights?: AuthHighlight[];
   children: ReactNode;
   className?: string;
   imageSrc?: string;
   imageAlt?: string;
 };
 
+function BrandPanelHeadline({
+  line1,
+  line2,
+  subtitle,
+}: {
+  line1: string;
+  line2?: string;
+  subtitle: string;
+}): ReactElement {
+  return (
+    <div className="space-y-6">
+      <h2 className="max-w-[28rem] text-pretty text-[1.875rem] font-semibold leading-[1.12] tracking-tight xl:text-[2.75rem]">
+        <span className="block text-white/90">{line1}</span>
+        {line2 ? (
+          <span className="mt-2 block">
+            <span className="bg-linear-to-r from-primary-200 via-primary-300 to-primary-400 bg-clip-text text-transparent">
+              {line2}
+            </span>
+          </span>
+        ) : null}
+      </h2>
+
+      <p className="max-w-[26rem] border-s-2 border-primary-500/40 ps-4 text-[0.9375rem] leading-relaxed text-neutral-400">
+        {subtitle}
+      </p>
+    </div>
+  );
+}
+
 export function AuthSplitCard({
   title,
   subtitle,
+  brandTitleLine1,
+  brandTitleLine2,
+  brandSubtitle,
+  highlights = [],
   children,
   className,
   imageSrc,
   imageAlt = "",
-}: AuthSplitCardProps) {
+}: AuthSplitCardProps): ReactElement {
+  const panelLine1 = brandTitleLine1 ?? title;
+  const panelLine2 = brandTitleLine2;
+  const panelSubtitle = brandSubtitle ?? subtitle;
+
   return (
     <div
       className={cn(
-        "mx-auto grid w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-surface shadow-md",
-        "min-h-[32rem] lg:min-h-[36rem]",
-        // Wider brand track on the inline-start side (left in LTR, right in RTL)
+        "mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-border bg-surface shadow-md",
+        "min-h-[32rem] lg:min-h-[38rem]",
         "lg:grid-cols-[1.35fr_1fr]",
-        className
+        className,
       )}
     >
-      {/* Brand column — first in DOM so it sits at inline-start under dir */}
       <div
         className={cn(
           "relative hidden overflow-hidden bg-ink lg:block",
-          // Diagonal on the form-facing edge; mirrored for RTL
           "[clip-path:polygon(0_0,100%_0,78%_100%,0_100%)]",
-          "rtl:[clip-path:polygon(22%_0,100%_0,100%_100%,0_100%)]"
+          "rtl:[clip-path:polygon(22%_0,100%_0,100%_100%,0_100%)]",
         )}
       >
         {imageSrc ? (
@@ -62,6 +106,15 @@ export function AuthSplitCard({
 
         <div
           aria-hidden
+          className="pointer-events-none absolute -top-24 start-[-15%] size-64 rounded-full bg-primary-500/25 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 end-[-10%] size-72 rounded-full bg-primary-700/20 blur-3xl"
+        />
+
+        <div
+          aria-hidden
           className="absolute inset-0 opacity-[0.1]"
           style={{
             backgroundImage:
@@ -70,42 +123,63 @@ export function AuthSplitCard({
           }}
         />
 
-        <div className="relative z-10 flex h-full min-h-[36rem] flex-col justify-between p-10 text-text-inverse xl:p-12">
+        <div className="relative z-10 flex h-full min-h-[38rem] flex-col justify-between p-10 text-text-inverse xl:p-12">
           <BrandLogo size="xl" variant="onDark" priority />
 
-          <div className="space-y-3 pb-2">
-            <p className="max-w-[16rem] text-3xl font-semibold leading-tight tracking-tight text-white xl:text-4xl">
-              {title}
-            </p>
-            <p className="max-w-[16rem] text-sm leading-relaxed text-neutral-400">
-              {subtitle}
-            </p>
+          <div className="space-y-8 pb-2">
+            <BrandPanelHeadline
+              line1={panelLine1}
+              line2={panelLine2}
+              subtitle={panelSubtitle}
+            />
+
+            {highlights.length > 0 ? (
+              <ul className="space-y-3">
+                {highlights.map((item) => (
+                  <li key={item.text} className="flex items-center gap-3">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/10 text-primary-200">
+                      <item.icon className="size-4" aria-hidden />
+                    </span>
+                    <span className="text-sm leading-snug text-neutral-300">
+                      {item.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Form column — sits at inline-end (right in LTR, left in RTL) */}
       <div className="relative z-10 flex flex-col justify-center bg-surface px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
         <div className="absolute top-5 end-5 z-20 sm:top-6 sm:end-6 lg:top-8 lg:end-8 xl:end-10">
           <LocaleSwitcher tone="light" />
         </div>
 
-        <div className="mx-auto w-full max-w-none">
-          <div className="mb-7 lg:hidden">
-            <div className="mb-4 pe-24">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-8 lg:hidden">
+            <div className="mb-5 pe-24">
               <BrandLogo size="lg" priority />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-ink">
               {title}
             </h1>
-            <p className="mt-1.5 text-sm text-text-secondary">{subtitle}</p>
+            <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+              {subtitle}
+            </p>
           </div>
 
-          <div className="mb-6 hidden lg:block">
-            <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          <div className="mb-8 hidden lg:block">
+            <span
+              aria-hidden
+              className="mb-4 inline-block h-1 w-10 rounded-full bg-primary-500"
+            />
+            <h1 className="text-[1.65rem] font-semibold tracking-tight text-ink">
               {title}
             </h1>
-            <p className="mt-1.5 text-sm text-text-secondary">{subtitle}</p>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-text-secondary">
+              {subtitle}
+            </p>
           </div>
 
           {children}
