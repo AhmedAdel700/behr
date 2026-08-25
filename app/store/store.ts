@@ -11,6 +11,8 @@ import "@/app/store/api/employees/employeesApi";
 import "@/app/store/api/leave-requests/leaveRequestsApi";
 import "@/app/store/api/leave-types/leaveTypesApi";
 import "@/app/store/api/public/publicOrgApi";
+import "@/app/store/api/system-files/systemFilesApi";
+import "@/app/store/api/overview/overviewApi";
 
 export const makeStore = () => {
   const store = configureStore({

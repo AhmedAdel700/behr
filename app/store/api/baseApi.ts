@@ -40,6 +40,8 @@ export const baseApi = createApi({
     "Attendance",
     "Profile",
     "LeaveBalance",
+    "SystemFile",
+    "Overview",
   ],
 
   endpoints: () => ({}),

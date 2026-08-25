@@ -6,10 +6,12 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { logoutAction } from "@/app/actions/auth/authActions";
 import {
   profileApi,
   useGetProfileQuery,
+  useUpdateProfileMutation,
 } from "@/app/store/api/profile/profileApi";
 import type { AppDispatch } from "@/app/store/store";
 import { LocaleSwitcher } from "@/components/auth/LocaleSwitcher";
@@ -17,7 +19,11 @@ import { LeaveBalanceSection } from "@/components/employee/LeaveBalanceSection";
 import { AvatarUpload, ProfileAvatar } from "@/components/shared/AvatarUpload";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
-import { fileToDataUrl } from "@/lib/employee/employeeProfileStore";
+import {
+  getProfileMutationError,
+  mapProfileFieldErrors,
+  toProfileUpdatePayload,
+} from "@/lib/employee/profileUpdate";
 import {
   createProfileSchema,
   type ProfileFormValues,
@@ -87,10 +93,9 @@ export function ProfilePageContent({
         nameMin: tAuth("nameMin"),
         emailRequired: tAuth("emailRequired"),
         emailInvalid: tAuth("emailInvalid"),
-        phoneRequired: tAuth("phoneRequired"),
-        phoneInvalid: tAuth("phoneInvalid"),
-        fingerprintRequired: tAuth("fingerprintRequired"),
-        fingerprintInvalid: tAuth("fingerprintInvalid"),
+        passwordMin: tAuth("passwordMin"),
+        confirmPasswordRequired: tAuth("confirmPasswordRequired"),
+        passwordMismatch: tAuth("passwordMismatch"),
         avatarInvalidType: tAuth("avatarInvalidType"),
         avatarTooLarge: tAuth("avatarTooLarge"),
       }),
@@ -102,17 +107,20 @@ export function ProfilePageContent({
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: profile?.name ?? "",
       email: profile?.email ?? "",
-      phone: profile?.phone ?? "",
-      fingerprintNumber: profile?.fingerprintNumber ?? "",
+      password: "",
+      passwordConfirmation: "",
       avatar: undefined,
     },
   });
+
+  const [updateProfileMutation] = useUpdateProfileMutation();
 
   const openEdit = (): void => {
     if (!profile) {
@@ -122,8 +130,8 @@ export function ProfilePageContent({
     reset({
       name: profile.name,
       email: profile.email,
-      phone: profile.phone,
-      fingerprintNumber: profile.fingerprintNumber,
+      password: "",
+      passwordConfirmation: "",
       avatar: undefined,
     });
     setEditing(true);
@@ -140,26 +148,39 @@ export function ProfilePageContent({
 
     setSubmitting(true);
 
-    let avatarSrc = profile.avatarSrc;
-    if (values.avatar) {
-      avatarSrc = await fileToDataUrl(values.avatar);
+    try {
+      const result = await updateProfileMutation(
+        toProfileUpdatePayload(values),
+      ).unwrap();
+
+      dispatch(
+        profileApi.util.upsertQueryData(
+          "getProfile",
+          undefined,
+          result.profile,
+        ),
+      );
+      toast.success(result.message || t("updateSuccess"));
+      setEditing(false);
+    } catch (error) {
+      toast.error(getProfileMutationError(error, t("updateError")));
+
+      if (typeof error === "object" && error !== null && "data" in error) {
+        const data = (error as { data?: { fieldErrors?: Record<string, string> } })
+          .data;
+
+        if (data?.fieldErrors) {
+          const fieldErrors = mapProfileFieldErrors(data.fieldErrors);
+          for (const [field, message] of Object.entries(fieldErrors)) {
+            if (message) {
+              setError(field as keyof ProfileFormValues, { message });
+            }
+          }
+        }
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    const nextProfile: ProfileResult = {
-      ...profile,
-      name: values.name.trim(),
-      email: values.email.trim(),
-      phone: values.phone.trim(),
-      fingerprintNumber: values.fingerprintNumber.trim(),
-      avatarSrc,
-    };
-
-    dispatch(
-      profileApi.util.upsertQueryData("getProfile", undefined, nextProfile),
-    );
-
-    setSubmitting(false);
-    setEditing(false);
   };
 
   if (isLoading && !profile) {
@@ -221,6 +242,41 @@ export function ProfilePageContent({
             className="space-y-3"
             noValidate
           >
+            <MainInput
+              label={t("nameLabel")}
+              autoComplete="name"
+              error={errors.name?.message}
+              {...register("name")}
+            />
+
+            <MainInput
+              label={tLabel("email")}
+              type="email"
+              autoComplete="email"
+              error={errors.email?.message}
+              {...register("email")}
+            />
+
+            <MainInput
+              label={t("passwordLabel")}
+              type="password"
+              autoComplete="new-password"
+              placeholder={t("passwordPlaceholder")}
+              error={errors.password?.message}
+              {...register("password")}
+            />
+
+            <MainInput
+              label={t("confirmPasswordLabel")}
+              type="password"
+              autoComplete="new-password"
+              placeholder={t("confirmPasswordPlaceholder")}
+              error={errors.passwordConfirmation?.message}
+              {...register("passwordConfirmation")}
+            />
+
+            <p className="text-xs text-text-muted">{t("passwordHint")}</p>
+
             <Controller
               name="avatar"
               control={control}
@@ -237,38 +293,6 @@ export function ProfilePageContent({
                   onChange={field.onChange}
                 />
               )}
-            />
-
-            <MainInput
-              label={tLabel("email")}
-              type="email"
-              autoComplete="email"
-              error={errors.email?.message}
-              {...register("email")}
-            />
-
-            <MainInput
-              label={tLabel("phone")}
-              type="tel"
-              autoComplete="tel"
-              error={errors.phone?.message}
-              {...register("phone")}
-            />
-
-            <MainInput
-              label={t("nameLabel")}
-              autoComplete="name"
-              error={errors.name?.message}
-              {...register("name")}
-            />
-
-            <MainInput
-              label={tLabel("fingerprintNumber")}
-              type="tel"
-              autoComplete="off"
-              maxLength={20}
-              error={errors.fingerprintNumber?.message}
-              {...register("fingerprintNumber")}
             />
 
             <div className="grid grid-cols-2 gap-2 pt-1">

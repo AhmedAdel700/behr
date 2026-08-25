@@ -105,7 +105,8 @@ export function AdminEmployeeDetailPage({
     }
 
     try {
-      await deleteEmployeeMutation({ employeeId: employee.id }).unwrap();
+      const result = await deleteEmployeeMutation({ employeeId: employee.id }).unwrap();
+      toast.success(result.message || tEmployees("deleteSuccess"));
       setDeleteOpen(false);
       router.push("/admin-dashboard/employees");
     } catch (error) {

@@ -1,34 +1,24 @@
 "use client";
 
-import { useSyncExternalStore, type ReactElement, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useMemo, useRef, type ReactElement, type ReactNode } from "react";
+import { useDispatch } from "react-redux";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Building2,
   MapPinned,
   UserPlus,
   Users,
 } from "lucide-react";
+import {
+  overviewApi,
+  useGetOverviewQuery,
+} from "@/app/store/api/overview/overviewApi";
+import type { AppDispatch } from "@/app/store/store";
 import { MainButton } from "@/components/shared/MainButton";
-import {
-  getAdminSessionSnapshot,
-  subscribeAdminSession,
-} from "@/lib/admin/adminSessionStore";
-import {
-  getEmployeesSnapshot,
-  getRegistrationsSnapshot,
-  subscribeEmployees,
-  subscribeRegistrations,
-} from "@/lib/admin/adminDataStore";
-import {
-  filterEmployeesForAdmin,
-  filterLeaveRequestsForAdmin,
-  filterRegistrationsForAdmin,
-  isSuperAdmin,
-} from "@/lib/admin/permissions";
-import {
-  getRequestsSnapshot,
-  subscribeRequests,
-} from "@/lib/employee/requestsStore";
+import { Link } from "@/i18n/navigation";
+import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
+import { resolveTimeLocale } from "@/lib/formatTime";
+import type { OverviewResult } from "@/types/OverviewApiTypes";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +28,7 @@ interface OverviewStatItem {
   value: number;
   hint: string;
   icon: LucideIcon;
+  href: string;
 }
 
 function getOverviewStatGridClass(count: number): string {
@@ -54,14 +45,24 @@ function StatCard({
   value,
   hint,
   icon: Icon,
+  href,
 }: {
   label: string;
   value: string | number;
   hint: string;
   icon: LucideIcon;
+  href: string;
 }): ReactElement {
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-border bg-primary-50/15 p-4 shadow-xs">
+    <Link
+      href={href}
+      aria-label={label}
+      className={cn(
+        "relative block overflow-hidden rounded-2xl border border-border bg-primary-50/15 p-4 shadow-xs transition-colors",
+        "hover:border-primary-200 hover:bg-primary-50/30",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
+      )}
+    >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-linear-to-b from-primary-500/6 to-transparent" />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -78,6 +79,18 @@ function StatCard({
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-50/80 text-primary-500 shadow-xs">
           <Icon className="size-5 text-primary-500" strokeWidth={1.75} />
         </span>
+      </div>
+    </Link>
+  );
+}
+
+function StatCardSkeleton(): ReactElement {
+  return (
+    <article className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
+      <div className="space-y-3">
+        <div className="h-3 w-24 animate-pulse rounded-md bg-surface-muted" />
+        <div className="h-8 w-16 animate-pulse rounded-md bg-surface-muted" />
+        <div className="h-3 w-full max-w-[12rem] animate-pulse rounded-md bg-surface-muted" />
       </div>
     </article>
   );
@@ -137,80 +150,175 @@ function OverviewAttentionPanel({
   );
 }
 
-function formatRequestDates(from: string, to: string): string {
-  return from === to ? from : `${from} → ${to}`;
+function formatOverviewLeaveRange(
+  startAt: string,
+  endAt: string,
+  locale: string,
+): string {
+  return formatLeaveRequestRange(
+    startAt,
+    endAt,
+    resolveTimeLocale(locale),
+    "day",
+  );
 }
 
-export function AdminOverview(): ReactElement {
-  const t = useTranslations("admin.overview");
-  const tDept = useTranslations("admin.departments");
-  const tBranch = useTranslations("auth.branchOptions");
-  const tLeaveType = useTranslations("employee.requests.types");
-
-  useSyncExternalStore(subscribeAdminSession, getAdminSessionSnapshot, getAdminSessionSnapshot);
-  useSyncExternalStore(subscribeEmployees, getEmployeesSnapshot, getEmployeesSnapshot);
-  useSyncExternalStore(subscribeRegistrations, getRegistrationsSnapshot, getRegistrationsSnapshot);
-  useSyncExternalStore(subscribeRequests, getRequestsSnapshot, getRequestsSnapshot);
-
-  const admin = getAdminSessionSnapshot();
-  const superAdmin = isSuperAdmin(admin.role);
-  const employees = filterEmployeesForAdmin(admin, getEmployeesSnapshot());
-  const registrations = filterRegistrationsForAdmin(admin, getRegistrationsSnapshot());
-  const pendingRegistrationRequests = registrations.filter(
-    (item) => item.status === "pending"
-  );
-  const pendingRegistrations = pendingRegistrationRequests.length;
-  const pendingLeaveRequests = filterLeaveRequestsForAdmin(
-    admin,
-    getRequestsSnapshot()
-  )
-    .filter((item) => item.status === "pending")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const pendingLeave = pendingLeaveRequests.length;
-  const departments = superAdmin
-    ? new Set(employees.map((item) => item.department)).size
-    : 0;
-  const branches = superAdmin
-    ? new Set(employees.map((item) => item.branch)).size
-    : 0;
-  const registrationAttentionItems = pendingRegistrationRequests.slice(0, 3);
-  const leaveAttentionItems = pendingLeaveRequests.slice(0, 3);
-
+function buildStatCards(
+  overview: OverviewResult,
+  translate: {
+    (key: "employees"): string;
+    (key: "employeesHint"): string;
+    (key: "pendingRegistrations"): string;
+    (key: "pendingRegistrationsHint"): string;
+    (key: "departments"): string;
+    (key: "departmentsHint"): string;
+    (key: "branches"): string;
+    (key: "branchesHint"): string;
+  },
+): OverviewStatItem[] {
+  const { counts } = overview;
   const statCards: OverviewStatItem[] = [
     {
       key: "employees",
-      label: t("employees"),
-      value: employees.length,
-      hint: t("employeesHint"),
+      label: translate("employees"),
+      value: counts.employees,
+      hint: translate("employeesHint"),
       icon: Users,
+      href: "/admin-dashboard/employees",
     },
     {
       key: "pendingRegistrations",
-      label: t("pendingRegistrations"),
-      value: pendingRegistrations,
-      hint: t("pendingRegistrationsHint"),
+      label: translate("pendingRegistrations"),
+      value: counts.pendingRegistrationRequests,
+      hint: translate("pendingRegistrationsHint"),
       icon: UserPlus,
+      href: "/admin-dashboard/registrations",
     },
   ];
 
-  if (superAdmin) {
-    statCards.push(
-      {
-        key: "departments",
-        label: t("departments"),
-        value: departments,
-        hint: t("departmentsHint"),
-        icon: Building2,
-      },
-      {
-        key: "branches",
-        label: t("branches"),
-        value: branches,
-        hint: t("branchesHint"),
-        icon: MapPinned,
-      }
+  if (counts.departments > 0) {
+    statCards.push({
+      key: "departments",
+      label: translate("departments"),
+      value: counts.departments,
+      hint: translate("departmentsHint"),
+      icon: Building2,
+      href: "/admin-dashboard/departments",
+    });
+  }
+
+  if (counts.branches > 0) {
+    statCards.push({
+      key: "branches",
+      label: translate("branches"),
+      value: counts.branches,
+      hint: translate("branchesHint"),
+      icon: MapPinned,
+      href: "/admin-dashboard/branches",
+    });
+  }
+
+  return statCards;
+}
+
+export function AdminOverview({
+  initialData,
+}: {
+  initialData?: OverviewResult;
+}): ReactElement {
+  const t = useTranslations("admin.overview");
+  const locale = useLocale();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
+
+  if (initialData && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      overviewApi.util.upsertQueryData("getOverview", undefined, initialData),
     );
   }
+
+  const {
+    data: overviewResult,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useGetOverviewQuery();
+
+  const overview = overviewResult ?? initialData;
+  const hasSeededInitialData = initialData !== undefined;
+  const isOverviewLoading =
+    (isLoading || isFetching) && !(hasSeededInitialData && overview);
+
+  const statCards = useMemo(
+    () => (overview ? buildStatCards(overview, t) : []),
+    [overview, t],
+  );
+
+  if (isOverviewLoading && !overview) {
+    return (
+      <div className="space-y-[18px]">
+        <section className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {t("title")}
+          </h1>
+          <p className="text-sm text-text-secondary">{t("subtitle")}</p>
+        </section>
+
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <StatCardSkeleton key={`overview-stat-skeleton-${index}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError && !overview) {
+    return (
+      <div className="space-y-[18px]">
+        <section className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {t("title")}
+          </h1>
+          <p className="text-sm text-text-secondary">{t("subtitle")}</p>
+        </section>
+
+        <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-xs">
+          <p className="text-sm text-danger-600" role="alert">
+            {t("loadError")}
+          </p>
+          <MainButton
+            variant="neutral"
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              void refetch();
+            }}
+          >
+            {t("retry")}
+          </MainButton>
+        </div>
+      </div>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <div className="space-y-[18px]">
+        <section className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {t("title")}
+          </h1>
+          <p className="text-sm text-text-secondary">{t("subtitle")}</p>
+        </section>
+      </div>
+    );
+  }
+
+  const pendingRegistrations = overview.counts.pendingRegistrationRequests;
+  const pendingLeave = overview.counts.pendingLeaveRequests;
 
   return (
     <div className="space-y-[18px]">
@@ -224,7 +332,7 @@ export function AdminOverview(): ReactElement {
       <div
         className={cn(
           "grid gap-[18px]",
-          getOverviewStatGridClass(statCards.length)
+          getOverviewStatGridClass(statCards.length),
         )}
       >
         {statCards.map((stat) => (
@@ -234,6 +342,7 @@ export function AdminOverview(): ReactElement {
             value={stat.value}
             hint={stat.hint}
             icon={stat.icon}
+            href={stat.href}
           />
         ))}
       </div>
@@ -247,15 +356,14 @@ export function AdminOverview(): ReactElement {
           viewAllLabel={t("viewRegistrations")}
           viewAllHref="/admin-dashboard/registrations"
         >
-          {registrationAttentionItems.map((request) => (
+          {overview.latestRegistrationRequests.map((request) => (
             <li
               key={request.id}
               className="rounded-xl border border-border bg-surface-muted/40 px-3 py-2.5"
             >
-              <p className="text-sm font-medium text-ink">{request.name}</p>
+              <p className="text-sm font-medium text-ink">{request.fullName}</p>
               <p className="mt-0.5 text-xs text-text-muted">
-                {request.position} · {tDept(request.department)} ·{" "}
-                {tBranch(request.branch)}
+                {request.jobPosition} · {request.department} · {request.city}
               </p>
             </li>
           ))}
@@ -269,18 +377,18 @@ export function AdminOverview(): ReactElement {
           viewAllLabel={t("viewLeaveRequests")}
           viewAllHref="/admin-dashboard/leave-requests"
         >
-          {leaveAttentionItems.map((request) => (
+          {overview.latestLeaveRequests.map((request) => (
             <li
               key={request.id}
               className="rounded-xl border border-border bg-surface-muted/40 px-3 py-2.5"
             >
-              <p className="text-sm font-medium text-ink">{request.employeeName}</p>
+              <p className="text-sm font-medium text-ink">
+                {request.employeeName}
+              </p>
               <p className="mt-0.5 text-xs text-text-muted">
-                {tLeaveType(request.type)} ·{" "}
-                {formatRequestDates(request.from, request.to)}
-                {superAdmin
-                  ? ` · ${tBranch(request.branch)} · ${tDept(request.department)}`
-                  : null}
+                {request.leaveType} ·{" "}
+                {formatOverviewLeaveRange(request.startAt, request.endAt, locale)}{" "}
+                · {request.department}
               </p>
             </li>
           ))}

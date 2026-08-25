@@ -6,6 +6,7 @@ import { runAdminLogout } from "@/lib/admin/runAdminLogout";
 import {
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   LogOut,
 } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -19,7 +20,14 @@ import {
   subscribeAdminSession,
 } from "@/lib/admin/adminSessionStore";
 import { useAdminUser } from "@/lib/admin/useAdminUser";
-import { getAdminNavItems, type AdminNavItem } from "@/lib/admin/adminNav";
+import {
+  getAdminNavEntries,
+  isAdminNavGroup,
+  type AdminNavEntry,
+  type AdminNavGroupKey,
+  type AdminNavItem,
+  type AdminNavItemKey,
+} from "@/lib/admin/adminNav";
 import { useAdminSidebarExpanded } from "@/lib/admin/useAdminSidebarPreference";
 import { useAdminMobileDrawerMount, useAdminMobileNav } from "@/lib/admin/adminMobileNav";
 import { cn } from "@/lib/utils";
@@ -53,63 +61,206 @@ function AdminNavLinks({
   expanded,
   onNavigate,
   pendingCounts,
-  navItems,
+  navEntries,
 }: {
   expanded: boolean;
   onNavigate?: () => void;
-  pendingCounts: Partial<Record<AdminNavItem["key"], number>>;
-  navItems: AdminNavItem[];
+  pendingCounts: Partial<Record<AdminNavItemKey, number>>;
+  navEntries: AdminNavEntry[];
 }): ReactElement {
   const t = useTranslations("admin.nav");
   const pathname = usePathname();
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<AdminNavGroupKey>>(
+    () => {
+      const initial = new Set<AdminNavGroupKey>();
+      for (const entry of navEntries) {
+        if (isAdminNavGroup(entry) && entry.match(pathname)) {
+          initial.add(entry.key);
+        }
+      }
+      return initial;
+    },
+  );
+
+  useEffect(() => {
+    for (const entry of navEntries) {
+      if (isAdminNavGroup(entry) && entry.match(pathname)) {
+        setOpenGroups((prev) => {
+          if (prev.has(entry.key)) {
+            return prev;
+          }
+          return new Set([...prev, entry.key]);
+        });
+      }
+    }
+  }, [navEntries, pathname]);
+
+  const toggleGroup = (key: AdminNavGroupKey): void => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const renderItem = (item: AdminNavItem): ReactElement => {
+    const active = item.match(pathname);
+    const Icon = item.icon;
+    const badgeCount = pendingCounts[item.key] ?? 0;
+    const showBadge = badgeCount > 0;
+
+    return (
+      <Link
+        href={item.href}
+        prefetch
+        onClick={onNavigate}
+        className={cn(
+          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+          expanded ? "justify-start" : "justify-center lg:px-2",
+          active
+            ? "bg-primary-50 text-primary-700"
+            : "text-text-muted hover:bg-surface-muted hover:text-text-secondary",
+        )}
+        aria-current={active ? "page" : undefined}
+        title={expanded ? undefined : t(item.key)}
+      >
+        <span className="relative shrink-0">
+          <Icon
+            className={cn(
+              "size-5",
+              active ? "text-primary-600" : "text-current",
+            )}
+            strokeWidth={active ? 2.25 : 1.75}
+          />
+          {showBadge && !expanded ? (
+            <span className="absolute -top-1 -end-1 size-2 rounded-full bg-warning-500" />
+          ) : null}
+        </span>
+        {expanded ? (
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span>{t(item.key)}</span>
+            {showBadge ? (
+              <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-700">
+                {badgeCount}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </Link>
+    );
+  };
 
   return (
     <ul className="flex flex-col gap-3">
-      {navItems.map((item) => {
-        const active = item.match(pathname);
-        const Icon = item.icon;
-        const badgeCount = pendingCounts[item.key] ?? 0;
-        const showBadge = badgeCount > 0;
+      {navEntries.map((entry) => {
+        if (!isAdminNavGroup(entry)) {
+          return <li key={entry.href}>{renderItem(entry)}</li>;
+        }
 
-        return (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              prefetch
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                expanded ? "justify-start" : "justify-center lg:px-2",
-                active
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-text-muted hover:bg-surface-muted hover:text-text-secondary"
-              )}
-              aria-current={active ? "page" : undefined}
-              title={expanded ? undefined : t(item.key)}
-            >
-              <span className="relative shrink-0">
+        const groupActive = entry.match(pathname);
+        const isOpen = openGroups.has(entry.key);
+        const childActive = entry.children.some((child) => child.match(pathname));
+        const Icon = entry.icon;
+        const primaryChild = entry.children[0];
+
+        if (!expanded && primaryChild) {
+          return (
+            <li key={entry.key}>
+              <Link
+                href={primaryChild.href}
+                prefetch
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center justify-center rounded-xl px-2 py-2.5 text-sm font-medium transition-colors",
+                  groupActive
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-text-muted hover:bg-surface-muted hover:text-text-secondary",
+                )}
+                aria-current={groupActive ? "page" : undefined}
+                title={t(entry.key)}
+              >
                 <Icon
                   className={cn(
                     "size-5",
-                    active ? "text-primary-600" : "text-current"
+                    groupActive ? "text-primary-600" : "text-current",
                   )}
-                  strokeWidth={active ? 2.25 : 1.75}
+                  strokeWidth={groupActive ? 2.25 : 1.75}
                 />
-                {showBadge && !expanded ? (
-                  <span className="absolute -top-1 -end-1 size-2 rounded-full bg-warning-500" />
-                ) : null}
-              </span>
-              {expanded ? (
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                  <span>{t(item.key)}</span>
-                  {showBadge ? (
-                    <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-700">
-                      {badgeCount}
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-            </Link>
+              </Link>
+            </li>
+          );
+        }
+
+        return (
+          <li key={entry.key} className={cn(isOpen && "space-y-2")}>
+            <button
+              type="button"
+              onClick={() => toggleGroup(entry.key)}
+              aria-expanded={isOpen}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm font-medium transition-colors",
+                !isOpen && childActive && "bg-primary-50 text-primary-700",
+                !isOpen &&
+                  !childActive &&
+                  "text-text-muted hover:bg-surface-muted hover:text-text-secondary",
+                isOpen && "text-text-muted hover:text-text-secondary",
+              )}
+            >
+              <Icon
+                className={cn(
+                  "size-5 shrink-0",
+                  !isOpen && childActive ? "text-primary-600" : "text-current",
+                )}
+                strokeWidth={!isOpen && childActive ? 2.25 : 1.75}
+              />
+              <span className="min-w-0 flex-1 text-start">{t(entry.key)}</span>
+              <ChevronDown
+                className={cn(
+                  "size-4 shrink-0 text-text-muted transition-transform duration-200",
+                  isOpen && "rotate-180",
+                )}
+              />
+            </button>
+
+            {isOpen ? (
+              <ul className="flex flex-col gap-0.5">
+                {entry.children.map((child) => {
+                  const isChildActive = child.match(pathname);
+
+                  return (
+                    <li key={child.href}>
+                      <Link
+                        href={child.href}
+                        prefetch
+                        onClick={onNavigate}
+                        className={cn(
+                          "group flex items-center gap-2.5 rounded-lg py-2 pe-3 ps-11 text-[13px] font-medium leading-snug transition-colors",
+                          isChildActive
+                            ? "text-primary-700"
+                            : "text-text-muted hover:text-text-secondary",
+                        )}
+                        aria-current={isChildActive ? "page" : undefined}
+                      >
+                        <span
+                          className={cn(
+                            "size-1.5 shrink-0 rounded-full transition-colors",
+                            isChildActive
+                              ? "bg-primary-500"
+                              : "bg-neutral-300 group-hover:bg-neutral-400",
+                          )}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 truncate">{t(child.key)}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
           </li>
         );
       })}
@@ -144,7 +295,7 @@ export function AdminSidebar(): ReactElement {
   const pendingRegistrationCount = registrationRequestsResult?.meta.total ?? 0;
   const pendingLeaveCount = pendingLeaveRequestCount(leaveRequestsResult);
 
-  const pendingCounts: Partial<Record<AdminNavItem["key"], number>> = {
+  const pendingCounts: Partial<Record<AdminNavItemKey, number>> = {
     registrations: pendingRegistrationCount,
     leaveRequests: pendingLeaveCount,
   };
@@ -154,7 +305,7 @@ export function AdminSidebar(): ReactElement {
       ? t("roles.superAdmin")
       : t("roles.departmentManager");
 
-  const navItems = getAdminNavItems(admin.permissions);
+  const navEntries = getAdminNavEntries(admin.permissions);
 
   const CollapseIcon = sidebarExpanded
     ? isRtl
@@ -217,7 +368,7 @@ export function AdminSidebar(): ReactElement {
         <AdminNavLinks
           expanded={showLabels}
           pendingCounts={pendingCounts}
-          navItems={navItems}
+          navEntries={navEntries}
           onNavigate={() => setDrawerOpen(false)}
         />
       </nav>

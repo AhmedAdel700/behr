@@ -24,7 +24,9 @@
     "leaveRequests": "Leave requests",
     "departments": "Departments",
     "fingerprintImport": "Fingerprint import",
-    "positions": "Positions"
+    "positions": "Positions",
+    "system": "System",
+    "systemFiles": "System files"
   },
   "sidebar": {
     "expand": "Expand sidebar",
@@ -54,7 +56,10 @@
     "leaveAttentionTitle": "Leave requests",
     "leaveAttentionSubtitle": "Latest pending leave requests",
     "leaveAttentionEmpty": "No pending leave requests right now.",
-    "viewLeaveRequests": "Review all leave requests"
+    "viewLeaveRequests": "Review all leave requests",
+    "loading": "Loading overview…",
+    "loadError": "Could not load overview.",
+    "retry": "Try again"
   },
   "employees": {
     "title": "Employees",
@@ -127,6 +132,7 @@
     "deleteTitle": "Delete this employee?",
     "deleteDescription": "This cannot be undone. The employee record will be removed from the directory.",
     "deleteConfirm": "Delete",
+    "deleteSuccess": "Employee deleted successfully.",
     "deleteError": "Could not delete this employee."
   },
   "employeeDetailPage": {
@@ -537,6 +543,68 @@
       "actions": "Actions"
     }
   },
+  "systemFilesPage": {
+    "title": "System files",
+    "subtitle": "Download shared import templates and system documents.",
+    "resultsTitle": "Templates ({count})",
+    "resultsHint": "Use these files for bulk imports across the HR system.",
+    "emptyTitle": "No system files yet",
+    "emptyDescription": "Import templates will appear here when available.",
+    "loadError": "Could not load system files.",
+    "retry": "Try again",
+    "download": "Download",
+    "downloading": "Downloading…",
+    "downloadSuccess": "File downloaded successfully.",
+    "downloadError": "Could not download file.",
+    "upload": "Upload",
+    "uploading": "Uploading…",
+    "uploadSuccess": "File uploaded successfully.",
+    "uploadError": "Could not upload file.",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoreSuccess": "Template restored to default.",
+    "restoreError": "Could not restore template.",
+    "syncDefaults": "Sync default files",
+    "syncing": "Syncing…",
+    "syncSuccess": "System files synced successfully.",
+    "syncError": "Could not sync system files.",
+    "uploadModal": {
+      "title": "Upload template",
+      "subtitle": "Replace the {type} with a new Excel file.",
+      "fileLabel": "Template file",
+      "fileHint": "Upload a spreadsheet to replace the current template.",
+      "fileRequired": "Please choose a file to upload.",
+      "dropLabel": "Drag and drop your file here",
+      "browseLabel": "Browse files",
+      "supportedFormats": "Supported formats: Excel (.xlsx, .xls)",
+      "removeFile": "Remove file",
+      "submit": "Upload file",
+      "cancel": "Cancel"
+    },
+    "sizeUnknown": "—",
+    "updatedUnknown": "—",
+    "columns": {
+      "file": "File",
+      "size": "Size",
+      "status": "Status",
+      "updated": "Last updated",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "badges": {
+      "customized": "Customized",
+      "default": "Default template"
+    },
+    "types": {
+      "attendance_import_template": "Attendance import template",
+      "department_import_template": "Department import template",
+      "employee_import_template": "Employee import template",
+      "payroll_import_template": "Payroll import template"
+    }
+  },
   "createPosition": {
     "title": "Create position",
     "subtitle": "Add a new job title for employees and assignments.",
@@ -590,6 +658,8 @@
     "deleteTitle": "Delete this department?",
     "deleteDescription": "{name} will be removed from the directory.",
     "deleteConfirm": "Delete",
+    "deleteSuccess": "Department deleted successfully.",
+    "deleteError": "Could not delete department.",
     "deleteBlockedMembers": "This department still has employees assigned. Reassign them before deleting.",
     "departmentNotFoundDescription": "This department could not be found.",
     "cancel": "Cancel",
@@ -633,6 +703,10 @@
     "subtitle": "Upload attendance sheets from the fingerprint machine and review imported records by month.",
     "uploadSectionTitle": "Upload attendance sheet",
     "uploadSectionSubtitle": "Choose the branch (required), year, and month, then drop the Excel export from your fingerprint device.",
+    "downloadGuide": "Download guide",
+    "downloadingGuide": "Downloading…",
+    "downloadGuideSuccess": "Guide downloaded successfully.",
+    "downloadGuideError": "Could not download guide.",
     "fields": {
       "branch": "Branch",
       "year": "Year",
@@ -659,8 +733,39 @@
       "browseLabel": "or click to browse",
       "supportedFormats": ".xlsx, .xls, .csv",
       "removeFile": "Remove file",
-      "submit": "Upload and import",
+      "preview": "Preview",
+      "previewing": "Previewing…",
       "branchRequiredHint": "Required before you can upload a sheet."
+    },
+    "preview": {
+      "title": "Import preview",
+      "success": "Import preview generated successfully.",
+      "error": "Could not preview attendance import.",
+      "expiresAt": "Preview expires {value}",
+      "summary": {
+        "total": "Total {count}",
+        "valid": "Valid {count}",
+        "invalid": "Invalid {count}"
+      },
+      "validRowsTitle": "Valid rows ({count})",
+      "validRowsEmpty": "No valid rows in this file.",
+      "invalidRowsTitle": "Invalid rows ({count})",
+      "invalidRowsEmpty": "No invalid rows in this file.",
+      "invalidRowsWarning": "The file will be imported, but {count} row(s) with errors will be skipped.",
+      "confirm": "Confirm import",
+      "confirming": "Importing…",
+      "confirmSuccess": "Attendance import completed successfully.",
+      "confirmError": "Could not confirm attendance import.",
+      "downloadFailedRows": "Download failed rows",
+      "downloadingFailedRows": "Downloading…",
+      "downloadFailedRowsSuccess": "Failed rows downloaded successfully.",
+      "downloadFailedRowsError": "Could not download failed rows.",
+      "close": "Close preview",
+      "cancel": "Cancel"
+    },
+    "previewColumns": {
+      "row": "Row",
+      "issues": "Issues"
     },
     "loadingMonth": "Loading data for selected month…",
     "noBranches": "No branches available. Create a branch before importing attendance.",
@@ -710,8 +815,8 @@
       "summary": "Showing {start}–{end} of {total}"
     },
     "errors": {
-      "noBranch": "Select a branch before uploading.",
-      "noFile": "Choose a spreadsheet file before uploading."
+      "noBranch": "Select a branch before previewing.",
+      "noFile": "Choose a spreadsheet file before previewing."
     }
   }
 }

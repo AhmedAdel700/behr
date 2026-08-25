@@ -62,6 +62,11 @@ const ADMIN_ROUTE_RULES: RoutePermissionRule[] = [
     match: (pathname) => pathname.startsWith("/admin-dashboard/positions"),
     permissions: ["job_positions.view"],
   },
+  {
+    match: (pathname) =>
+      pathname.startsWith("/admin-dashboard/system-files"),
+    permissions: ["system_files.view"],
+  },
 ];
 
 const EMPLOYEE_ROUTE_RULES: RoutePermissionRule[] = [
@@ -94,6 +99,7 @@ const ADMIN_HOME_CANDIDATES = [
   "/admin-dashboard/leave-types",
   "/admin-dashboard/fingerprint-import",
   "/admin-dashboard/positions",
+  "/admin-dashboard/system-files",
 ] as const;
 
 function findMatchingRule(

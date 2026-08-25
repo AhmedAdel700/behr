@@ -2,6 +2,7 @@ import {
   employeeItemUrl,
   employeesCollectionUrl,
 } from "@services/employees/employeesPaths";
+import { userItemUrl } from "@services/users/usersPaths";
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import type {
@@ -270,7 +271,7 @@ export async function deleteEmployeeRequest(
   tokenType = "Bearer",
 ): Promise<EmployeeDeleteResult> {
   const { response, payload } = await api.authorizedFetch({
-    url: employeeItemUrl(employeeId),
+    url: userItemUrl(employeeId),
     accessToken,
     lang,
     tokenType,

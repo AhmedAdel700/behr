@@ -189,7 +189,8 @@ export function AdminEmployeesPage({
     }
 
     try {
-      await deleteEmployeeMutation({ employeeId: deleteId }).unwrap();
+      const result = await deleteEmployeeMutation({ employeeId: deleteId }).unwrap();
+      toast.success(result.message || t("deleteSuccess"));
       setDeleteId(null);
     } catch (error) {
       const message =

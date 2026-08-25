@@ -221,6 +221,13 @@
     "avatarUpload": "Upload photo",
     "avatarChange": "Change photo",
     "avatarRemove": "Remove",
+    "passwordLabel": "New password",
+    "passwordPlaceholder": "At least 8 characters",
+    "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordPlaceholder": "Repeat password",
+    "passwordHint": "Leave blank to keep your current password.",
+    "updateSuccess": "Profile updated successfully.",
+    "updateError": "Could not update profile.",
     "loading": "Loading profile…",
     "loadError": "Could not load profile.",
     "notAvailable": "—"

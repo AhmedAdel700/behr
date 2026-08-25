@@ -34,17 +34,22 @@ export interface ProfileResult extends EmployeeProfile {
 export interface ProfileUpdatePayload {
   name: string;
   email: string;
-  phone: string;
-  fingerprint_number: string;
-  branch_id: number;
-  department_id: number;
-  job_position_id: number;
-  role: string;
+  password?: string;
+  password_confirmation?: string;
+  image?: File;
+}
+
+export interface ProfileUpdateResult {
+  message: string;
+  profile: ProfileResult;
 }
 
 export class ProfileApiError extends Error {
-  constructor(message: string) {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
     super(message);
     this.name = "ProfileApiError";
+    this.fieldErrors = fieldErrors;
   }
 }

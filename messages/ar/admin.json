@@ -24,7 +24,9 @@
     "leaveRequests": "طلبات الإجازة",
     "departments": "الأقسام",
     "fingerprintImport": "استيراد البصمة",
-    "positions": "المناصب"
+    "positions": "المناصب",
+    "system": "النظام",
+    "systemFiles": "ملفات النظام"
   },
   "sidebar": {
     "expand": "توسيع الشريط الجانبي",
@@ -54,7 +56,10 @@
     "leaveAttentionTitle": "طلبات الإجازة",
     "leaveAttentionSubtitle": "أحدث طلبات الإجازة المعلقة",
     "leaveAttentionEmpty": "لا توجد طلبات إجازة معلقة حالياً.",
-    "viewLeaveRequests": "مراجعة جميع طلبات الإجازة"
+    "viewLeaveRequests": "مراجعة جميع طلبات الإجازة",
+    "loading": "جاري تحميل النظرة العامة…",
+    "loadError": "تعذر تحميل النظرة العامة.",
+    "retry": "إعادة المحاولة"
   },
   "employees": {
     "title": "الموظفون",
@@ -127,6 +132,7 @@
     "deleteTitle": "حذف هذا الموظف؟",
     "deleteDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف سجل الموظف من الدليل.",
     "deleteConfirm": "حذف",
+    "deleteSuccess": "تم حذف الموظف بنجاح.",
     "deleteError": "تعذر حذف هذا الموظف."
   },
   "employeeDetailPage": {
@@ -537,6 +543,68 @@
       "actions": "إجراءات"
     }
   },
+  "systemFilesPage": {
+    "title": "ملفات النظام",
+    "subtitle": "تنزيل قوالب الاستيراد والمستندات المشتركة للنظام.",
+    "resultsTitle": "القوالب ({count})",
+    "resultsHint": "استخدم هذه الملفات للاستيراد الجماعي عبر نظام الموارد البشرية.",
+    "emptyTitle": "لا توجد ملفات نظام بعد",
+    "emptyDescription": "ستظهر قوالب الاستيراد هنا عند توفرها.",
+    "loadError": "تعذر تحميل ملفات النظام.",
+    "retry": "إعادة المحاولة",
+    "download": "تنزيل",
+    "downloading": "جاري التنزيل…",
+    "downloadSuccess": "تم تنزيل الملف بنجاح.",
+    "downloadError": "تعذر تنزيل الملف.",
+    "upload": "رفع",
+    "uploading": "جاري الرفع…",
+    "uploadSuccess": "تم رفع الملف بنجاح.",
+    "uploadError": "تعذر رفع الملف.",
+    "restore": "استعادة",
+    "restoring": "جاري الاستعادة…",
+    "restoreSuccess": "تمت استعادة القالب الافتراضي.",
+    "restoreError": "تعذر استعادة القالب.",
+    "syncDefaults": "مزامنة الملفات الافتراضية",
+    "syncing": "جاري المزامنة…",
+    "syncSuccess": "تمت مزامنة ملفات النظام بنجاح.",
+    "syncError": "تعذر مزامنة ملفات النظام.",
+    "uploadModal": {
+      "title": "رفع القالب",
+      "subtitle": "استبدل {type} بملف Excel جديد.",
+      "fileLabel": "ملف القالب",
+      "fileHint": "ارفع ملف جدول بيانات لاستبدال القالب الحالي.",
+      "fileRequired": "يرجى اختيار ملف للرفع.",
+      "dropLabel": "اسحب الملف وأفلته هنا",
+      "browseLabel": "استعراض الملفات",
+      "supportedFormats": "الصيغ المدعومة: Excel (.xlsx, .xls)",
+      "removeFile": "إزالة الملف",
+      "submit": "رفع الملف",
+      "cancel": "إلغاء"
+    },
+    "sizeUnknown": "—",
+    "updatedUnknown": "—",
+    "columns": {
+      "file": "الملف",
+      "size": "الحجم",
+      "status": "الحالة",
+      "updated": "آخر تحديث",
+      "actions": "إجراءات"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "badges": {
+      "customized": "مخصص",
+      "default": "قالب افتراضي"
+    },
+    "types": {
+      "attendance_import_template": "قالب استيراد الحضور",
+      "department_import_template": "قالب استيراد الأقسام",
+      "employee_import_template": "قالب استيراد الموظفين",
+      "payroll_import_template": "قالب استيراد الرواتب"
+    }
+  },
   "createPosition": {
     "title": "إنشاء مسمى وظيفي",
     "subtitle": "أضف مسمى وظيفي جديد للموظفين والتعيينات.",
@@ -590,6 +658,8 @@
     "deleteTitle": "حذف هذا القسم؟",
     "deleteDescription": "سيتم إزالة {name} من الدليل.",
     "deleteConfirm": "حذف",
+    "deleteSuccess": "تم حذف القسم بنجاح.",
+    "deleteError": "تعذر حذف القسم.",
     "deleteBlockedMembers": "لا يزال لهذا القسم موظفون معيّنون. أعد تعيينهم قبل الحذف.",
     "departmentNotFoundDescription": "تعذر العثور على هذا القسم.",
     "cancel": "إلغاء",
@@ -633,6 +703,10 @@
     "subtitle": "ارفع كشوف الحضور من جهاز البصمة واطّلع على السجلات المستوردة حسب الشهر.",
     "uploadSectionTitle": "رفع كشف الحضور",
     "uploadSectionSubtitle": "اختر الفرع (مطلوب) والسنة والشهر، ثم اسحب ملف Excel المُصدَّر من جهاز البصمة.",
+    "downloadGuide": "تنزيل الدليل",
+    "downloadingGuide": "جاري التنزيل…",
+    "downloadGuideSuccess": "تم تنزيل الدليل بنجاح.",
+    "downloadGuideError": "تعذر تنزيل الدليل.",
     "fields": {
       "branch": "الفرع",
       "year": "السنة",
@@ -659,8 +733,39 @@
       "browseLabel": "أو انقر للتصفح",
       "supportedFormats": ".xlsx, .xls, .csv",
       "removeFile": "إزالة الملف",
-      "submit": "رفع واستيراد",
+      "preview": "معاينة",
+      "previewing": "جاري المعاينة…",
       "branchRequiredHint": "مطلوب قبل رفع ملف الحضور."
+    },
+    "preview": {
+      "title": "معاينة الاستيراد",
+      "success": "تم إنشاء معاينة الاستيراد بنجاح.",
+      "error": "تعذر معاينة استيراد الحضور.",
+      "expiresAt": "تنتهي المعاينة {value}",
+      "summary": {
+        "total": "الإجمالي {count}",
+        "valid": "صالح {count}",
+        "invalid": "غير صالح {count}"
+      },
+      "validRowsTitle": "الصفوف الصالحة ({count})",
+      "validRowsEmpty": "لا توجد صفوف صالحة في هذا الملف.",
+      "invalidRowsTitle": "الصفوف غير الصالحة ({count})",
+      "invalidRowsEmpty": "لا توجد صفوف غير صالحة في هذا الملف.",
+      "invalidRowsWarning": "سيتم استيراد الملف، لكن سيتم تخطي {count} صف/صفوف بها أخطاء.",
+      "confirm": "تأكيد الاستيراد",
+      "confirming": "جاري الاستيراد…",
+      "confirmSuccess": "تم استيراد الحضور بنجاح.",
+      "confirmError": "تعذر تأكيد استيراد الحضور.",
+      "downloadFailedRows": "تنزيل الصفوف الفاشلة",
+      "downloadingFailedRows": "جاري التنزيل…",
+      "downloadFailedRowsSuccess": "تم تنزيل الصفوف الفاشلة بنجاح.",
+      "downloadFailedRowsError": "تعذر تنزيل الصفوف الفاشلة.",
+      "close": "إغلاق المعاينة",
+      "cancel": "إلغاء"
+    },
+    "previewColumns": {
+      "row": "الصف",
+      "issues": "المشكلات"
     },
     "loadingMonth": "جاري تحميل بيانات الشهر المحدد…",
     "noBranches": "لا توجد فروع. أنشئ فرعًا قبل استيراد الحضور.",
@@ -710,8 +815,8 @@
       "summary": "عرض {start}–{end} من {total}"
     },
     "errors": {
-      "noBranch": "اختر فرعًا قبل الرفع.",
-      "noFile": "اختر ملف جدول قبل الرفع."
+      "noBranch": "اختر فرعًا قبل المعاينة.",
+      "noFile": "اختر ملف جدول قبل المعاينة."
     }
   }
 }

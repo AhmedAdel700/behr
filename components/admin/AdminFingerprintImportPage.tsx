@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Calendar, Download, Fingerprint, History, MapPinned, Search, UploadCloud } from "lucide-react";
+import { Calendar, Download, Eye, Fingerprint, History, MapPinned, Search } from "lucide-react";
 import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   useGetBranchesQuery,
@@ -20,12 +20,14 @@ import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import { TablePagination } from "@/components/shared/TablePagination";
+import { AttendanceImportPreviewModal } from "@/components/admin/AttendanceImportPreviewModal";
+import { previewAttendanceImportClient, confirmAttendanceImportClient } from "@/lib/admin/attendanceImportClient";
+import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import {
   buildMonthOptions,
   buildYearOptions,
   downloadFingerprintImportUpload,
   fetchFingerprintImportMonth,
-  submitFingerprintImport,
 } from "@/lib/admin/fingerprintImportService";
 import {
   getAllFingerprintImportMonthsSnapshot,
@@ -36,12 +38,18 @@ import {
 } from "@/lib/admin/fingerprintImportStore";
 import { searchFingerprintRecords } from "@/lib/admin/searchFingerprintRecords";
 import { formatDateTime12, formatStoredDate, formatStoredTime12, resolveTimeLocale } from "@/lib/formatTime";
+import {
+  downloadSystemFileByType,
+  ATTENDANCE_IMPORT_TEMPLATE_FILE_NAME,
+  ATTENDANCE_IMPORT_TEMPLATE_TYPE,
+} from "@/lib/admin/systemFileDownload";
+import { cn } from "@/lib/utils";
+import type { AttendanceImportPreviewResult } from "@/types/AttendanceImportApiTypes";
 import type {
   FingerprintAttendanceStatus,
   FingerprintImportMonthData,
   FingerprintImportUpload,
 } from "@/types/FingerprintImportApiTypes";
-import { cn } from "@/lib/utils";
 import {
   TABLE_DATE_CELL_CLASS,
   TABLE_DATE_RANGE_CELL_CLASS,
@@ -80,13 +88,19 @@ export function AdminFingerprintImportPage(): ReactElement {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loadingMonth, setLoadingMonth] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [previewResult, setPreviewResult] =
+    useState<AttendanceImportPreviewResult | null>(null);
   const [monthData, setMonthData] = useState<FingerprintImportMonthData | null>(null);
   const [recordsSearchQuery, setRecordsSearchQuery] = useState("");
   const [recordsPage, setRecordsPage] = useState(1);
   const [downloadingUploadId, setDownloadingUploadId] = useState<string | null>(
     null,
   );
+  const [downloadingGuide, setDownloadingGuide] = useState(false);
+  const { triggerRef: previewTriggerRef, bindTrigger: bindPreviewTrigger } =
+    useModalTriggerRef();
 
   const importsVersion = useSyncExternalStore(
     subscribeFingerprintImports,
@@ -141,6 +155,10 @@ export function AdminFingerprintImportPage(): ReactElement {
       })),
     [t]
   );
+
+  useEffect(() => {
+    setPreviewResult(null);
+  }, [selectedFile, uploadBranchId, uploadYear, uploadMonth]);
 
   const loadMonthData = useCallback(async (): Promise<void> => {
     if (
@@ -255,7 +273,27 @@ export function AdminFingerprintImportPage(): ReactElement {
     setDownloadingUploadId(null);
   };
 
-  const handleUpload = async (): Promise<void> => {
+  const handleDownloadGuide = async (): Promise<void> => {
+    setDownloadingGuide(true);
+
+    try {
+      const result = await downloadSystemFileByType(
+        ATTENDANCE_IMPORT_TEMPLATE_TYPE,
+        ATTENDANCE_IMPORT_TEMPLATE_FILE_NAME,
+      );
+
+      if (result.ok) {
+        toast.success(t("downloadGuideSuccess"));
+        return;
+      }
+
+      toast.error(result.message || t("downloadGuideError"));
+    } finally {
+      setDownloadingGuide(false);
+    }
+  };
+
+  const handlePreview = async (): Promise<void> => {
     if (!uploadBranchId.trim()) {
       setUploadError(t("errors.noBranch"));
       return;
@@ -266,10 +304,10 @@ export function AdminFingerprintImportPage(): ReactElement {
       return;
     }
 
-    setUploading(true);
+    setPreviewing(true);
     setUploadError(null);
 
-    const response = await submitFingerprintImport({
+    const response = await previewAttendanceImportClient({
       branchId: uploadBranchId,
       file: selectedFile,
       year: parsedUploadYear,
@@ -277,16 +315,62 @@ export function AdminFingerprintImportPage(): ReactElement {
     });
 
     if (response.ok) {
+      setPreviewResult(response.data);
+      toast.success(response.data.message || t("preview.success"));
+    } else {
+      setPreviewResult(null);
+      setUploadError(response.message);
+      toast.error(response.message || t("preview.error"));
+    }
+
+    setPreviewing(false);
+  };
+
+  const closePreview = (): void => {
+    if (confirming) {
+      return;
+    }
+
+    setPreviewResult(null);
+  };
+
+  const handleConfirm = async (): Promise<void> => {
+    if (!previewResult?.importToken.trim()) {
+      return;
+    }
+
+    setConfirming(true);
+
+    const response = await confirmAttendanceImportClient(
+      previewResult.importToken,
+    );
+
+    if (response.ok) {
+      toast.success(response.data.message || t("preview.confirmSuccess"));
+      setPreviewResult(null);
+      setSelectedFile(undefined);
+      setUploadError(null);
       setViewBranchId(uploadBranchId);
       setViewYear(uploadYear);
       setViewMonth(uploadMonth);
-      setMonthData(response.data);
-      setSelectedFile(undefined);
+
+      const monthResponse = await fetchFingerprintImportMonth(
+        uploadBranchId,
+        parsedUploadYear,
+        parsedUploadMonth,
+      );
+
+      if (monthResponse.ok) {
+        setMonthData(monthResponse.data);
+        setFetchError(null);
+      } else {
+        setFetchError(monthResponse.message);
+      }
     } else {
-      setUploadError(response.message);
+      toast.error(response.message || t("preview.confirmError"));
     }
 
-    setUploading(false);
+    setConfirming(false);
   };
 
   const historyViewFilters = (
@@ -322,14 +406,30 @@ export function AdminFingerprintImportPage(): ReactElement {
       </section>
 
       <section className="rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-700">
-            <Fingerprint className="size-5" aria-hidden />
-          </span>
-          <div>
-            <h2 className="text-base font-semibold text-ink">{t("uploadSectionTitle")}</h2>
-            <p className="text-sm text-text-secondary">{t("uploadSectionSubtitle")}</p>
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-700">
+              <Fingerprint className="size-5" aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-ink">{t("uploadSectionTitle")}</h2>
+              <p className="text-sm text-text-secondary">{t("uploadSectionSubtitle")}</p>
+            </div>
           </div>
+          <MainButton
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={downloadingGuide}
+            disabled={downloadingGuide}
+            startIcon={<Download className="size-4" />}
+            className="shrink-0 self-start"
+            onClick={() => {
+              void handleDownloadGuide();
+            }}
+          >
+            {downloadingGuide ? t("downloadingGuide") : t("downloadGuide")}
+          </MainButton>
         </div>
 
         <div className="space-y-4">
@@ -382,28 +482,30 @@ export function AdminFingerprintImportPage(): ReactElement {
             onChange={(file) => {
               setSelectedFile(file);
               setUploadError(null);
+              setPreviewResult(null);
             }}
             error={uploadError ?? undefined}
-            disabled={uploading || loadingMonth || !uploadBranchId.trim()}
+            disabled={previewing || loadingMonth || !uploadBranchId.trim()}
           />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <MainButton
             variant="primary"
-            startIcon={<UploadCloud className="size-4" />}
-            loading={uploading}
+            startIcon={<Eye className="size-4" />}
+            loading={previewing}
             disabled={
               !uploadBranchId.trim() ||
               !selectedFile ||
-              uploading ||
+              previewing ||
               loadingMonth
             }
-            onClick={() => {
-              void handleUpload();
+            onClick={(event) => {
+              bindPreviewTrigger(event);
+              void handlePreview();
             }}
           >
-            {t("upload.submit")}
+            {previewing ? t("upload.previewing") : t("upload.preview")}
           </MainButton>
           {loadingMonth ? (
             <p className="text-sm text-text-muted">{t("loadingMonth")}</p>
@@ -416,6 +518,17 @@ export function AdminFingerprintImportPage(): ReactElement {
           </p>
         ) : null}
       </section>
+
+      <AttendanceImportPreviewModal
+        open={previewResult !== null}
+        preview={previewResult}
+        confirming={confirming}
+        onClose={closePreview}
+        onConfirm={() => {
+          void handleConfirm();
+        }}
+        triggerRef={previewTriggerRef}
+      />
 
       <section className="space-y-3">
         <div className="flex flex-col gap-3">

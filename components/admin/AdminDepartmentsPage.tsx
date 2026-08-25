@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -22,6 +23,7 @@ import { SearchInput } from "@/components/shared/SearchInput";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
+import { getDepartmentMutationErrorInfo } from "@/lib/admin/departmentMutationErrors";
 import type {
   DepartmentRecord,
   DepartmentsListQueryParams,
@@ -97,8 +99,17 @@ export function AdminDepartmentsPage({
       return;
     }
 
-    await deleteDepartmentMutation({ departmentId: deleteId }).unwrap();
-    setDeleteId(null);
+    try {
+      const result = await deleteDepartmentMutation({
+        departmentId: deleteId,
+      }).unwrap();
+      toast.success(result.message || t("deleteSuccess"));
+      setDeleteId(null);
+    } catch (error) {
+      toast.error(
+        getDepartmentMutationErrorInfo(error, t("deleteError")).message,
+      );
+    }
   };
 
   const handleSearch = (query: string): void => {

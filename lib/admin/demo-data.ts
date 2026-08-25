@@ -14,6 +14,7 @@ const DEMO_SUPER_ADMIN_PERMISSIONS: string[] = [
   "registration_requests.view",
   "leave_requests.view",
   "job_positions.view",
+  "system_files.view",
 ];
 
 const DEMO_DEPARTMENT_MANAGER_PERMISSIONS: string[] = [

@@ -221,6 +221,13 @@
     "avatarUpload": "رفع صورة",
     "avatarChange": "تغيير الصورة",
     "avatarRemove": "إزالة",
+    "passwordLabel": "كلمة المرور الجديدة",
+    "passwordPlaceholder": "8 أحرف على الأقل",
+    "confirmPasswordLabel": "تأكيد كلمة المرور الجديدة",
+    "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور",
+    "passwordHint": "اترك الحقل فارغاً للاحتفاظ بكلمة المرور الحالية.",
+    "updateSuccess": "تم تحديث الملف الشخصي بنجاح.",
+    "updateError": "تعذر تحديث الملف الشخصي.",
     "loading": "جاري تحميل الملف الشخصي…",
     "loadError": "تعذر تحميل الملف الشخصي.",
     "notAvailable": "—"

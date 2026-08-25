@@ -5,10 +5,9 @@ export type ProfileErrorMessages = {
   nameMin: string;
   emailRequired: string;
   emailInvalid: string;
-  phoneRequired: string;
-  phoneInvalid: string;
-  fingerprintRequired: string;
-  fingerprintInvalid: string;
+  passwordMin: string;
+  confirmPasswordRequired: string;
+  passwordMismatch: string;
   avatarInvalidType: string;
   avatarTooLarge: string;
 };
@@ -31,25 +30,52 @@ function optionalAvatarSchema(errors: ProfileErrorMessages) {
 }
 
 export function createProfileSchema(errors: ProfileErrorMessages) {
-  return z.object({
-    name: z
-      .string()
-      .min(1, { error: errors.nameRequired })
-      .min(2, { error: errors.nameMin }),
-    email: z
-      .string()
-      .min(1, { error: errors.emailRequired })
-      .pipe(z.email({ error: errors.emailInvalid })),
-    phone: z
-      .string()
-      .min(1, { error: errors.phoneRequired })
-      .regex(/^[0-9]{8,15}$/, { error: errors.phoneInvalid }),
-    fingerprintNumber: z
-      .string()
-      .min(1, { error: errors.fingerprintRequired })
-      .regex(/^[A-Za-z0-9]{1,20}$/, { error: errors.fingerprintInvalid }),
-    avatar: optionalAvatarSchema(errors),
-  });
+  return z
+    .object({
+      name: z
+        .string()
+        .min(1, { error: errors.nameRequired })
+        .min(2, { error: errors.nameMin }),
+      email: z
+        .string()
+        .min(1, { error: errors.emailRequired })
+        .pipe(z.email({ error: errors.emailInvalid })),
+      password: z.string().optional(),
+      passwordConfirmation: z.string().optional(),
+      avatar: optionalAvatarSchema(errors),
+    })
+    .superRefine((values, ctx) => {
+      const password = values.password?.trim() ?? "";
+      const passwordConfirmation = values.passwordConfirmation?.trim() ?? "";
+
+      if (!password && !passwordConfirmation) {
+        return;
+      }
+
+      if (password.length > 0 && password.length < 8) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["password"],
+          message: errors.passwordMin,
+        });
+      }
+
+      if (password && !passwordConfirmation) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["passwordConfirmation"],
+          message: errors.confirmPasswordRequired,
+        });
+      }
+
+      if (password && passwordConfirmation && password !== passwordConfirmation) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["passwordConfirmation"],
+          message: errors.passwordMismatch,
+        });
+      }
+    });
 }
 
 export type ProfileFormValues = z.infer<ReturnType<typeof createProfileSchema>>;
