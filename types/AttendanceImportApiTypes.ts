@@ -1,3 +1,5 @@
+import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+
 export interface AttendanceImportPreviewRequest {
   branchId: string;
   file: File;
@@ -89,6 +91,66 @@ export type AttendanceImportConfirmResponse =
       ok: false;
       message: string;
     };
+
+export type AttendanceImportHistoryStatus =
+  | "completed"
+  | "previewed"
+  | (string & {});
+
+export interface AttendanceImportHistoryApiRecord {
+  id: number;
+  token: string;
+  type: string;
+  status: AttendanceImportHistoryStatus;
+  branch_id: string | number;
+  month: number;
+  year: number;
+  original_filename: string;
+  file_size_bytes: number;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  imported_rows: number;
+  failed_rows: number;
+  error_summary: string | null;
+  expires_at: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceImportHistoryQueryParams {
+  branch_id: string;
+  year: number;
+  page?: number;
+}
+
+export interface AttendanceImportHistoryRecord {
+  id: string;
+  token: string;
+  type: string;
+  status: AttendanceImportHistoryStatus;
+  branchId: string;
+  month: number;
+  year: number;
+  fileName: string;
+  fileSizeBytes: number;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  importedRows: number;
+  failedRows: number;
+  errorSummary: string | null;
+  expiresAt: string | null;
+  confirmedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AttendanceImportHistoryResult {
+  items: AttendanceImportHistoryRecord[];
+  meta: BranchesPaginationMeta;
+}
 
 export class AttendanceImportApiError extends Error {
   constructor(message: string) {

@@ -45,6 +45,23 @@ function readFileNameFromContentDisposition(
   }
 }
 
+function parseDownloadErrorMessage(
+  payload: unknown,
+  fallback: string,
+): string {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "message" in payload &&
+    typeof payload.message === "string" &&
+    payload.message.trim()
+  ) {
+    return payload.message.trim();
+  }
+
+  return fallback;
+}
+
 async function buildDownloadHeaders(): Promise<Headers> {
   const session = await getSession();
   const headers = new Headers();
@@ -64,6 +81,7 @@ async function buildDownloadHeaders(): Promise<Headers> {
 
 export async function downloadAttendanceImportFailedRows(
   importToken: string,
+  fallbackFileName = ATTENDANCE_IMPORT_FAILED_ROWS_FILE_NAME,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const normalizedToken = importToken.trim();
   if (!normalizedToken) {
@@ -77,14 +95,21 @@ export async function downloadAttendanceImportFailedRows(
     });
 
     if (!response.ok) {
-      return { ok: false, message: "Failed to download failed rows." };
+      let message = "Failed to download failed rows.";
+      try {
+        const payload: unknown = await response.json();
+        message = parseDownloadErrorMessage(payload, message);
+      } catch {
+        // keep default message
+      }
+      return { ok: false, message };
     }
 
     const blob = await response.blob();
     const fileName =
       readFileNameFromContentDisposition(
         response.headers.get("Content-Disposition"),
-      ) ?? ATTENDANCE_IMPORT_FAILED_ROWS_FILE_NAME;
+      ) ?? fallbackFileName;
     triggerBrowserFileDownload(blob, fileName);
     return { ok: true };
   } catch {

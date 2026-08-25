@@ -48,9 +48,11 @@ export interface EmployeeApiRecord {
   phone: string | null;
   fingerprint_number: string | null;
   image: string | null;
+  email_verified_at: string | null;
   branch: EmployeeApiBranch | null;
   department: EmployeeApiDepartment | null;
   job_position: EmployeeApiJobPosition | null;
+  roles?: string[];
   created_at: string;
   updated_at: string;
 }

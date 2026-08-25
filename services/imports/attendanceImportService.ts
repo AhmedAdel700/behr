@@ -1,11 +1,15 @@
 import { mapAttendanceImportPreviewFromApi } from "@/lib/admin/mapAttendanceImportPreviewFromApi";
+import { mapAttendanceImportHistoryRecordsFromApi } from "@/lib/admin/mapAttendanceImportHistoryFromApi";
 import {
   attendanceImportConfirmUrl,
+  attendanceImportHistoryUrl,
   attendanceImportPreviewUrl,
 } from "@services/imports/attendanceImportPaths";
 import { createApiHttp } from "@services/http/apiHttp";
 import type {
   AttendanceImportConfirmResult,
+  AttendanceImportHistoryQueryParams,
+  AttendanceImportHistoryResult,
   AttendanceImportPreviewApiData,
   AttendanceImportPreviewRequest,
   AttendanceImportPreviewResult,
@@ -92,5 +96,59 @@ export async function confirmAttendanceImport(
       payload,
       "Attendance import confirmed successfully.",
     ),
+  };
+}
+
+function buildAttendanceImportHistoryParams(
+  params: AttendanceImportHistoryQueryParams,
+): AttendanceImportHistoryQueryParams {
+  const branchId = params.branch_id.trim();
+  if (!branchId) {
+    throw new AttendanceImportApiError("Branch is required.");
+  }
+
+  if (!Number.isFinite(params.year)) {
+    throw new AttendanceImportApiError("Year is required.");
+  }
+
+  return {
+    branch_id: branchId,
+    year: params.year,
+    page: params.page && params.page > 1 ? params.page : 1,
+  };
+}
+
+export async function fetchAttendanceImportHistory(
+  accessToken: string,
+  lang: string,
+  params: AttendanceImportHistoryQueryParams,
+  tokenType = "Bearer",
+): Promise<AttendanceImportHistoryResult> {
+  const queryParams = buildAttendanceImportHistoryParams(params);
+
+  const { response, payload } = await api.authorizedFetch({
+    url: attendanceImportHistoryUrl(queryParams),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load import history.",
+  });
+
+  if (!response.ok) {
+    api.throwFromPayload(payload, "Failed to load import history.");
+  }
+
+  const { data } = api.assertSuccessResponse<unknown>(
+    payload,
+    "Failed to load import history.",
+  );
+
+  if (!Array.isArray(data)) {
+    throw new AttendanceImportApiError("Unexpected import history response.");
+  }
+
+  return {
+    items: mapAttendanceImportHistoryRecordsFromApi(data),
+    meta: api.parsePaginationMeta(payload),
   };
 }

@@ -13,6 +13,7 @@ import "@/app/store/api/leave-types/leaveTypesApi";
 import "@/app/store/api/public/publicOrgApi";
 import "@/app/store/api/system-files/systemFilesApi";
 import "@/app/store/api/overview/overviewApi";
+import "@/app/store/api/imports/attendanceImportApi";
 
 export const makeStore = () => {
   const store = configureStore({

@@ -30,7 +30,11 @@ export function EmployeeManagerPicker({
 
   const shouldSearch = Boolean(branchId && debouncedSearch.trim());
   const { data: employeesResult, isFetching } = useGetEmployeesQuery(
-    { search: debouncedSearch, page: 1 },
+    {
+      search: debouncedSearch,
+      page: 1,
+      branch_id: branchId,
+    },
     { skip: !shouldSearch },
   );
 

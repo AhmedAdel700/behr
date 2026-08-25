@@ -1,27 +1,53 @@
 "use client";
 
-import type { ReactElement } from "react";
+import { useRef, type ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useDispatch } from "react-redux";
 import { ArrowLeft } from "lucide-react";
-import { MainButton } from "@/components/shared/MainButton";
 import {
+  departmentsApi,
   useGetDepartmentByIdQuery,
 } from "@/app/store/api/departments/departmentsApi";
+import type { AppDispatch } from "@/app/store/store";
+import { MainButton } from "@/components/shared/MainButton";
+import type { DepartmentRecord } from "@/types/DepartmentsApiTypes";
 
-export function AdminDepartmentDetailPage(): ReactElement {
+interface AdminDepartmentDetailPageProps {
+  departmentId: string;
+  initialData?: DepartmentRecord;
+}
+
+export function AdminDepartmentDetailPage({
+  departmentId,
+  initialData,
+}: AdminDepartmentDetailPageProps): ReactElement {
   const t = useTranslations("admin.departmentDetailPage");
   const tEmployees = useTranslations("admin.employees");
-  const params = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const didSeedCache = useRef(false);
 
-  const departmentParam = params.departmentId;
-  const departmentId =
-    typeof departmentParam === "string" ? departmentParam : "";
-  const { data: department } = useGetDepartmentByIdQuery(departmentId, {
+  if (initialData && departmentId && !didSeedCache.current) {
+    didSeedCache.current = true;
+    dispatch(
+      departmentsApi.util.upsertQueryData(
+        "getDepartmentById",
+        departmentId,
+        initialData,
+      ),
+    );
+  }
+
+  const {
+    data: departmentData,
+    isLoading,
+    isError,
+  } = useGetDepartmentByIdQuery(departmentId, {
     skip: !departmentId,
   });
 
-  if (!department) {
+  const department = departmentData ?? initialData;
+
+  if (!departmentId || ((isError || !department) && !isLoading)) {
     return (
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -31,6 +57,14 @@ export function AdminDepartmentDetailPage(): ReactElement {
         <MainButton variant="primary" size="sm" link="/admin-dashboard/departments">
           {t("backToDepartments")}
         </MainButton>
+      </div>
+    );
+  }
+
+  if (!department) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
+        <p className="text-sm text-text-secondary">{t("loading")}</p>
       </div>
     );
   }

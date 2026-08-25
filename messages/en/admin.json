@@ -25,7 +25,7 @@
     "departments": "Departments",
     "fingerprintImport": "Fingerprint import",
     "positions": "Positions",
-    "system": "System",
+    "system": "Settings",
     "systemFiles": "System files"
   },
   "sidebar": {
@@ -671,6 +671,7 @@
   },
   "departmentDetailPage": {
     "backToDepartments": "Back to departments",
+    "loading": "Loading department…",
     "subtitle": "{branch} · Managed by {manager} · {count, plural, =0 {no other employees} =1 {1 employee} other {# employees}}",
     "managerLabel": "Department manager",
     "searchPlaceholder": "Search employees…",
@@ -768,18 +769,21 @@
       "issues": "Issues"
     },
     "loadingMonth": "Loading data for selected month…",
+    "loadingHistory": "Loading upload history…",
+    "historyLoadError": "Could not load upload history.",
     "noBranches": "No branches available. Create a branch before importing attendance.",
     "historySelectBranch": "Select a branch to view upload history.",
     "recordsSelectBranch": "Select a branch to view attendance records.",
     "filters": {
-      "branch": "Branch"
+      "branch": "Branch",
+      "search": "Search"
     },
     "placeholders": {
       "branch": "Select branch",
       "year": "Select year"
     },
     "historyTitle": "Upload history ({count})",
-    "historyEmpty": "No sheets uploaded for this month yet.",
+    "historyEmpty": "No sheets uploaded for this branch and year yet.",
     "historyColumns": {
       "fileName": "File",
       "period": "Period",
@@ -789,6 +793,8 @@
       "download": "Download"
     },
     "historyDownload": "Download {fileName}",
+    "historyDownloadError": "Could not download failed rows.",
+    "historyDownloadNoFailedRows": "This import has no failed rows to download.",
     "recordsTitle": "Attendance records for {month} {year} ({count})",
     "recordsEmpty": "No attendance records for this month yet. Upload a sheet to import data.",
     "recordsNoResults": "No records match your search.",

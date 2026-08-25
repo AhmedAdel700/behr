@@ -1,7 +1,7 @@
 import {
-  employeeItemUrl,
   employeesCollectionUrl,
 } from "@services/employees/employeesPaths";
+import { userItemUrl } from "@services/users/usersPaths";
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import type {
@@ -185,7 +185,7 @@ export async function fetchEmployee(
   tokenType = "Bearer",
 ): Promise<EmployeeRecord> {
   const { response, payload } = await api.authorizedFetch({
-    url: employeeItemUrl(employeeId),
+    url: userItemUrl(employeeId),
     accessToken,
     lang,
     tokenType,
@@ -198,7 +198,7 @@ export async function fetchEmployee(
     );
   }
 
-  const { data } = api.assertSuccessResponse<unknown>(
+  const { data } = api.assertSuccessResponse<EmployeeApiRecord>(
     payload,
     "Failed to load employee.",
   );
@@ -218,7 +218,7 @@ export async function updateEmployeeRequest(
   tokenType = "Bearer",
 ): Promise<EmployeeMutationResult> {
   const { response, payload } = await api.authorizedFetch({
-    url: employeeItemUrl(employeeId),
+    url: userItemUrl(employeeId),
     accessToken,
     lang,
     tokenType,
@@ -270,7 +270,7 @@ export async function deleteEmployeeRequest(
   tokenType = "Bearer",
 ): Promise<EmployeeDeleteResult> {
   const { response, payload } = await api.authorizedFetch({
-    url: employeeItemUrl(employeeId),
+    url: userItemUrl(employeeId),
     accessToken,
     lang,
     tokenType,

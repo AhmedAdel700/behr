@@ -1,20 +1,19 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ReactElement,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useDispatch } from "react-redux";
 import { toast } from "sonner";
 import { Calendar, Download, Eye, Fingerprint, History, MapPinned, Search } from "lucide-react";
 import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   useGetBranchesQuery,
 } from "@/app/store/api/branches/branchesApi";
+import {
+  attendanceImportApi,
+  useGetAttendanceImportHistoryQuery,
+} from "@/app/store/api/imports/attendanceImportApi";
+import type { AppDispatch } from "@/app/store/store";
 import { CustomUpload } from "@/components/shared/CustomUpload";
 import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
@@ -26,15 +25,11 @@ import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import {
   buildMonthOptions,
   buildYearOptions,
-  downloadFingerprintImportUpload,
   fetchFingerprintImportMonth,
 } from "@/lib/admin/fingerprintImportService";
 import {
-  getAllFingerprintImportMonthsSnapshot,
   getFingerprintImportMonthSnapshot,
-  getFingerprintImportsVersionSnapshot,
   hydrateFingerprintImports,
-  subscribeFingerprintImports,
 } from "@/lib/admin/fingerprintImportStore";
 import { searchFingerprintRecords } from "@/lib/admin/searchFingerprintRecords";
 import { formatDateTime12, formatStoredDate, formatStoredTime12, resolveTimeLocale } from "@/lib/formatTime";
@@ -44,11 +39,10 @@ import {
   ATTENDANCE_IMPORT_TEMPLATE_TYPE,
 } from "@/lib/admin/systemFileDownload";
 import { cn } from "@/lib/utils";
-import type { AttendanceImportPreviewResult } from "@/types/AttendanceImportApiTypes";
+import type { AttendanceImportHistoryRecord, AttendanceImportPreviewResult } from "@/types/AttendanceImportApiTypes";
 import type {
   FingerprintAttendanceStatus,
   FingerprintImportMonthData,
-  FingerprintImportUpload,
 } from "@/types/FingerprintImportApiTypes";
 import {
   TABLE_DATE_CELL_CLASS,
@@ -59,6 +53,7 @@ import {
 } from "@/lib/tableCells";
 
 const RECORDS_PAGE_SIZE = 31;
+const HISTORY_PAGE_SIZE = 15;
 const RECORDS_COLUMN_COUNT = 8;
 const recordsTableHeaderClass =
   "whitespace-nowrap px-4 py-4 text-start text-xs font-semibold text-text-muted";
@@ -76,6 +71,7 @@ const attendanceStatusSurface: Record<
 export function AdminFingerprintImportPage(): ReactElement {
   const t = useTranslations("admin.fingerprintImportPage");
   const locale = useLocale();
+  const dispatch = useDispatch<AppDispatch>();
   const now = new Date();
 
   const [uploadYear, setUploadYear] = useState(String(now.getFullYear()));
@@ -95,23 +91,36 @@ export function AdminFingerprintImportPage(): ReactElement {
   const [monthData, setMonthData] = useState<FingerprintImportMonthData | null>(null);
   const [recordsSearchQuery, setRecordsSearchQuery] = useState("");
   const [recordsPage, setRecordsPage] = useState(1);
-  const [downloadingUploadId, setDownloadingUploadId] = useState<string | null>(
-    null,
-  );
+  const [historyPage, setHistoryPage] = useState(1);
   const [downloadingGuide, setDownloadingGuide] = useState(false);
   const { triggerRef: previewTriggerRef, bindTrigger: bindPreviewTrigger } =
     useModalTriggerRef();
-
-  const importsVersion = useSyncExternalStore(
-    subscribeFingerprintImports,
-    getFingerprintImportsVersionSnapshot,
-    () => 0
-  );
 
   const parsedUploadYear = Number(uploadYear);
   const parsedUploadMonth = Number(uploadMonth);
   const parsedViewYear = Number(viewYear);
   const parsedViewMonth = Number(viewMonth);
+
+  const historyQueryArg = useMemo(
+    () =>
+      viewBranchId.trim() && Number.isFinite(parsedViewYear)
+        ? {
+            branch_id: viewBranchId.trim(),
+            year: parsedViewYear,
+            page: historyPage,
+          }
+        : undefined,
+    [historyPage, parsedViewYear, viewBranchId],
+  );
+
+  const {
+    data: historyResult,
+    isFetching: loadingHistory,
+    isError: historyError,
+    error: historyQueryError,
+  } = useGetAttendanceImportHistoryQuery(historyQueryArg, {
+    skip: !historyQueryArg,
+  });
 
   const { data: branchesResult, isLoading: isLoadingBranches } =
     useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
@@ -130,10 +139,18 @@ export function AdminFingerprintImportPage(): ReactElement {
     setViewBranchId(value);
     setMonthData(null);
     setFetchError(null);
+    setHistoryPage(1);
   };
 
   const handleViewYearChange = (value: string): void => {
     setViewYear(value);
+    setMonthData(null);
+    setFetchError(null);
+    setHistoryPage(1);
+  };
+
+  const handleViewMonthChange = (value: string): void => {
+    setViewMonth(value);
     setMonthData(null);
     setFetchError(null);
   };
@@ -220,19 +237,30 @@ export function AdminFingerprintImportPage(): ReactElement {
 
   const records = monthData?.records ?? [];
 
-  const historyUploads = useMemo(() => {
-    if (!viewBranchId.trim()) {
-      return [];
+  const historyUploads = historyResult?.items ?? [];
+  const historyTotalItems = historyResult?.meta.total ?? historyUploads.length;
+  const historyTotalPages = Math.max(1, historyResult?.meta.last_page ?? 1);
+  const safeHistoryPage = Math.min(historyPage, historyTotalPages);
+
+  useEffect(() => {
+    if (historyPage > historyTotalPages) {
+      setHistoryPage(historyTotalPages);
+    }
+  }, [historyPage, historyTotalPages]);
+
+  const historyLoadErrorMessage = useMemo((): string => {
+    if (
+      typeof historyQueryError === "object" &&
+      historyQueryError !== null &&
+      "error" in historyQueryError &&
+      typeof historyQueryError.error === "string" &&
+      historyQueryError.error.trim()
+    ) {
+      return historyQueryError.error;
     }
 
-    return getAllFingerprintImportMonthsSnapshot(viewBranchId)
-      .filter((item) => item.year === parsedViewYear)
-      .flatMap((item) => item.uploads)
-      .sort(
-        (a, b) =>
-          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
-      );
-  }, [importsVersion, parsedViewYear, viewBranchId]);
+    return t("historyLoadError");
+  }, [historyQueryError, t]);
 
   const filteredRecords = useMemo(
     () => searchFingerprintRecords(records, recordsSearchQuery),
@@ -259,18 +287,6 @@ export function AdminFingerprintImportPage(): ReactElement {
   const handleRecordsSearchChange = (value: string): void => {
     setRecordsSearchQuery(value);
     setRecordsPage(1);
-  };
-
-  const handleDownloadUpload = async (upload: FingerprintImportUpload): Promise<void> => {
-    setDownloadingUploadId(upload.id);
-
-    const response = await downloadFingerprintImportUpload(viewBranchId, upload);
-
-    if (!response.ok) {
-      toast.error(response.message);
-    }
-
-    setDownloadingUploadId(null);
   };
 
   const handleDownloadGuide = async (): Promise<void> => {
@@ -353,6 +369,11 @@ export function AdminFingerprintImportPage(): ReactElement {
       setViewBranchId(uploadBranchId);
       setViewYear(uploadYear);
       setViewMonth(uploadMonth);
+      dispatch(
+        attendanceImportApi.util.invalidateTags([
+          { type: "AttendanceImport", id: "HISTORY" },
+        ]),
+      );
 
       const monthResponse = await fetchFingerprintImportMonth(
         uploadBranchId,
@@ -535,11 +556,21 @@ export function AdminFingerprintImportPage(): ReactElement {
           <div className="flex items-center gap-2">
             <History className="size-4 text-text-muted" aria-hidden />
             <h2 className="text-sm font-semibold text-ink">
-              {t("historyTitle", { count: historyUploads.length })}
+              {t("historyTitle", { count: historyTotalItems })}
             </h2>
           </div>
           {historyViewFilters}
         </div>
+
+        {loadingHistory ? (
+          <p className="text-sm text-text-muted">{t("loadingHistory")}</p>
+        ) : null}
+
+        {historyError ? (
+          <p className="text-sm text-danger-600" role="alert">
+            {historyLoadErrorMessage}
+          </p>
+        ) : null}
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
           <div className="admin-scroll-visible overflow-x-auto">
@@ -556,21 +587,19 @@ export function AdminFingerprintImportPage(): ReactElement {
                     {t("historyColumns.uploadedAt")}
                   </th>
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
-                    {t("historyColumns.uploadedBy")}
-                  </th>
-                  <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("historyColumns.recordCount")}
-                  </th>
-                  <th className="px-4 py-4 text-end text-xs font-semibold text-text-muted">
-                    {t("historyColumns.download")}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {historyUploads.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-text-muted">
-                      {viewBranchId.trim() ? t("historyEmpty") : t("historySelectBranch")}
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-text-muted">
+                      {viewBranchId.trim()
+                        ? loadingHistory
+                          ? t("loadingHistory")
+                          : t("historyEmpty")
+                        : t("historySelectBranch")}
                     </td>
                   </tr>
                 ) : (
@@ -590,31 +619,12 @@ export function AdminFingerprintImportPage(): ReactElement {
                       </td>
                       <td className={cn("px-4 py-3 text-text-secondary", TABLE_DATETIME_CELL_CLASS)}>
                         {formatDateTime12(
-                          new Date(upload.uploadedAt),
+                          new Date(upload.createdAt),
                           resolveTimeLocale(locale)
                         )}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">{upload.uploadedBy}</td>
                       <td className="px-4 py-3 tabular-nums text-text-secondary">
-                        {upload.recordCount}
-                      </td>
-                      <td className="px-4 py-3 text-end">
-                        <MainButton
-                          variant="edit-soft"
-                          size="sm"
-                          iconOnly
-                          aria-label={t("historyDownload", { fileName: upload.fileName })}
-                          startIcon={<Download className="size-4" />}
-                          loading={downloadingUploadId === upload.id}
-                          disabled={
-                            !viewBranchId.trim() ||
-                            (downloadingUploadId !== null &&
-                              downloadingUploadId !== upload.id)
-                          }
-                          onClick={() => {
-                            void handleDownloadUpload(upload);
-                          }}
-                        />
+                        {upload.totalRows}
                       </td>
                     </tr>
                   ))
@@ -622,6 +632,17 @@ export function AdminFingerprintImportPage(): ReactElement {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={safeHistoryPage}
+            pageSize={HISTORY_PAGE_SIZE}
+            totalItems={historyTotalItems}
+            onPageChange={setHistoryPage}
+            previousLabel={t("pagination.previous")}
+            nextLabel={t("pagination.next")}
+            formatSummary={({ start, end, total }) =>
+              t("pagination.summary", { start, end, total })
+            }
+          />
         </div>
       </section>
 
@@ -634,29 +655,42 @@ export function AdminFingerprintImportPage(): ReactElement {
           })}
         </p>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="w-full sm:max-w-xs">
-            <MainSelect
-              label={t("filters.branch")}
-              value={viewBranchId}
-              onValueChange={handleViewBranchChange}
-              options={branchOptions}
-              placeholder={t("placeholders.branch")}
-              startIcon={<MapPinned className="size-4" />}
-              disabled={isLoadingBranches || branchOptions.length === 0}
-            />
-          </div>
-          <div className="w-full sm:max-w-xs">
-            <MainInput
-              type="search"
-              value={recordsSearchQuery}
-              onChange={(event) => handleRecordsSearchChange(event.target.value)}
-              placeholder={t("recordsSearchPlaceholder")}
-              startIcon={<Search />}
-              aria-label={t("recordsSearchPlaceholder")}
-              disabled={!viewBranchId.trim()}
-            />
-          </div>
+        <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MainSelect
+            label={t("filters.branch")}
+            value={viewBranchId}
+            onValueChange={handleViewBranchChange}
+            options={branchOptions}
+            placeholder={t("placeholders.branch")}
+            startIcon={<MapPinned className="size-4" />}
+            disabled={isLoadingBranches || branchOptions.length === 0}
+          />
+          <MainSelect
+            label={t("fields.year")}
+            value={viewYear}
+            onValueChange={handleViewYearChange}
+            options={yearOptions}
+            placeholder={t("placeholders.year")}
+            startIcon={<Calendar className="size-4" />}
+            disabled={loadingMonth || !viewBranchId.trim()}
+          />
+          <MainSelect
+            label={t("fields.month")}
+            value={viewMonth}
+            onValueChange={handleViewMonthChange}
+            options={monthOptions}
+            startIcon={<Calendar className="size-4" />}
+            disabled={loadingMonth || !viewBranchId.trim()}
+          />
+          <MainInput
+            type="search"
+            label={t("filters.search")}
+            value={recordsSearchQuery}
+            onChange={(event) => handleRecordsSearchChange(event.target.value)}
+            placeholder={t("recordsSearchPlaceholder")}
+            startIcon={<Search />}
+            disabled={!viewBranchId.trim()}
+          />
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
