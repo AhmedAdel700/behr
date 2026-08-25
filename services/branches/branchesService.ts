@@ -3,7 +3,8 @@ import {
   branchItemUrl,
   branchesCollectionUrl,
 } from "@services/branches/branchesPaths";
-import { buildJsonHeaders } from "@services/auth/shared";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
 import type {
   BranchApiRecord,
@@ -13,131 +14,10 @@ import type {
   BranchPayload,
   BranchesListQueryParams,
   BranchesListResult,
-  BranchesPaginationMeta,
 } from "@/types/BranchesApiTypes";
 import { BranchesApiError } from "@/types/BranchesApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload &&
-    typeof payload.message === "string"
-  ) {
-    return payload.message;
-  }
-
-  return fallback;
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
-    throw new BranchesApiError(fallbackMessage);
-  }
-
-  const response = payload as { success: boolean; message: string; data: T | null };
-
-  if (!response.success || response.data === null) {
-    throw new BranchesApiError(response.message || fallbackMessage);
-  }
-
-  return {
-    message: response.message,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "meta" in payload &&
-    typeof payload.meta === "object" &&
-    payload.meta !== null
-  ) {
-    const meta = payload.meta as Record<string, unknown>;
-
-    if (
-      typeof meta.current_page === "number" &&
-      typeof meta.last_page === "number" &&
-      typeof meta.per_page === "number" &&
-      typeof meta.total === "number"
-    ) {
-      return {
-        current_page: meta.current_page,
-        last_page: meta.last_page,
-        per_page: meta.per_page,
-        total: meta.total,
-      };
-    }
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof BranchesApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new BranchesApiError(
-      "Could not reach the branches server. Check CORS/SSL or use the server actions path.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new BranchesApiError(
-      "Could not reach the branches server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new BranchesApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
-}
-
-function buildBranchesListUrl(params?: BranchesListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query ? `${branchesCollectionUrl()}?${query}` : branchesCollectionUrl();
-}
+const api = createApiHttp(BranchesApiError, "branches server");
 
 export async function fetchBranches(
   accessToken: string,
@@ -145,27 +25,21 @@ export async function fetchBranches(
   tokenType = "Bearer",
   params?: BranchesListQueryParams,
 ): Promise<BranchesListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildBranchesListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load branches.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(branchesCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load branches.",
+  });
 
   if (!response.ok) {
     throw new BranchesApiError(
-      parseApiMessage(payload, "Failed to load branches."),
+      api.parseApiMessage(payload, "Failed to load branches."),
     );
   }
 
-  const { data } = assertSuccessResponse<BranchApiRecord[]>(
+  const { data } = api.assertSuccessResponse<BranchApiRecord[]>(
     payload,
     "Failed to load branches.",
   );
@@ -176,7 +50,7 @@ export async function fetchBranches(
 
   return {
     branches: mapBranchesFromApi(data),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -186,27 +60,21 @@ export async function fetchBranchById(
   branchId: string,
   tokenType = "Bearer",
 ): Promise<AdminBranchRecord> {
-  let response: Response;
-
-  try {
-    response = await fetch(branchItemUrl(branchId), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load branch.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: branchItemUrl(branchId),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load branch.",
+  });
 
   if (!response.ok) {
     throw new BranchesApiError(
-      parseApiMessage(payload, "Failed to load branch."),
+      api.parseApiMessage(payload, "Failed to load branch."),
     );
   }
 
-  const { data } = assertSuccessResponse<BranchApiRecord>(
+  const { data } = api.assertSuccessResponse<BranchApiRecord>(
     payload,
     "Failed to load branch.",
   );
@@ -220,27 +88,23 @@ export async function createBranchRequest(
   body: BranchPayload,
   tokenType = "Bearer",
 ): Promise<BranchMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(branchesCollectionUrl(), {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to create branch.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: branchesCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: "Failed to create branch.",
+  });
 
   if (!response.ok) {
     throw new BranchesApiError(
-      parseApiMessage(payload, "Failed to create branch."),
+      api.parseApiMessage(payload, "Failed to create branch."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<BranchApiResponse["data"]>(
+  const { message, data } = api.assertSuccessResponse<BranchApiResponse["data"]>(
     payload,
     "Failed to create branch.",
   );
@@ -262,27 +126,23 @@ export async function updateBranchRequest(
   body: BranchPayload,
   tokenType = "Bearer",
 ): Promise<BranchMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(branchItemUrl(branchId), {
-      method: "PUT",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to update branch.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: branchItemUrl(branchId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body,
+    fallbackMessage: "Failed to update branch.",
+  });
 
   if (!response.ok) {
     throw new BranchesApiError(
-      parseApiMessage(payload, "Failed to update branch."),
+      api.parseApiMessage(payload, "Failed to update branch."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<BranchApiResponse["data"]>(
+  const { message, data } = api.assertSuccessResponse<BranchApiResponse["data"]>(
     payload,
     "Failed to update branch.",
   );
@@ -303,35 +163,28 @@ export async function deleteBranchRequest(
   branchId: string,
   tokenType = "Bearer",
 ): Promise<BranchDeleteResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(branchItemUrl(branchId), {
-      method: "DELETE",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to delete branch.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: branchItemUrl(branchId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to delete branch.",
+  });
 
   if (!response.ok) {
     throw new BranchesApiError(
-      parseApiMessage(payload, "Failed to delete branch."),
+      api.parseApiMessage(payload, "Failed to delete branch."),
     );
   }
 
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    payload.success === false
-  ) {
-    throw new BranchesApiError(parseApiMessage(payload, "Failed to delete branch."));
-  }
+  api.assertDeleteSuccess(payload, "Failed to delete branch.");
 
   return {
-    message: parseApiMessage(payload, "Branch deleted successfully."),
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to delete branch.",
+      "Branch deleted successfully.",
+    ),
   };
 }

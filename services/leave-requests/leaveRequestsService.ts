@@ -1,11 +1,11 @@
-import { buildJsonHeaders } from "@services/auth/shared";
 import {
   leaveRequestApproveUrl,
   leaveRequestItemUrl,
   leaveRequestRejectUrl,
   leaveRequestsCollectionUrl,
 } from "@services/leave-requests/leaveRequestsPaths";
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import { parseLeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
 import type {
   LeaveRequestMutationResult,
@@ -21,16 +21,7 @@ import type {
 } from "@/types/LeaveRequestsApiTypes";
 import { LeaveRequestsApiError } from "@/types/LeaveRequestsApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
+const api = createApiHttp(LeaveRequestsApiError, "leave requests server");
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "object" || value === null) {
@@ -59,137 +50,6 @@ function normalizeText(value: unknown): string {
 function parseDuration(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseFieldErrors(payload: unknown): Record<string, string> {
-  const record = asRecord(payload);
-  if (!record || typeof record.errors !== "object" || record.errors === null) {
-    return {};
-  }
-
-  const errors = record.errors as Record<string, unknown>;
-  const fieldErrors: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(errors)) {
-    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
-      fieldErrors[key] = value[0];
-      continue;
-    }
-
-    if (typeof value === "string" && value.trim()) {
-      fieldErrors[key] = value;
-    }
-  }
-
-  return fieldErrors;
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  const firstFieldError = Object.values(parseFieldErrors(payload))[0];
-  if (firstFieldError) {
-    return firstFieldError;
-  }
-
-  const record = asRecord(payload);
-  if (record && typeof record.message === "string" && record.message.trim()) {
-    return record.message;
-  }
-
-  return fallback;
-}
-
-function throwFromPayload(payload: unknown, fallback: string): never {
-  throw new LeaveRequestsApiError(parseApiMessage(payload, fallback));
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  const record = asRecord(payload);
-  if (!record || typeof record.success !== "boolean") {
-    throw new LeaveRequestsApiError(fallbackMessage);
-  }
-
-  const response = record as { success: boolean; message: string; data: T | null };
-
-  if (!response.success || response.data === null) {
-    throwFromPayload(payload, fallbackMessage);
-  }
-
-  return {
-    message: typeof response.message === "string" ? response.message : fallbackMessage,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  const record = asRecord(payload);
-  const meta = record ? asRecord(record.meta) : null;
-  const currentPage = meta ? readPositiveInt(meta.current_page) : null;
-  const lastPage = meta ? readPositiveInt(meta.last_page) : null;
-  const perPage = meta ? readPositiveInt(meta.per_page) : null;
-  const total = meta ? readPositiveInt(meta.total) : null;
-
-  if (
-    currentPage !== null &&
-    lastPage !== null &&
-    perPage !== null &&
-    total !== null
-  ) {
-    return {
-      current_page: currentPage,
-      last_page: lastPage,
-      per_page: perPage,
-      total,
-    };
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function readPositiveInt(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof LeaveRequestsApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new LeaveRequestsApiError(
-      "Could not reach the leave requests server. Check CORS/SSL or network.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new LeaveRequestsApiError(
-      "Could not reach the leave requests server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new LeaveRequestsApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
 }
 
 function isLeaveRequestStatus(value: unknown): value is LeaveRequestStatus {
@@ -311,53 +171,25 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
   };
 }
 
-function buildLeaveRequestsListUrl(params?: LeaveRequestsListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.status) {
-    searchParams.set("status", params.status);
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query
-    ? `${leaveRequestsCollectionUrl()}?${query}`
-    : leaveRequestsCollectionUrl();
-}
-
 export async function fetchLeaveRequests(
   accessToken: string,
   lang: string,
   tokenType = "Bearer",
   params?: LeaveRequestsListQueryParams,
 ): Promise<LeaveRequestsListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildLeaveRequestsListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load leave requests.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(leaveRequestsCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load leave requests.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to load leave requests.");
+    api.throwFromPayload(payload, "Failed to load leave requests.");
   }
 
-  const { data } = assertSuccessResponse<unknown[]>(
+  const { data } = api.assertSuccessResponse<unknown[]>(
     payload,
     "Failed to load leave requests.",
   );
@@ -368,7 +200,7 @@ export async function fetchLeaveRequests(
 
   return {
     leaveRequests: data.map(mapLeaveRequestFromApi),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -411,25 +243,19 @@ export async function fetchLeaveRequest(
   leaveRequestId: string,
   tokenType = "Bearer",
 ): Promise<LeaveRequestRecord> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveRequestItemUrl(leaveRequestId), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load leave request.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveRequestItemUrl(leaveRequestId),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load leave request.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to load leave request.");
+    api.throwFromPayload(payload, "Failed to load leave request.");
   }
 
-  const { data } = assertSuccessResponse<unknown>(
+  const { data } = api.assertSuccessResponse<unknown>(
     payload,
     "Failed to load leave request.",
   );
@@ -443,25 +269,21 @@ export async function createLeaveRequestRequest(
   body: LeaveRequestPayload,
   tokenType = "Bearer",
 ): Promise<LeaveRequestMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveRequestsCollectionUrl(), {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to create leave request.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveRequestsCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: "Failed to create leave request.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to create leave request.");
+    api.throwFromPayload(payload, "Failed to create leave request.");
   }
 
-  const { message, data } = assertSuccessResponse<unknown>(
+  const { message, data } = api.assertSuccessResponse<unknown>(
     payload,
     "Failed to create leave request.",
   );
@@ -480,25 +302,21 @@ async function postLeaveRequestReview(
   tokenType = "Bearer",
   body?: RejectLeaveRequestPayload,
 ): Promise<LeaveRequestMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-  } catch (error) {
-    wrapNetworkError(error, fallback);
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url,
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: fallback,
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, fallback);
+    api.throwFromPayload(payload, fallback);
   }
 
-  const { message, data } = assertSuccessResponse<unknown>(payload, fallback);
+  const { message, data } = api.assertSuccessResponse<unknown>(payload, fallback);
 
   return {
     message,

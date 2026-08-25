@@ -1,4 +1,4 @@
-import { buildJsonHeaders } from "@services/auth/shared";
+import { createApiHttp } from "@services/http/apiHttp";
 import {
   publicBranchDepartmentsUrl,
   publicBranchesUrl,
@@ -10,47 +10,22 @@ import type {
 } from "@/types/PublicOrgApiTypes";
 import { PublicOrgApiError } from "@/types/PublicOrgApiTypes";
 
-function parseApiMessage(payload: unknown, fallback: string): string {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload &&
-    typeof payload.message === "string"
-  ) {
-    return payload.message;
-  }
-
-  return fallback;
-}
+const api = createApiHttp(PublicOrgApiError, "public org server");
 
 function assertNamedList(
   payload: unknown,
   fallbackMessage: string,
 ): PublicNamedApiRecord[] {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
+  const { data } = api.assertSuccessResponse<PublicNamedApiRecord[]>(
+    payload,
+    fallbackMessage,
+  );
+
+  if (!Array.isArray(data)) {
     throw new PublicOrgApiError(fallbackMessage);
   }
 
-  const response = payload as {
-    success: boolean;
-    message: string;
-    data: PublicNamedApiRecord[] | null;
-  };
-
-  if (!response.success || response.data === null) {
-    throw new PublicOrgApiError(response.message || fallbackMessage);
-  }
-
-  if (!Array.isArray(response.data)) {
-    throw new PublicOrgApiError(fallbackMessage);
-  }
-
-  return response.data;
+  return data;
 }
 
 function mapNamedRecord(record: PublicNamedApiRecord): PublicNamedRecord {
@@ -65,22 +40,15 @@ async function fetchNamedList(
   lang: string,
   fallbackMessage: string,
 ): Promise<PublicNamedRecord[]> {
-  let response: Response;
-
-  try {
-    response = await fetch(url, {
-      method: "GET",
-      headers: buildJsonHeaders(lang),
-      cache: "no-store",
-    });
-  } catch {
-    throw new PublicOrgApiError(fallbackMessage);
-  }
-
-  const payload: unknown = await response.json().catch(() => null);
+  const { response, payload } = await api.authorizedFetch({
+    url,
+    lang,
+    fallbackMessage,
+    useJsonHeadersOnly: true,
+  });
 
   if (!response.ok) {
-    throw new PublicOrgApiError(parseApiMessage(payload, fallbackMessage));
+    throw new PublicOrgApiError(api.parseApiMessage(payload, fallbackMessage));
   }
 
   return assertNamedList(payload, fallbackMessage).map(mapNamedRecord);

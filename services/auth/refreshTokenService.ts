@@ -1,8 +1,10 @@
+import { readJsonPayload } from "@services/http/apiHttp";
 import {
   authApiPaths,
   buildAuthApiUrl,
   buildAuthHeaders,
-} from "@services/auth/shared";import type { RefreshTokenData, RefreshTokenResponse } from "@/types/AuthTypes";
+} from "@services/auth/shared";
+import type { RefreshTokenData, RefreshTokenResponse } from "@/types/AuthTypes";
 export interface RefreshAccessTokenResult {
   success: boolean;
   message?: string;
@@ -45,7 +47,7 @@ export async function refreshAccessToken(
     headers: buildAuthHeaders(accessToken, lang),
   });
 
-  const payload: unknown = await response.json().catch(() => null);
+  const payload: unknown = await readJsonPayload(response);
 
   if (!isRefreshTokenResponse(payload)) {
     return {

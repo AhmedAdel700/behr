@@ -1,9 +1,9 @@
-import { buildJsonHeaders } from "@services/auth/shared";
 import {
   leaveTypeItemUrl,
   leaveTypesCollectionUrl,
 } from "@services/leave-types/leaveTypesPaths";
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import {
   LeaveTypesApiError,
   parseLeaveTypeUnit,
@@ -16,150 +16,10 @@ import {
   type LeaveTypesListResult,
 } from "@/types/LeaveTypesApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
+const api = createApiHttp(LeaveTypesApiError, "leave types server");
 
 function normalizeText(value: string | null | undefined): string {
   return value ?? "";
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  if (typeof payload !== "object" || payload === null) {
-    return fallback;
-  }
-
-  const record = payload as Record<string, unknown>;
-
-  if (typeof record.message === "string" && record.message.trim()) {
-    return record.message;
-  }
-
-  if (typeof record.errors === "object" && record.errors !== null) {
-    const errors = record.errors as Record<string, unknown>;
-    for (const value of Object.values(errors)) {
-      if (Array.isArray(value) && typeof value[0] === "string") {
-        return value[0];
-      }
-      if (typeof value === "string") {
-        return value;
-      }
-    }
-  }
-
-  return fallback;
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
-    throw new LeaveTypesApiError(fallbackMessage);
-  }
-
-  const response = payload as {
-    success: boolean;
-    message: string;
-    data: T | null;
-  };
-
-  if (!response.success || response.data === null) {
-    throw new LeaveTypesApiError(response.message || fallbackMessage);
-  }
-
-  return {
-    message: response.message,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "meta" in payload &&
-    typeof payload.meta === "object" &&
-    payload.meta !== null
-  ) {
-    const meta = payload.meta as Record<string, unknown>;
-    const currentPage = readPositiveInt(meta.current_page);
-    const lastPage = readPositiveInt(meta.last_page);
-    const perPage = readPositiveInt(meta.per_page);
-    const total = readPositiveInt(meta.total);
-
-    if (
-      currentPage !== null &&
-      lastPage !== null &&
-      perPage !== null &&
-      total !== null
-    ) {
-      return {
-        current_page: currentPage,
-        last_page: lastPage,
-        per_page: perPage,
-        total,
-      };
-    }
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function readPositiveInt(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof LeaveTypesApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new LeaveTypesApiError(
-      "Could not reach the leave types server. Check CORS/SSL or network.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new LeaveTypesApiError(
-      "Could not reach the leave types server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new LeaveTypesApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
 }
 
 function parseCount(value: string | undefined): number {
@@ -207,51 +67,27 @@ function mapLeaveTypeFromApi(record: LeaveTypeApiRecord): LeaveTypeRecord {
   };
 }
 
-function buildLeaveTypesListUrl(params?: LeaveTypesListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query
-    ? `${leaveTypesCollectionUrl()}?${query}`
-    : leaveTypesCollectionUrl();
-}
-
 export async function fetchLeaveTypes(
   accessToken: string,
   lang: string,
   tokenType = "Bearer",
   params?: LeaveTypesListQueryParams,
 ): Promise<LeaveTypesListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildLeaveTypesListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load leave types.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(leaveTypesCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load leave types.",
+  });
 
   if (!response.ok) {
     throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to load leave types."),
+      api.parseApiMessage(payload, "Failed to load leave types."),
     );
   }
 
-  const { data } = assertSuccessResponse<LeaveTypeApiRecord[]>(
+  const { data } = api.assertSuccessResponse<LeaveTypeApiRecord[]>(
     payload,
     "Failed to load leave types.",
   );
@@ -262,7 +98,7 @@ export async function fetchLeaveTypes(
 
   return {
     leaveTypes: data.map(mapLeaveTypeFromApi),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -272,27 +108,21 @@ export async function fetchLeaveType(
   leaveTypeId: string,
   tokenType = "Bearer",
 ): Promise<LeaveTypeRecord> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveTypeItemUrl(leaveTypeId), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load leave type.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveTypeItemUrl(leaveTypeId),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load leave type.",
+  });
 
   if (!response.ok) {
     throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to load leave type."),
+      api.parseApiMessage(payload, "Failed to load leave type."),
     );
   }
 
-  const { data } = assertSuccessResponse<LeaveTypeApiRecord>(
+  const { data } = api.assertSuccessResponse<LeaveTypeApiRecord>(
     payload,
     "Failed to load leave type.",
   );
@@ -342,27 +172,23 @@ export async function createLeaveTypeRequest(
   body: LeaveTypePayload,
   tokenType = "Bearer",
 ): Promise<LeaveTypeMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveTypesCollectionUrl(), {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to create leave type.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveTypesCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: "Failed to create leave type.",
+  });
 
   if (!response.ok) {
     throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to create leave type."),
+      api.parseApiMessage(payload, "Failed to create leave type."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<LeaveTypeApiRecord>(
+  const { message, data } = api.assertSuccessResponse<LeaveTypeApiRecord>(
     payload,
     "Failed to create leave type.",
   );
@@ -380,27 +206,23 @@ export async function updateLeaveTypeRequest(
   body: LeaveTypePayload,
   tokenType = "Bearer",
 ): Promise<LeaveTypeMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveTypeItemUrl(leaveTypeId), {
-      method: "PUT",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to update leave type.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveTypeItemUrl(leaveTypeId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body,
+    fallbackMessage: "Failed to update leave type.",
+  });
 
   if (!response.ok) {
     throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to update leave type."),
+      api.parseApiMessage(payload, "Failed to update leave type."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<LeaveTypeApiRecord>(
+  const { message, data } = api.assertSuccessResponse<LeaveTypeApiRecord>(
     payload,
     "Failed to update leave type.",
   );
@@ -417,37 +239,28 @@ export async function deleteLeaveTypeRequest(
   leaveTypeId: string,
   tokenType = "Bearer",
 ): Promise<LeaveTypeDeleteResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(leaveTypeItemUrl(leaveTypeId), {
-      method: "DELETE",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to delete leave type.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: leaveTypeItemUrl(leaveTypeId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to delete leave type.",
+  });
 
   if (!response.ok) {
     throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to delete leave type."),
+      api.parseApiMessage(payload, "Failed to delete leave type."),
     );
   }
 
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    payload.success === false
-  ) {
-    throw new LeaveTypesApiError(
-      parseApiMessage(payload, "Failed to delete leave type."),
-    );
-  }
+  api.assertDeleteSuccess(payload, "Failed to delete leave type.");
 
   return {
-    message: parseApiMessage(payload, "Leave type deleted successfully."),
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to delete leave type.",
+      "Leave type deleted successfully.",
+    ),
   };
 }

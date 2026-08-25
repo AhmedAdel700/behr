@@ -1,3 +1,4 @@
+import { readJsonPayload } from "@services/http/apiHttp";
 import { authApiPaths, buildAuthApiUrl, buildJsonHeaders } from "@services/auth/shared";
 import {
   AuthNetworkError,
@@ -49,7 +50,7 @@ export async function loginWithCredentials(
     throw new AuthNetworkError(details);
   }
 
-  const payload: unknown = await response.json().catch(() => null);
+  const payload: unknown = await readJsonPayload(response);
 
   if (!isLoginResponse(payload)) {
     throw new LoginFailedError("Invalid credentials");

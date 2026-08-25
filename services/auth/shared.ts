@@ -54,3 +54,14 @@ export function buildJsonHeaders(lang: string): HeadersInit {
     lang,
   };
 }
+
+export function buildAuthorizedHeaders(
+  accessToken: string,
+  lang: string,
+  tokenType = "Bearer",
+): HeadersInit {
+  return {
+    ...buildJsonHeaders(lang),
+    Authorization: `${tokenType} ${accessToken}`,
+  };
+}

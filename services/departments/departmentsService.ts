@@ -1,9 +1,9 @@
-import { buildJsonHeaders } from "@services/auth/shared";
 import {
   departmentItemUrl,
   departmentsCollectionUrl,
 } from "@services/departments/departmentsPaths";
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import type {
   DepartmentApiRecord,
   DepartmentDeleteResult,
@@ -15,16 +15,7 @@ import type {
 } from "@/types/DepartmentsApiTypes";
 import { DepartmentsApiError } from "@/types/DepartmentsApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
+const api = createApiHttp(DepartmentsApiError, "departments server");
 
 function normalizeText(value: string | null | undefined): string {
   return value ?? "";
@@ -33,141 +24,6 @@ function normalizeText(value: string | null | undefined): string {
 function parseCount(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseFieldErrors(payload: unknown): Record<string, string> {
-  if (typeof payload !== "object" || payload === null) {
-    return {};
-  }
-
-  const record = payload as Record<string, unknown>;
-  if (typeof record.errors !== "object" || record.errors === null) {
-    return {};
-  }
-
-  const errors = record.errors as Record<string, unknown>;
-  const fieldErrors: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(errors)) {
-    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
-      fieldErrors[key] = value[0];
-      continue;
-    }
-
-    if (typeof value === "string" && value.trim()) {
-      fieldErrors[key] = value;
-    }
-  }
-
-  return fieldErrors;
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  const fieldErrors = parseFieldErrors(payload);
-  const firstFieldError = Object.values(fieldErrors)[0];
-  if (firstFieldError) {
-    return firstFieldError;
-  }
-
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload &&
-    typeof payload.message === "string" &&
-    payload.message.trim()
-  ) {
-    return payload.message;
-  }
-
-  return fallback;
-}
-
-function throwFromPayload(payload: unknown, fallback: string): never {
-  throw new DepartmentsApiError(
-    parseApiMessage(payload, fallback),
-    parseFieldErrors(payload),
-  );
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
-    throw new DepartmentsApiError(fallbackMessage);
-  }
-
-  const response = payload as { success: boolean; message: string; data: T | null };
-
-  if (!response.success || response.data === null) {
-    throwFromPayload(payload, fallbackMessage);
-  }
-
-  return {
-    message: response.message,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "meta" in payload &&
-    typeof payload.meta === "object" &&
-    payload.meta !== null
-  ) {
-    const meta = payload.meta as Record<string, unknown>;
-    if (
-      typeof meta.current_page === "number" &&
-      typeof meta.last_page === "number" &&
-      typeof meta.per_page === "number" &&
-      typeof meta.total === "number"
-    ) {
-      return {
-        current_page: meta.current_page,
-        last_page: meta.last_page,
-        per_page: meta.per_page,
-        total: meta.total,
-      };
-    }
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof DepartmentsApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new DepartmentsApiError(
-      "Could not reach the departments server. Check CORS/SSL or network.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new DepartmentsApiError(
-      "Could not reach the departments server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new DepartmentsApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
 }
 
 function mapDepartmentFromApi(record: DepartmentApiRecord): DepartmentRecord {
@@ -187,51 +43,25 @@ function mapDepartmentFromApi(record: DepartmentApiRecord): DepartmentRecord {
   };
 }
 
-function buildDepartmentsListUrl(params?: DepartmentsListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.branch_id?.trim()) {
-    searchParams.set("branch_id", params.branch_id.trim());
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query ? `${departmentsCollectionUrl()}?${query}` : departmentsCollectionUrl();
-}
-
 export async function fetchDepartments(
   accessToken: string,
   lang: string,
   tokenType = "Bearer",
   params?: DepartmentsListQueryParams,
 ): Promise<DepartmentsListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildDepartmentsListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load departments.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(departmentsCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load departments.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to load departments.");
+    api.throwFromPayload(payload, "Failed to load departments.");
   }
 
-  const { data } = assertSuccessResponse<DepartmentApiRecord[]>(
+  const { data } = api.assertSuccessResponse<DepartmentApiRecord[]>(
     payload,
     "Failed to load departments.",
   );
@@ -242,7 +72,7 @@ export async function fetchDepartments(
 
   return {
     departments: data.map(mapDepartmentFromApi),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -252,25 +82,19 @@ export async function fetchDepartmentById(
   departmentId: string,
   tokenType = "Bearer",
 ): Promise<DepartmentRecord> {
-  let response: Response;
-
-  try {
-    response = await fetch(departmentItemUrl(departmentId), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load department.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: departmentItemUrl(departmentId),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load department.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to load department.");
+    api.throwFromPayload(payload, "Failed to load department.");
   }
 
-  const { data } = assertSuccessResponse<DepartmentApiRecord>(
+  const { data } = api.assertSuccessResponse<DepartmentApiRecord>(
     payload,
     "Failed to load department.",
   );
@@ -284,25 +108,21 @@ export async function createDepartmentRequest(
   body: DepartmentPayload,
   tokenType = "Bearer",
 ): Promise<DepartmentMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(departmentsCollectionUrl(), {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to create department.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: departmentsCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: "Failed to create department.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to create department.");
+    api.throwFromPayload(payload, "Failed to create department.");
   }
 
-  const { message, data } = assertSuccessResponse<DepartmentApiRecord>(
+  const { message, data } = api.assertSuccessResponse<DepartmentApiRecord>(
     payload,
     "Failed to create department.",
   );
@@ -320,25 +140,21 @@ export async function updateDepartmentRequest(
   body: DepartmentPayload,
   tokenType = "Bearer",
 ): Promise<DepartmentMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(departmentItemUrl(departmentId), {
-      method: "PUT",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to update department.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: departmentItemUrl(departmentId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body,
+    fallbackMessage: "Failed to update department.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to update department.");
+    api.throwFromPayload(payload, "Failed to update department.");
   }
 
-  const { message, data } = assertSuccessResponse<DepartmentApiRecord>(
+  const { message, data } = api.assertSuccessResponse<DepartmentApiRecord>(
     payload,
     "Failed to update department.",
   );
@@ -355,33 +171,26 @@ export async function deleteDepartmentRequest(
   departmentId: string,
   tokenType = "Bearer",
 ): Promise<DepartmentDeleteResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(departmentItemUrl(departmentId), {
-      method: "DELETE",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to delete department.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: departmentItemUrl(departmentId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to delete department.",
+  });
 
   if (!response.ok) {
-    throwFromPayload(payload, "Failed to delete department.");
+    api.throwFromPayload(payload, "Failed to delete department.");
   }
 
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    payload.success === false
-  ) {
-    throwFromPayload(payload, "Failed to delete department.");
-  }
+  api.assertDeleteSuccess(payload, "Failed to delete department.");
 
   return {
-    message: parseApiMessage(payload, "Department deleted successfully."),
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to delete department.",
+      "Department deleted successfully.",
+    ),
   };
 }

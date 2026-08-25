@@ -1,9 +1,9 @@
-import { buildJsonHeaders } from "@services/auth/shared";
 import {
   positionItemUrl,
   positionsCollectionUrl,
 } from "@services/positions/positionsPaths";
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import type {
   PositionApiRecord,
   PositionDeleteResult,
@@ -15,117 +15,10 @@ import type {
 } from "@/types/PositionsApiTypes";
 import { PositionsApiError } from "@/types/PositionsApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
+const api = createApiHttp(PositionsApiError, "positions server");
 
 function normalizeText(value: string | null | undefined): string {
   return value ?? "";
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload &&
-    typeof payload.message === "string"
-  ) {
-    return payload.message;
-  }
-
-  return fallback;
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
-    throw new PositionsApiError(fallbackMessage);
-  }
-
-  const response = payload as {
-    success: boolean;
-    message: string;
-    data: T | null;
-  };
-
-  if (!response.success || response.data === null) {
-    throw new PositionsApiError(response.message || fallbackMessage);
-  }
-
-  return {
-    message: response.message,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "meta" in payload &&
-    typeof payload.meta === "object" &&
-    payload.meta !== null
-  ) {
-    const meta = payload.meta as Record<string, unknown>;
-    if (
-      typeof meta.current_page === "number" &&
-      typeof meta.last_page === "number" &&
-      typeof meta.per_page === "number" &&
-      typeof meta.total === "number"
-    ) {
-      return {
-        current_page: meta.current_page,
-        last_page: meta.last_page,
-        per_page: meta.per_page,
-        total: meta.total,
-      };
-    }
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof PositionsApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new PositionsApiError(
-      "Could not reach the positions server. Check CORS/SSL or network.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new PositionsApiError(
-      "Could not reach the positions server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new PositionsApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
 }
 
 function mapPositionFromApi(record: PositionApiRecord): PositionRecord {
@@ -137,51 +30,27 @@ function mapPositionFromApi(record: PositionApiRecord): PositionRecord {
   };
 }
 
-function buildPositionsListUrl(params?: PositionsListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query
-    ? `${positionsCollectionUrl()}?${query}`
-    : positionsCollectionUrl();
-}
-
 export async function fetchPositions(
   accessToken: string,
   lang: string,
   tokenType = "Bearer",
   params?: PositionsListQueryParams,
 ): Promise<PositionsListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildPositionsListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load positions.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(positionsCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load positions.",
+  });
 
   if (!response.ok) {
     throw new PositionsApiError(
-      parseApiMessage(payload, "Failed to load positions."),
+      api.parseApiMessage(payload, "Failed to load positions."),
     );
   }
 
-  const { data } = assertSuccessResponse<PositionApiRecord[]>(
+  const { data } = api.assertSuccessResponse<PositionApiRecord[]>(
     payload,
     "Failed to load positions.",
   );
@@ -192,7 +61,7 @@ export async function fetchPositions(
 
   return {
     positions: data.map(mapPositionFromApi),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -233,27 +102,23 @@ export async function createPositionRequest(
   body: PositionPayload,
   tokenType = "Bearer",
 ): Promise<PositionMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(positionsCollectionUrl(), {
-      method: "POST",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to create position.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: positionsCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body,
+    fallbackMessage: "Failed to create position.",
+  });
 
   if (!response.ok) {
     throw new PositionsApiError(
-      parseApiMessage(payload, "Failed to create position."),
+      api.parseApiMessage(payload, "Failed to create position."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<PositionApiRecord>(
+  const { message, data } = api.assertSuccessResponse<PositionApiRecord>(
     payload,
     "Failed to create position.",
   );
@@ -271,27 +136,23 @@ export async function updatePositionRequest(
   body: PositionPayload,
   tokenType = "Bearer",
 ): Promise<PositionMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(positionItemUrl(positionId), {
-      method: "PUT",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to update position.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: positionItemUrl(positionId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body,
+    fallbackMessage: "Failed to update position.",
+  });
 
   if (!response.ok) {
     throw new PositionsApiError(
-      parseApiMessage(payload, "Failed to update position."),
+      api.parseApiMessage(payload, "Failed to update position."),
     );
   }
 
-  const { message, data } = assertSuccessResponse<PositionApiRecord>(
+  const { message, data } = api.assertSuccessResponse<PositionApiRecord>(
     payload,
     "Failed to update position.",
   );
@@ -308,37 +169,28 @@ export async function deletePositionRequest(
   positionId: string,
   tokenType = "Bearer",
 ): Promise<PositionDeleteResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(positionItemUrl(positionId), {
-      method: "DELETE",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to delete position.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: positionItemUrl(positionId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to delete position.",
+  });
 
   if (!response.ok) {
     throw new PositionsApiError(
-      parseApiMessage(payload, "Failed to delete position."),
+      api.parseApiMessage(payload, "Failed to delete position."),
     );
   }
 
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    payload.success === false
-  ) {
-    throw new PositionsApiError(
-      parseApiMessage(payload, "Failed to delete position."),
-    );
-  }
+  api.assertDeleteSuccess(payload, "Failed to delete position.");
 
   return {
-    message: parseApiMessage(payload, "Position deleted successfully."),
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to delete position.",
+      "Position deleted successfully.",
+    ),
   };
 }

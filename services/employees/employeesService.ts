@@ -1,9 +1,9 @@
-import { buildJsonHeaders } from "@services/auth/shared";
 import {
   employeeItemUrl,
   employeesCollectionUrl,
 } from "@services/employees/employeesPaths";
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import { createApiHttp } from "@services/http/apiHttp";
+import { appendListQueryParams } from "@services/http/listQuery";
 import type {
   EmployeeApiRecord,
   EmployeeBranchSummary,
@@ -21,16 +21,7 @@ import type {
 import { resolveAvatarSrc } from "@/lib/employee/avatar";
 import { EmployeesApiError } from "@/types/EmployeesApiTypes";
 
-function buildAuthorizedHeaders(
-  accessToken: string,
-  lang: string,
-  tokenType = "Bearer",
-): HeadersInit {
-  return {
-    ...buildJsonHeaders(lang),
-    Authorization: `${tokenType} ${accessToken}`,
-  };
-}
+const api = createApiHttp(EmployeesApiError, "employees server");
 
 function normalizeText(value: string | null | undefined): string {
   return value ?? "";
@@ -54,117 +45,6 @@ function readId(value: unknown): string | null {
   }
 
   return null;
-}
-
-function parseApiMessage(payload: unknown, fallback: string): string {
-  if (typeof payload !== "object" || payload === null) {
-    return fallback;
-  }
-
-  const record = payload as Record<string, unknown>;
-
-  if (typeof record.message === "string" && record.message.trim()) {
-    return record.message;
-  }
-
-  if (typeof record.errors === "object" && record.errors !== null) {
-    const errors = record.errors as Record<string, unknown>;
-    for (const value of Object.values(errors)) {
-      if (Array.isArray(value) && typeof value[0] === "string") {
-        return value[0];
-      }
-      if (typeof value === "string") {
-        return value;
-      }
-    }
-  }
-
-  return fallback;
-}
-
-function assertSuccessResponse<T>(
-  payload: unknown,
-  fallbackMessage: string,
-): { message: string; data: T } {
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("success" in payload) ||
-    typeof payload.success !== "boolean"
-  ) {
-    throw new EmployeesApiError(fallbackMessage);
-  }
-
-  const response = payload as {
-    success: boolean;
-    message: string;
-    data: T | null;
-  };
-
-  if (!response.success || response.data === null) {
-    throw new EmployeesApiError(response.message || fallbackMessage);
-  }
-
-  return {
-    message: response.message,
-    data: response.data,
-  };
-}
-
-function parsePaginationMeta(payload: unknown): BranchesPaginationMeta {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "meta" in payload &&
-    typeof payload.meta === "object" &&
-    payload.meta !== null
-  ) {
-    const meta = payload.meta as Record<string, unknown>;
-    if (
-      typeof meta.current_page === "number" &&
-      typeof meta.last_page === "number" &&
-      typeof meta.per_page === "number" &&
-      typeof meta.total === "number"
-    ) {
-      return {
-        current_page: meta.current_page,
-        last_page: meta.last_page,
-        per_page: meta.per_page,
-        total: meta.total,
-      };
-    }
-  }
-
-  return {
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: 0,
-  };
-}
-
-function wrapNetworkError(error: unknown, fallback: string): never {
-  if (error instanceof EmployeesApiError) {
-    throw error;
-  }
-
-  if (error instanceof TypeError) {
-    throw new EmployeesApiError(
-      "Could not reach the employees server. Check CORS/SSL or network.",
-    );
-  }
-
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    throw new EmployeesApiError(
-      "Could not reach the employees server. Check SSL certificate or network.",
-    );
-  }
-
-  throw new EmployeesApiError(fallback);
-}
-
-async function readJsonPayload(response: Response): Promise<unknown> {
-  return response.json().catch(() => null);
 }
 
 function mapBranch(value: unknown): EmployeeBranchSummary | null {
@@ -251,32 +131,6 @@ function isEmployeeApiRecord(value: unknown): value is EmployeeApiRecord {
   );
 }
 
-function buildEmployeesListUrl(params?: EmployeesListQueryParams): string {
-  const searchParams = new URLSearchParams();
-  const search = params?.search?.trim();
-
-  if (search) {
-    searchParams.set("search", search);
-  }
-
-  if (params?.branch_id?.trim()) {
-    searchParams.set("branch_id", params.branch_id.trim());
-  }
-
-  if (params?.department_id?.trim()) {
-    searchParams.set("department_id", params.department_id.trim());
-  }
-
-  if (params?.page && params.page > 1) {
-    searchParams.set("page", String(params.page));
-  }
-
-  const query = searchParams.toString();
-  return query
-    ? `${employeesCollectionUrl()}?${query}`
-    : employeesCollectionUrl();
-}
-
 export function toEmployeeManagerRecord(
   employee: EmployeeRecord,
 ): EmployeeManagerRecord {
@@ -295,27 +149,21 @@ export async function fetchEmployees(
   tokenType = "Bearer",
   params?: EmployeesListQueryParams,
 ): Promise<EmployeesListResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(buildEmployeesListUrl(params), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load employees.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: appendListQueryParams(employeesCollectionUrl(), params),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load employees.",
+  });
 
   if (!response.ok) {
     throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to load employees."),
+      api.parseApiMessage(payload, "Failed to load employees."),
     );
   }
 
-  const { data } = assertSuccessResponse<unknown>(
+  const { data } = api.assertSuccessResponse<unknown>(
     payload,
     "Failed to load employees.",
   );
@@ -326,7 +174,7 @@ export async function fetchEmployees(
 
   return {
     employees: data.filter(isEmployeeApiRecord).map(mapEmployeeFromApi),
-    meta: parsePaginationMeta(payload),
+    meta: api.parsePaginationMeta(payload),
   };
 }
 
@@ -336,27 +184,21 @@ export async function fetchEmployee(
   employeeId: string,
   tokenType = "Bearer",
 ): Promise<EmployeeRecord> {
-  let response: Response;
-
-  try {
-    response = await fetch(employeeItemUrl(employeeId), {
-      method: "GET",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      cache: "no-store",
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to load employee.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: employeeItemUrl(employeeId),
+    accessToken,
+    lang,
+    tokenType,
+    fallbackMessage: "Failed to load employee.",
+  });
 
   if (!response.ok) {
     throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to load employee."),
+      api.parseApiMessage(payload, "Failed to load employee."),
     );
   }
 
-  const { data } = assertSuccessResponse<unknown>(
+  const { data } = api.assertSuccessResponse<unknown>(
     payload,
     "Failed to load employee.",
   );
@@ -375,23 +217,19 @@ export async function updateEmployeeRequest(
   body: EmployeePayload,
   tokenType = "Bearer",
 ): Promise<EmployeeMutationResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(employeeItemUrl(employeeId), {
-      method: "PUT",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to update employee.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: employeeItemUrl(employeeId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "PUT",
+    body,
+    fallbackMessage: "Failed to update employee.",
+  });
 
   if (!response.ok) {
     throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to update employee."),
+      api.parseApiMessage(payload, "Failed to update employee."),
     );
   }
 
@@ -402,11 +240,11 @@ export async function updateEmployeeRequest(
     payload.success === false
   ) {
     throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to update employee."),
+      api.parseApiMessage(payload, "Failed to update employee."),
     );
   }
 
-  const message = parseApiMessage(payload, "Employee updated successfully.");
+  const message = api.parseApiMessage(payload, "Employee updated successfully.");
   const data =
     typeof payload === "object" && payload !== null && "data" in payload
       ? payload.data
@@ -431,37 +269,28 @@ export async function deleteEmployeeRequest(
   employeeId: string,
   tokenType = "Bearer",
 ): Promise<EmployeeDeleteResult> {
-  let response: Response;
-
-  try {
-    response = await fetch(employeeItemUrl(employeeId), {
-      method: "DELETE",
-      headers: buildAuthorizedHeaders(accessToken, lang, tokenType),
-    });
-  } catch (error) {
-    wrapNetworkError(error, "Failed to delete employee.");
-  }
-
-  const payload: unknown = await readJsonPayload(response);
+  const { response, payload } = await api.authorizedFetch({
+    url: employeeItemUrl(employeeId),
+    accessToken,
+    lang,
+    tokenType,
+    method: "DELETE",
+    fallbackMessage: "Failed to delete employee.",
+  });
 
   if (!response.ok) {
     throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to delete employee."),
+      api.parseApiMessage(payload, "Failed to delete employee."),
     );
   }
 
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    payload.success === false
-  ) {
-    throw new EmployeesApiError(
-      parseApiMessage(payload, "Failed to delete employee."),
-    );
-  }
+  api.assertDeleteSuccess(payload, "Failed to delete employee.");
 
   return {
-    message: parseApiMessage(payload, "Employee deleted successfully."),
+    message: api.parseDeleteMessage(
+      payload,
+      "Failed to delete employee.",
+      "Employee deleted successfully.",
+    ),
   };
 }

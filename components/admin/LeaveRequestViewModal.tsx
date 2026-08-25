@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  CalendarClock,
+  CalendarDays,
+  CircleDot,
+  Clock,
+  MessageSquare,
+  Tag,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 import { useRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
@@ -8,12 +18,12 @@ import {
   useGetLeaveRequestQuery,
 } from "@/app/store/api/leave-requests/leaveRequestsApi";
 import type { AppDispatch } from "@/app/store/store";
-import { LeaveTypeBadge } from "@/components/employee/LeaveTypeBadge";
 import { MainButton } from "@/components/shared/MainButton";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { ProfileAvatar } from "@/components/shared/AvatarUpload";
 import { resolveAvatarSrc } from "@/lib/employee/avatar";
+import { leaveTypeDotStyle } from "@/lib/employee/leaveTypeColors";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { formatDateTime12, resolveTimeLocale } from "@/lib/formatTime";
 import { cn } from "@/lib/utils";
@@ -43,24 +53,26 @@ function formatTimestamp(value: string | null, locale: string): string {
   return formatDateTime12(date, resolveTimeLocale(locale));
 }
 
-function DetailField({
-  label,
-  children,
-  className,
+function LeaveTypeValue({
+  leaveTypeId,
+  name,
 }: {
-  label: string;
-  children: ReactNode;
-  className?: string;
+  leaveTypeId: string | number;
+  name: string;
 }): ReactElement {
   return (
-    <div className={className}>
-      <dt className="text-xs text-text-muted">{label}</dt>
-      <dd className="mt-1 text-sm text-ink">{children}</dd>
-    </div>
+    <span className="inline-flex items-center gap-2 font-medium">
+      <span
+        className="size-2 shrink-0 rounded-full"
+        style={leaveTypeDotStyle(leaveTypeId)}
+        aria-hidden
+      />
+      {name}
+    </span>
   );
 }
 
-function StatusBadge({
+function StatusValue({
   status,
   label,
 }: {
@@ -70,14 +82,64 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex h-7 w-[6.75rem] shrink-0 items-center justify-center rounded-none px-1 text-center text-[11px] font-semibold leading-none",
-        status === "pending" && "bg-warning-50 text-warning-700",
-        status === "approved" && "bg-success-50 text-success-700",
-        status === "rejected" && "bg-danger-50 text-danger-700",
+        "inline-flex items-center gap-2 font-medium",
+        status === "pending" && "text-warning-700",
+        status === "approved" && "text-success-700",
+        status === "rejected" && "text-danger-700",
       )}
     >
+      <span
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          status === "pending" && "bg-warning-500",
+          status === "approved" && "bg-success-500",
+          status === "rejected" && "bg-danger-500",
+        )}
+        aria-hidden
+      />
       {label}
     </span>
+  );
+}
+
+function DetailSection({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}): ReactElement {
+  return (
+    <section
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-surface-muted/30",
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+function DetailField({
+  label,
+  icon: Icon,
+  children,
+  className,
+}: {
+  label: string;
+  icon?: LucideIcon;
+  children: ReactNode;
+  className?: string;
+}): ReactElement {
+  return (
+    <div className={className}>
+      <dt className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
+        {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
+        {label}
+      </dt>
+      <dd className="mt-1.5 text-sm text-ink">{children}</dd>
+    </div>
   );
 }
 
@@ -155,13 +217,10 @@ function LeaveRequestViewContent({
       <div className="border-b border-border px-5 py-4">
         <h2
           id="leave-request-view-title"
-          className="text-base font-semibold text-ink"
+          className="text-base font-semibold tracking-tight text-ink"
         >
           {t("detailTitle")}
         </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          {resolved?.employee?.fullName ?? t("detailLoading")}
-        </p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -174,7 +233,7 @@ function LeaveRequestViewContent({
         )}
       </div>
 
-      <div className="border-t border-border px-5 py-3">
+      <div className="flex justify-end border-t border-border px-5 py-3">
         <MainButton variant="neutral" size="sm" onClick={closeModal}>
           {t("close")}
         </MainButton>
@@ -193,78 +252,101 @@ function RequestDetails({
   const t = useTranslations("admin.leaveRequests");
   const tFields = useTranslations("employee.requests");
   const employeeName = request.employee?.fullName ?? "—";
+  const dateRange = formatLeaveRequestRange(
+    request.startAt,
+    request.endAt,
+    locale,
+    request.leaveType.unit,
+  );
+  const submittedAt = formatTimestamp(request.createdAt, locale);
+  const reviewedAt = request.reviewedAt
+    ? formatTimestamp(request.reviewedAt, locale)
+    : null;
+  const hasReviewInfo =
+    request.reviewer !== null ||
+    reviewedAt !== null ||
+    Boolean(request.rejectionReason?.trim());
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <LeaveTypeBadge
-          className="h-7 w-[6.75rem] justify-center rounded-none px-1 text-center"
-          leaveTypeId={request.leaveType.id}
-          name={request.leaveType.name}
-        />
-        <StatusBadge
-          status={request.status}
-          label={tFields(`status.${request.status}`)}
-        />
-      </div>
+    <div className="space-y-4">
+      <DetailSection className="p-4">
+        <div className="flex items-start gap-3">
+          <ProfileAvatar
+            src={resolveAvatarSrc(request.employee?.image)}
+            alt={employeeName}
+            width={48}
+            height={48}
+            className="size-12 shrink-0 rounded-full object-cover ring-2 ring-surface"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-ink">{employeeName}</p>
+            {request.employee?.email ? (
+              <p className="mt-0.5 truncate text-xs text-text-muted">
+                {request.employee.email}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </DetailSection>
 
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-        <DetailField label={t("columns.employee")} className="sm:col-span-2">
-          <span className="flex items-center gap-2.5">
-            <ProfileAvatar
-              src={resolveAvatarSrc(request.employee?.image)}
-              alt={employeeName}
-              width={36}
-              height={36}
-              className="size-9 rounded-full object-cover"
+      <DetailSection className="p-4">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <DetailField label={t("columns.type")} icon={Tag}>
+            <LeaveTypeValue
+              leaveTypeId={request.leaveType.id}
+              name={request.leaveType.name}
             />
-            <span className="min-w-0">
-              <span className="block font-medium">{employeeName}</span>
-              {request.employee?.email ? (
-                <span className="block text-xs text-text-muted">
-                  {request.employee.email}
-                </span>
-              ) : null}
-            </span>
-          </span>
-        </DetailField>
-        <DetailField label={tFields("dates")}>
-          <span className="font-medium">
-            {formatLeaveRequestRange(
-              request.startAt,
-              request.endAt,
-              locale,
-              request.leaveType.unit,
-            )}
-          </span>
-        </DetailField>
-        <DetailField label={tFields("createdAt")}>
-          <span className="font-medium">
-            {formatTimestamp(request.createdAt, locale)}
-          </span>
-        </DetailField>
-        <DetailField label={tFields("reason")} className="sm:col-span-2">
-          <span className="text-text-secondary">{request.reason || "—"}</span>
-        </DetailField>
-        {request.reviewer ? (
-          <DetailField label={tFields("reviewer")}>
-            {request.reviewer.fullName}
           </DetailField>
-        ) : null}
-        {request.reviewedAt ? (
-          <DetailField label={tFields("reviewedAt")}>
-            {formatTimestamp(request.reviewedAt, locale)}
+          <DetailField label={t("columns.status")} icon={CircleDot}>
+            <StatusValue
+              status={request.status}
+              label={tFields(`status.${request.status}`)}
+            />
           </DetailField>
-        ) : null}
-        {request.rejectionReason ? (
-          <DetailField
-            label={tFields("rejectionReason")}
-            className="sm:col-span-2"
-          >
-            <span className="text-text-secondary">{request.rejectionReason}</span>
+          <DetailField label={tFields("dates")} icon={CalendarDays}>
+            <span className="font-medium">{dateRange}</span>
           </DetailField>
-        ) : null}
-      </dl>
+          <DetailField label={tFields("createdAt")} icon={Clock}>
+            <span className="font-medium">{submittedAt}</span>
+          </DetailField>
+        </dl>
+      </DetailSection>
+
+      <DetailSection className="p-4">
+        <DetailField label={tFields("reason")} icon={MessageSquare}>
+          <p className="whitespace-pre-wrap text-text-secondary">
+            {request.reason?.trim() ? request.reason : "—"}
+          </p>
+        </DetailField>
+      </DetailSection>
+
+      {hasReviewInfo ? (
+        <DetailSection className="p-4">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {request.reviewer ? (
+              <DetailField label={tFields("reviewer")} icon={UserCheck}>
+                <span className="font-medium">{request.reviewer.fullName}</span>
+              </DetailField>
+            ) : null}
+            {reviewedAt ? (
+              <DetailField label={tFields("reviewedAt")} icon={CalendarClock}>
+                <span className="font-medium">{reviewedAt}</span>
+              </DetailField>
+            ) : null}
+            {request.rejectionReason ? (
+              <DetailField
+                label={tFields("rejectionReason")}
+                icon={MessageSquare}
+                className="sm:col-span-2"
+              >
+                <p className="whitespace-pre-wrap text-text-secondary">
+                  {request.rejectionReason}
+                </p>
+              </DetailField>
+            ) : null}
+          </dl>
+        </DetailSection>
+      ) : null}
     </div>
   );
 }
