@@ -9,7 +9,8 @@ import {
   type ReactElement,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Calendar, Fingerprint, History, MapPinned, Search, UploadCloud } from "lucide-react";
+import { toast } from "sonner";
+import { Calendar, Download, Fingerprint, History, MapPinned, Search, UploadCloud } from "lucide-react";
 import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   useGetBranchesQuery,
@@ -22,6 +23,7 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import {
   buildMonthOptions,
   buildYearOptions,
+  downloadFingerprintImportUpload,
   fetchFingerprintImportMonth,
   submitFingerprintImport,
 } from "@/lib/admin/fingerprintImportService";
@@ -37,6 +39,7 @@ import { formatDateTime12, formatStoredDate, formatStoredTime12, resolveTimeLoca
 import type {
   FingerprintAttendanceStatus,
   FingerprintImportMonthData,
+  FingerprintImportUpload,
 } from "@/types/FingerprintImportApiTypes";
 import { cn } from "@/lib/utils";
 import {
@@ -67,9 +70,12 @@ export function AdminFingerprintImportPage(): ReactElement {
   const locale = useLocale();
   const now = new Date();
 
-  const [year, setYear] = useState(String(now.getFullYear()));
-  const [month, setMonth] = useState(String(now.getMonth() + 1));
-  const [branchId, setBranchId] = useState("");
+  const [uploadYear, setUploadYear] = useState(String(now.getFullYear()));
+  const [uploadMonth, setUploadMonth] = useState(String(now.getMonth() + 1));
+  const [uploadBranchId, setUploadBranchId] = useState("");
+  const [viewYear, setViewYear] = useState(String(now.getFullYear()));
+  const [viewMonth, setViewMonth] = useState(String(now.getMonth() + 1));
+  const [viewBranchId, setViewBranchId] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -78,15 +84,20 @@ export function AdminFingerprintImportPage(): ReactElement {
   const [monthData, setMonthData] = useState<FingerprintImportMonthData | null>(null);
   const [recordsSearchQuery, setRecordsSearchQuery] = useState("");
   const [recordsPage, setRecordsPage] = useState(1);
+  const [downloadingUploadId, setDownloadingUploadId] = useState<string | null>(
+    null,
+  );
 
-  useSyncExternalStore(
+  const importsVersion = useSyncExternalStore(
     subscribeFingerprintImports,
     getFingerprintImportsVersionSnapshot,
     () => 0
   );
 
-  const parsedYear = Number(year);
-  const parsedMonth = Number(month);
+  const parsedUploadYear = Number(uploadYear);
+  const parsedUploadMonth = Number(uploadMonth);
+  const parsedViewYear = Number(viewYear);
+  const parsedViewMonth = Number(viewMonth);
 
   const { data: branchesResult, isLoading: isLoadingBranches } =
     useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
@@ -101,13 +112,17 @@ export function AdminFingerprintImportPage(): ReactElement {
     [branches],
   );
 
-  useEffect(() => {
-    if (branchId || branches.length === 0) {
-      return;
-    }
+  const handleViewBranchChange = (value: string): void => {
+    setViewBranchId(value);
+    setMonthData(null);
+    setFetchError(null);
+  };
 
-    setBranchId(branches[0]?.id ?? "");
-  }, [branchId, branches]);
+  const handleViewYearChange = (value: string): void => {
+    setViewYear(value);
+    setMonthData(null);
+    setFetchError(null);
+  };
 
   const yearOptions = useMemo(
     () =>
@@ -129,9 +144,9 @@ export function AdminFingerprintImportPage(): ReactElement {
 
   const loadMonthData = useCallback(async (): Promise<void> => {
     if (
-      !branchId.trim() ||
-      !Number.isFinite(parsedYear) ||
-      !Number.isFinite(parsedMonth)
+      !viewBranchId.trim() ||
+      !Number.isFinite(parsedViewYear) ||
+      !Number.isFinite(parsedViewMonth)
     ) {
       return;
     }
@@ -140,9 +155,9 @@ export function AdminFingerprintImportPage(): ReactElement {
     setFetchError(null);
 
     const response = await fetchFingerprintImportMonth(
-      branchId,
-      parsedYear,
-      parsedMonth,
+      viewBranchId,
+      parsedViewYear,
+      parsedViewMonth,
     );
 
     if (response.ok) {
@@ -150,12 +165,16 @@ export function AdminFingerprintImportPage(): ReactElement {
     } else {
       setFetchError(response.message);
       setMonthData(
-        getFingerprintImportMonthSnapshot(branchId, parsedYear, parsedMonth),
+        getFingerprintImportMonthSnapshot(
+          viewBranchId,
+          parsedViewYear,
+          parsedViewMonth,
+        ),
       );
     }
 
     setLoadingMonth(false);
-  }, [branchId, parsedMonth, parsedYear]);
+  }, [parsedViewMonth, parsedViewYear, viewBranchId]);
 
   useEffect(() => {
     hydrateFingerprintImports();
@@ -168,16 +187,34 @@ export function AdminFingerprintImportPage(): ReactElement {
   useEffect(() => {
     setRecordsSearchQuery("");
     setRecordsPage(1);
-  }, [branchId, parsedYear, parsedMonth]);
+  }, [viewBranchId, parsedViewYear, parsedViewMonth]);
 
   useEffect(() => {
-    if (monthData || !branchId.trim()) return;
-    setMonthData(getFingerprintImportMonthSnapshot(branchId, parsedYear, parsedMonth));
-  }, [branchId, monthData, parsedMonth, parsedYear]);
+    if (monthData || !viewBranchId.trim()) return;
+    setMonthData(
+      getFingerprintImportMonthSnapshot(
+        viewBranchId,
+        parsedViewYear,
+        parsedViewMonth,
+      ),
+    );
+  }, [monthData, parsedViewMonth, parsedViewYear, viewBranchId]);
 
-  const uploads = monthData?.uploads ?? [];
   const records = monthData?.records ?? [];
-  const allMonths = getAllFingerprintImportMonthsSnapshot(branchId);
+
+  const historyUploads = useMemo(() => {
+    if (!viewBranchId.trim()) {
+      return [];
+    }
+
+    return getAllFingerprintImportMonthsSnapshot(viewBranchId)
+      .filter((item) => item.year === parsedViewYear)
+      .flatMap((item) => item.uploads)
+      .sort(
+        (a, b) =>
+          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
+      );
+  }, [importsVersion, parsedViewYear, viewBranchId]);
 
   const filteredRecords = useMemo(
     () => searchFingerprintRecords(records, recordsSearchQuery),
@@ -195,16 +232,31 @@ export function AdminFingerprintImportPage(): ReactElement {
     return filteredRecords.slice(start, start + RECORDS_PAGE_SIZE);
   }, [filteredRecords, safeRecordsPage]);
 
-  const recordsEmptyMessage =
-    records.length === 0 ? t("recordsEmpty") : t("recordsNoResults");
+  const recordsEmptyMessage = !viewBranchId.trim()
+    ? t("recordsSelectBranch")
+    : records.length === 0
+      ? t("recordsEmpty")
+      : t("recordsNoResults");
 
   const handleRecordsSearchChange = (value: string): void => {
     setRecordsSearchQuery(value);
     setRecordsPage(1);
   };
 
+  const handleDownloadUpload = async (upload: FingerprintImportUpload): Promise<void> => {
+    setDownloadingUploadId(upload.id);
+
+    const response = await downloadFingerprintImportUpload(viewBranchId, upload);
+
+    if (!response.ok) {
+      toast.error(response.message);
+    }
+
+    setDownloadingUploadId(null);
+  };
+
   const handleUpload = async (): Promise<void> => {
-    if (!branchId.trim()) {
+    if (!uploadBranchId.trim()) {
       setUploadError(t("errors.noBranch"));
       return;
     }
@@ -218,13 +270,16 @@ export function AdminFingerprintImportPage(): ReactElement {
     setUploadError(null);
 
     const response = await submitFingerprintImport({
-      branchId,
+      branchId: uploadBranchId,
       file: selectedFile,
-      year: parsedYear,
-      month: parsedMonth,
+      year: parsedUploadYear,
+      month: parsedUploadMonth,
     });
 
     if (response.ok) {
+      setViewBranchId(uploadBranchId);
+      setViewYear(uploadYear);
+      setViewMonth(uploadMonth);
       setMonthData(response.data);
       setSelectedFile(undefined);
     } else {
@@ -233,6 +288,29 @@ export function AdminFingerprintImportPage(): ReactElement {
 
     setUploading(false);
   };
+
+  const historyViewFilters = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <MainSelect
+        label={t("filters.branch")}
+        value={viewBranchId}
+        onValueChange={handleViewBranchChange}
+        options={branchOptions}
+        placeholder={t("placeholders.branch")}
+        startIcon={<MapPinned className="size-4" />}
+        disabled={isLoadingBranches || branchOptions.length === 0}
+      />
+      <MainSelect
+        label={t("fields.year")}
+        value={viewYear}
+        onValueChange={handleViewYearChange}
+        options={yearOptions}
+        placeholder={t("placeholders.year")}
+        startIcon={<Calendar className="size-4" />}
+        disabled={loadingMonth || !viewBranchId.trim()}
+      />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -254,36 +332,38 @@ export function AdminFingerprintImportPage(): ReactElement {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4">
           <MainSelect
-            label={t("fields.branch")}
-            value={branchId}
+            label={t("filters.branch")}
+            value={uploadBranchId}
             onValueChange={(value) => {
-              setBranchId(value);
-              setMonthData(null);
-              setSelectedFile(undefined);
+              setUploadBranchId(value);
               setUploadError(null);
-              setFetchError(null);
             }}
             options={branchOptions}
             placeholder={t("placeholders.branch")}
+            hint={t("upload.branchRequiredHint")}
             startIcon={<MapPinned className="size-4" />}
             disabled={isLoadingBranches || branchOptions.length === 0}
+            required
           />
-          <MainSelect
-            label={t("fields.year")}
-            value={year}
-            onValueChange={setYear}
-            options={yearOptions}
-            startIcon={<Calendar className="size-4" />}
-          />
-          <MainSelect
-            label={t("fields.month")}
-            value={month}
-            onValueChange={setMonth}
-            options={monthOptions}
-            startIcon={<Calendar className="size-4" />}
-          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MainSelect
+              label={t("fields.year")}
+              value={uploadYear}
+              onValueChange={setUploadYear}
+              options={yearOptions}
+              startIcon={<Calendar className="size-4" />}
+            />
+            <MainSelect
+              label={t("fields.month")}
+              value={uploadMonth}
+              onValueChange={setUploadMonth}
+              options={monthOptions}
+              startIcon={<Calendar className="size-4" />}
+            />
+          </div>
         </div>
 
         {branchOptions.length === 0 && !isLoadingBranches ? (
@@ -304,7 +384,7 @@ export function AdminFingerprintImportPage(): ReactElement {
               setUploadError(null);
             }}
             error={uploadError ?? undefined}
-            disabled={uploading || loadingMonth || !branchId.trim()}
+            disabled={uploading || loadingMonth || !uploadBranchId.trim()}
           />
         </div>
 
@@ -314,7 +394,10 @@ export function AdminFingerprintImportPage(): ReactElement {
             startIcon={<UploadCloud className="size-4" />}
             loading={uploading}
             disabled={
-              !branchId.trim() || !selectedFile || uploading || loadingMonth
+              !uploadBranchId.trim() ||
+              !selectedFile ||
+              uploading ||
+              loadingMonth
             }
             onClick={() => {
               void handleUpload();
@@ -335,11 +418,14 @@ export function AdminFingerprintImportPage(): ReactElement {
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <History className="size-4 text-text-muted" aria-hidden />
-          <h2 className="text-sm font-semibold text-ink">
-            {t("historyTitle", { count: uploads.length })}
-          </h2>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-text-muted" aria-hidden />
+            <h2 className="text-sm font-semibold text-ink">
+              {t("historyTitle", { count: historyUploads.length })}
+            </h2>
+          </div>
+          {historyViewFilters}
         </div>
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
@@ -362,23 +448,26 @@ export function AdminFingerprintImportPage(): ReactElement {
                   <th className="px-4 py-4 text-start text-xs font-semibold text-text-muted">
                     {t("historyColumns.recordCount")}
                   </th>
+                  <th className="px-4 py-4 text-end text-xs font-semibold text-text-muted">
+                    {t("historyColumns.download")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {uploads.length === 0 ? (
+                {historyUploads.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-text-muted">
-                      {t("historyEmpty")}
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-text-muted">
+                      {viewBranchId.trim() ? t("historyEmpty") : t("historySelectBranch")}
                     </td>
                   </tr>
                 ) : (
-                  uploads.map((upload) => (
+                  historyUploads.map((upload) => (
                     <tr
                       key={upload.id}
                       className={cn(
                         "border-b border-border last:border-b-0",
-                        upload.year === parsedYear &&
-                          upload.month === parsedMonth &&
+                        upload.year === parsedViewYear &&
+                          upload.month === parsedViewMonth &&
                           "bg-primary-50/40"
                       )}
                     >
@@ -396,6 +485,24 @@ export function AdminFingerprintImportPage(): ReactElement {
                       <td className="px-4 py-3 tabular-nums text-text-secondary">
                         {upload.recordCount}
                       </td>
+                      <td className="px-4 py-3 text-end">
+                        <MainButton
+                          variant="edit-soft"
+                          size="sm"
+                          iconOnly
+                          aria-label={t("historyDownload", { fileName: upload.fileName })}
+                          startIcon={<Download className="size-4" />}
+                          loading={downloadingUploadId === upload.id}
+                          disabled={
+                            !viewBranchId.trim() ||
+                            (downloadingUploadId !== null &&
+                              downloadingUploadId !== upload.id)
+                          }
+                          onClick={() => {
+                            void handleDownloadUpload(upload);
+                          }}
+                        />
+                      </td>
                     </tr>
                   ))
                 )}
@@ -405,40 +512,27 @@ export function AdminFingerprintImportPage(): ReactElement {
         </div>
       </section>
 
-      {allMonths.length > 0 ? (
-        <section className="rounded-lg border border-border bg-surface-muted/30 px-4 py-3">
-          <p className="text-xs font-medium text-text-secondary">{t("otherMonthsHint")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {allMonths.map((item) => (
-              <MainButton
-                key={`${item.year}-${item.month}`}
-                variant={
-                  item.year === parsedYear && item.month === parsedMonth
-                    ? "primary"
-                    : "secondary"
-                }
-                size="sm"
-                onClick={() => {
-                  setYear(String(item.year));
-                  setMonth(String(item.month));
-                }}
-              >
-                {t(`months.${item.month}` as "months.1")} {item.year}
-              </MainButton>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-ink">
-            {t("recordsTitle", {
-              count: filteredRecords.length,
-              month: t(`months.${parsedMonth}` as "months.1"),
-              year: parsedYear,
-            })}
-          </p>
+        <p className="text-sm font-semibold text-ink">
+          {t("recordsTitle", {
+            count: filteredRecords.length,
+            month: t(`months.${parsedViewMonth}` as "months.1"),
+            year: parsedViewYear,
+          })}
+        </p>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="w-full sm:max-w-xs">
+            <MainSelect
+              label={t("filters.branch")}
+              value={viewBranchId}
+              onValueChange={handleViewBranchChange}
+              options={branchOptions}
+              placeholder={t("placeholders.branch")}
+              startIcon={<MapPinned className="size-4" />}
+              disabled={isLoadingBranches || branchOptions.length === 0}
+            />
+          </div>
           <div className="w-full sm:max-w-xs">
             <MainInput
               type="search"
@@ -447,6 +541,7 @@ export function AdminFingerprintImportPage(): ReactElement {
               placeholder={t("recordsSearchPlaceholder")}
               startIcon={<Search />}
               aria-label={t("recordsSearchPlaceholder")}
+              disabled={!viewBranchId.trim()}
             />
           </div>
         </div>

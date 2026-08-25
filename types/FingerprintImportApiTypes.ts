@@ -20,6 +20,7 @@ export interface FingerprintImportUpload {
   uploadedAt: string;
   uploadedBy: string;
   recordCount: number;
+  fileUrl?: string | null;
 }
 
 export interface FingerprintImportMonthData {

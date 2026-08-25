@@ -631,7 +631,7 @@
     "title": "استيراد البصمة",
     "subtitle": "ارفع كشوف الحضور من جهاز البصمة واطّلع على السجلات المستوردة حسب الشهر.",
     "uploadSectionTitle": "رفع كشف الحضور",
-    "uploadSectionSubtitle": "اختر الفرع والسنة والشهر، ثم اسحب ملف Excel المُصدَّر من جهاز البصمة.",
+    "uploadSectionSubtitle": "اختر الفرع (مطلوب) والسنة والشهر، ثم اسحب ملف Excel المُصدَّر من جهاز البصمة.",
     "fields": {
       "branch": "الفرع",
       "year": "السنة",
@@ -658,12 +658,19 @@
       "browseLabel": "أو انقر للتصفح",
       "supportedFormats": ".xlsx, .xls, .csv",
       "removeFile": "إزالة الملف",
-      "submit": "رفع واستيراد"
+      "submit": "رفع واستيراد",
+      "branchRequiredHint": "مطلوب قبل رفع ملف الحضور."
     },
     "loadingMonth": "جاري تحميل بيانات الشهر المحدد…",
     "noBranches": "لا توجد فروع. أنشئ فرعًا قبل استيراد الحضور.",
+    "historySelectBranch": "اختر فرعًا لعرض سجل الرفع.",
+    "recordsSelectBranch": "اختر فرعًا لعرض سجلات الحضور.",
+    "filters": {
+      "branch": "الفرع"
+    },
     "placeholders": {
-      "branch": "اختر الفرع"
+      "branch": "اختر الفرع",
+      "year": "اختر السنة"
     },
     "historyTitle": "سجل الرفع ({count})",
     "historyEmpty": "لم يُرفع أي ملف لهذا الشهر بعد.",
@@ -672,9 +679,10 @@
       "period": "الفترة",
       "uploadedAt": "تاريخ الرفع",
       "uploadedBy": "رفعه",
-      "recordCount": "السجلات"
+      "recordCount": "السجلات",
+      "download": "تنزيل"
     },
-    "otherMonthsHint": "انتقل إلى شهر فيه رفعات سابقة",
+    "historyDownload": "تنزيل {fileName}",
     "recordsTitle": "سجلات الحضور لـ {month} {year} ({count})",
     "recordsEmpty": "لا توجد سجلات حضور لهذا الشهر بعد. ارفع ملفًا لاستيراد البيانات.",
     "recordsNoResults": "لا توجد سجلات تطابق بحثك.",

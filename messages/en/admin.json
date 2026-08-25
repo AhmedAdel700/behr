@@ -631,7 +631,7 @@
     "title": "Fingerprint import",
     "subtitle": "Upload attendance sheets from the fingerprint machine and review imported records by month.",
     "uploadSectionTitle": "Upload attendance sheet",
-    "uploadSectionSubtitle": "Select the branch, year, and month, then drop the Excel export from your fingerprint device.",
+    "uploadSectionSubtitle": "Choose the branch (required), year, and month, then drop the Excel export from your fingerprint device.",
     "fields": {
       "branch": "Branch",
       "year": "Year",
@@ -658,12 +658,19 @@
       "browseLabel": "or click to browse",
       "supportedFormats": ".xlsx, .xls, .csv",
       "removeFile": "Remove file",
-      "submit": "Upload and import"
+      "submit": "Upload and import",
+      "branchRequiredHint": "Required before you can upload a sheet."
     },
     "loadingMonth": "Loading data for selected month…",
     "noBranches": "No branches available. Create a branch before importing attendance.",
+    "historySelectBranch": "Select a branch to view upload history.",
+    "recordsSelectBranch": "Select a branch to view attendance records.",
+    "filters": {
+      "branch": "Branch"
+    },
     "placeholders": {
-      "branch": "Select branch"
+      "branch": "Select branch",
+      "year": "Select year"
     },
     "historyTitle": "Upload history ({count})",
     "historyEmpty": "No sheets uploaded for this month yet.",
@@ -672,9 +679,10 @@
       "period": "Period",
       "uploadedAt": "Uploaded",
       "uploadedBy": "Uploaded by",
-      "recordCount": "Records"
+      "recordCount": "Records",
+      "download": "Download"
     },
-    "otherMonthsHint": "Jump to a month with previous uploads",
+    "historyDownload": "Download {fileName}",
     "recordsTitle": "Attendance records for {month} {year} ({count})",
     "recordsEmpty": "No attendance records for this month yet. Upload a sheet to import data.",
     "recordsNoResults": "No records match your search.",

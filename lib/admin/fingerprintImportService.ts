@@ -1,7 +1,14 @@
 "use client";
 
+import { getCookie } from "cookies-next";
+import { getSession } from "next-auth/react";
 import { getAdminSessionSnapshot } from "@/lib/admin/adminSessionStore";
 import { buildStubFingerprintRecords } from "@/lib/admin/demo-fingerprint-imports";
+import {
+  getFingerprintImportFile,
+  storeFingerprintImportFile,
+  triggerBrowserFileDownload,
+} from "@/lib/admin/fingerprintImportFileStore";
 import {
   getFingerprintImportMonthSnapshot,
   upsertFingerprintImportMonth,
@@ -221,9 +228,76 @@ async function uploadStub(
     recordCount: newRecords.length,
   };
 
+  storeFingerprintImportFile(upload.id, request.file);
+
   const merged = mergeMonthData(existing, upload, newRecords);
   upsertFingerprintImportMonth(merged);
   return { ok: true, data: merged };
+}
+
+async function buildDownloadHeaders(): Promise<HeadersInit> {
+  const session = await getSession();
+  const locale = await getCookie("NEXT_LOCALE");
+  const headers: Record<string, string> = {
+    Accept: "*/*",
+    lang: String(locale || "ar"),
+  };
+
+  if (session?.accessToken) {
+    headers.Authorization = `${session.tokenType} ${session.accessToken}`;
+  }
+
+  return headers;
+}
+
+async function downloadFromUrl(
+  url: string,
+  fileName: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: await buildDownloadHeaders(),
+  });
+
+  if (!response.ok) {
+    return { ok: false, message: "Failed to download file." };
+  }
+
+  const blob = await response.blob();
+  triggerBrowserFileDownload(blob, fileName);
+  return { ok: true };
+}
+
+export async function downloadFingerprintImportUpload(
+  branchId: string,
+  upload: FingerprintImportUpload,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const normalizedBranchId = branchId.trim();
+  if (!normalizedBranchId) {
+    return { ok: false, message: "Branch is required." };
+  }
+
+  const localFile = getFingerprintImportFile(upload.id);
+  if (localFile) {
+    triggerBrowserFileDownload(localFile, upload.fileName);
+    return { ok: true };
+  }
+
+  if (upload.fileUrl?.trim()) {
+    return downloadFromUrl(upload.fileUrl.trim(), upload.fileName);
+  }
+
+  const baseUrl = getBackendBaseUrl();
+  if (!baseUrl) {
+    return { ok: false, message: "Original file is not available for download." };
+  }
+
+  const url = new URL(
+    `${baseUrl}/admin/fingerprint-import/uploads/${encodeURIComponent(upload.id)}/download`,
+  );
+  url.searchParams.set("branch_id", normalizedBranchId);
+
+  return downloadFromUrl(url.toString(), upload.fileName);
 }
 
 export async function fetchFingerprintImportMonth(
