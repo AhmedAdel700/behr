@@ -18,7 +18,7 @@ export function normalizeAttendanceImportHistoryParams(
   const year = arg?.year;
   const page = arg?.page && arg.page > 1 ? arg.page : 1;
 
-  if (!branchId || !Number.isFinite(year)) {
+  if (!branchId || typeof year !== "number" || !Number.isFinite(year)) {
     return null;
   }
 
