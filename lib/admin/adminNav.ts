@@ -5,7 +5,7 @@ import {
   Fingerprint,
   LayoutDashboard,
   MapPinned,
-  Settings2,
+  Settings,
   UserPlus,
   Users,
   UserRound,
@@ -155,7 +155,7 @@ export const ADMIN_NAV_ENTRIES: AdminNavEntry[] = [
   {
     kind: "group",
     key: "system",
-    icon: Settings2,
+    icon: Settings,
     match: (pathname) => pathname.startsWith("/admin-dashboard/system"),
     requiredPermission: "system_files.view",
     children: [
