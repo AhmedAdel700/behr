@@ -2,7 +2,7 @@
   "brand": "لوحة الإدارة",
   "signOut": "تسجيل الخروج",
   "signingOut": "جاري تسجيل الخروج…",
-  "goToEmployeeDashboard": "لوحتي",
+  "goToEmployeeDashboard": "لوحة الموظف",
   "roles": {
     "superAdmin": "مدير النظام",
     "departmentManager": "مدير القسم"
@@ -16,6 +16,7 @@
   },
   "nav": {
     "label": "تنقل الإدارة",
+    "employeeDashboard": "لوحة الموظف",
     "overview": "نظرة عامة",
     "employees": "الموظفون",
     "branches": "الفروع",
@@ -672,10 +673,10 @@
   "departmentDetailPage": {
     "backToDepartments": "العودة إلى الأقسام",
     "loading": "جاري تحميل القسم…",
-    "subtitle": "{branch} · بإدارة {manager} · {count, plural, =0 {لا يوجد موظفون آخرون} =1 {موظف واحد} other {# موظفين}}",
+    "subtitle": "{branch} · بإدارة {manager} · {count, plural, =0 {لا يوجد موظفون} =1 {موظف واحد} other {# موظفين}}",
     "managerLabel": "مدير القسم",
     "searchPlaceholder": "البحث في الموظفين…",
-    "emptyMembers": "لا يوجد موظفون آخرون معيّنون لهذا القسم بعد.",
+    "emptyMembers": "لا يوجد موظفون معيّنون لهذا القسم بعد.",
     "emptySearch": "لا يوجد موظفون يطابقون بحثك.",
     "notFoundTitle": "القسم غير موجود",
     "notFoundDescription": "هذا القسم غير موجود أو غير متاح."

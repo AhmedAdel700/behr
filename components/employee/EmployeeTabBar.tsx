@@ -1,7 +1,14 @@
 "use client";
 
 import { type ReactElement } from "react";
-import { CalendarClock, FileText, Home, UserRound } from "lucide-react";
+import {
+  CalendarClock,
+  FileText,
+  Home,
+  LayoutDashboard,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -12,40 +19,58 @@ import {
   getSidebarUserInfo,
   type SidebarUserInfo,
 } from "@/lib/auth/sidebarUser";
+import { canSwitchDashboards, type PrimaryRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
-const tabs = [
+interface EmployeeTab {
+  href: string;
+  key: "managerDashboard" | "home" | "requests" | "attendance" | "profile";
+  icon: LucideIcon;
+  match: (pathname: string) => boolean;
+  comingSoon?: boolean;
+}
+
+const MANAGER_DASHBOARD_TAB: EmployeeTab = {
+  href: "/admin-dashboard",
+  key: "managerDashboard",
+  icon: LayoutDashboard,
+  match: () => false,
+};
+
+const EMPLOYEE_TABS: EmployeeTab[] = [
   {
     href: "/",
     key: "home",
     icon: Home,
-    match: (p: string) => p === "/" || p === "",
+    match: (pathname) => pathname === "/" || pathname === "",
   },
   {
     href: "/requests",
     key: "requests",
     icon: FileText,
-    match: (p: string) => p.startsWith("/requests"),
+    match: (pathname) => pathname.startsWith("/requests"),
   },
   {
     href: "/attendance",
     key: "attendance",
     icon: CalendarClock,
-    match: (p: string) => p.startsWith("/attendance"),
+    match: (pathname) => pathname.startsWith("/attendance"),
     comingSoon: true,
   },
   {
     href: "/profile",
     key: "profile",
     icon: UserRound,
-    match: (p: string) => p.startsWith("/profile"),
+    match: (pathname) => pathname.startsWith("/profile"),
   },
-] as const;
+];
 
 export function EmployeeTabBar({
   initialUser,
+  primaryRole,
 }: {
   initialUser?: SidebarUserInfo;
+  primaryRole?: PrimaryRole;
 }): ReactElement {
   const t = useTranslations("employee");
   const tTabs = useTranslations("employee.tabs");
@@ -57,6 +82,12 @@ export function EmployeeTabBar({
       : (initialUser ?? getSidebarUserInfo(null));
   const displayName = getSidebarDisplayName(user);
   const roleLabel = getSidebarRoleLabel(user, t("roles.employee"));
+  const showManagerSwitch = primaryRole
+    ? canSwitchDashboards(primaryRole)
+    : false;
+  const tabs = showManagerSwitch
+    ? [MANAGER_DASHBOARD_TAB, ...EMPLOYEE_TABS]
+    : EMPLOYEE_TABS;
 
   return (
     <aside
@@ -91,7 +122,8 @@ export function EmployeeTabBar({
       <nav aria-label="Employee" className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         <ul
           className={cn(
-            "mx-auto grid max-w-lg grid-cols-4 gap-1 px-2 pt-2",
+            "mx-auto grid max-w-lg gap-1 px-2 pt-2",
+            showManagerSwitch ? "grid-cols-5" : "grid-cols-4",
             "lg:mx-0 lg:flex lg:h-full lg:max-w-none lg:flex-col lg:gap-1.5 lg:p-0"
           )}
         >
@@ -123,9 +155,9 @@ export function EmployeeTabBar({
                     )}
                     strokeWidth={active ? 2.25 : 1.75}
                   />
-                  <span className="flex flex-col items-center gap-0.5 lg:flex-row lg:items-center lg:gap-2">
+                  <span className="flex flex-col items-center gap-0.5 text-center lg:flex-row lg:items-center lg:gap-2 lg:text-start">
                     <span>{tTabs(tab.key)}</span>
-                    {"comingSoon" in tab && tab.comingSoon ? (
+                    {tab.comingSoon ? (
                       <span className="rounded bg-warning-50 px-1 py-px text-[9px] font-semibold text-warning-800 lg:text-[10px]">
                         {tTabs("soon")}
                       </span>

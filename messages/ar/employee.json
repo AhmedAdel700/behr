@@ -1,5 +1,6 @@
 {
   "tabs": {
+    "managerDashboard": "لوحة المدير",
     "home": "الرئيسية",
     "attendance": "الحضور",
     "requests": "الطلبات",
@@ -11,7 +12,7 @@
     "employee": "موظف",
     "departmentManager": "مدير القسم"
   },
-  "goToAdminDashboard": "لوحة الإدارة",
+  "goToAdminDashboard": "لوحة المدير",
   "comingSoon": {
     "badge": "المرحلة 2",
     "title": "قريباً",

@@ -93,8 +93,10 @@ export const employeesApi = baseApi.injectEndpoints({
           return { error: { status: "CUSTOM_ERROR", error: message } };
         }
       },
-      serializeQueryArgs: ({ queryArgs }) =>
-        serializeEmployeesListParams(normalizeEmployeesListParams(queryArgs)),
+      serializeQueryArgs: ({ queryArgs, endpointName }) =>
+        `${endpointName}(${serializeEmployeesListParams(
+          normalizeEmployeesListParams(queryArgs),
+        )})`,
       providesTags: (result) =>
         result
           ? [

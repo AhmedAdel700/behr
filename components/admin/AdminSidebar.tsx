@@ -197,34 +197,42 @@ function AdminNavLinks({
 
         return (
           <li key={entry.key} className={cn(isOpen && "space-y-2")}>
-            <button
+            <MainButton
               type="button"
-              onClick={() => toggleGroup(entry.key)}
+              variant="ghost"
+              block
               aria-expanded={isOpen}
+              onClick={() => toggleGroup(entry.key)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm font-medium transition-colors",
-                !isOpen && childActive && "bg-primary-50 text-primary-700",
+                "h-auto justify-start gap-3 rounded-xl px-3 py-2.5 text-sm font-medium active:translate-y-0",
+                !isOpen &&
+                  childActive &&
+                  "bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700",
                 !isOpen &&
                   !childActive &&
                   "text-text-muted hover:bg-surface-muted hover:text-text-secondary",
                 isOpen && "text-text-muted hover:text-text-secondary",
               )}
+              startIcon={
+                <Icon
+                  className={cn(
+                    "size-5",
+                    !isOpen && childActive ? "text-primary-600" : "text-current",
+                  )}
+                  strokeWidth={!isOpen && childActive ? 2.25 : 1.75}
+                />
+              }
+              endIcon={
+                <ChevronDown
+                  className={cn(
+                    "size-4 text-text-muted transition-transform duration-200",
+                    isOpen && "rotate-180",
+                  )}
+                />
+              }
             >
-              <Icon
-                className={cn(
-                  "size-5 shrink-0",
-                  !isOpen && childActive ? "text-primary-600" : "text-current",
-                )}
-                strokeWidth={!isOpen && childActive ? 2.25 : 1.75}
-              />
               <span className="min-w-0 flex-1 text-start">{t(entry.key)}</span>
-              <ChevronDown
-                className={cn(
-                  "size-4 shrink-0 text-text-muted transition-transform duration-200",
-                  isOpen && "rotate-180",
-                )}
-              />
-            </button>
+            </MainButton>
 
             {isOpen ? (
               <ul className="flex flex-col gap-0.5">
@@ -305,7 +313,7 @@ export function AdminSidebar(): ReactElement {
       ? t("roles.superAdmin")
       : t("roles.departmentManager");
 
-  const navEntries = getAdminNavEntries(admin.permissions);
+  const navEntries = getAdminNavEntries(admin.permissions, admin.role);
 
   const CollapseIcon = sidebarExpanded
     ? isRtl

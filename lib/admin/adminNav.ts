@@ -8,11 +8,14 @@ import {
   Settings2,
   UserPlus,
   Users,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission } from "@/lib/auth/permissions";
+import type { AdminRole } from "@/types/AdminApiTypes";
 
 export type AdminNavItemKey =
+  | "employeeDashboard"
   | "overview"
   | "employees"
   | "registrations"
@@ -36,6 +39,7 @@ export interface AdminNavItem {
   icon: LucideIcon;
   match: (pathname: string) => boolean;
   requiredPermission: string;
+  requiredRole?: AdminRole;
 }
 
 export interface AdminNavSubItem {
@@ -43,6 +47,7 @@ export interface AdminNavSubItem {
   key: AdminNavSubItemKey;
   match: (pathname: string) => boolean;
   requiredPermission: string;
+  requiredRole?: AdminRole;
 }
 
 export interface AdminNavGroup {
@@ -51,6 +56,7 @@ export interface AdminNavGroup {
   icon: LucideIcon;
   match: (pathname: string) => boolean;
   requiredPermission: string;
+  requiredRole?: AdminRole;
   children: AdminNavSubItem[];
 }
 
@@ -59,6 +65,16 @@ export type AdminNavEntry = AdminNavItem | AdminNavGroup;
 export function isAdminNavGroup(entry: AdminNavEntry): entry is AdminNavGroup {
   return entry.kind === "group";
 }
+
+const EMPLOYEE_DASHBOARD_NAV_ITEM: AdminNavItem = {
+  kind: "item",
+  href: "/",
+  key: "employeeDashboard",
+  icon: UserRound,
+  match: () => false,
+  requiredPermission: "overview.view",
+  requiredRole: "department_manager",
+};
 
 export const ADMIN_NAV_ENTRIES: AdminNavEntry[] = [
   {
@@ -101,6 +117,7 @@ export const ADMIN_NAV_ENTRIES: AdminNavEntry[] = [
     icon: ClipboardList,
     match: (pathname) => pathname.startsWith("/admin-dashboard/leave-types"),
     requiredPermission: "leave_types.view",
+    requiredRole: "super_admin",
   },
   {
     kind: "item",
@@ -182,13 +199,27 @@ function findMatchingItem(pathname: string): AdminNavItem | null {
   return null;
 }
 
+function matchesRequiredRole(
+  requiredRole: AdminRole | undefined,
+  role: AdminRole,
+): boolean {
+  return !requiredRole || requiredRole === role;
+}
+
 function filterNavEntry(
   entry: AdminNavEntry,
   permissions: readonly string[],
+  role: AdminRole,
 ): AdminNavEntry | null {
+  if (!matchesRequiredRole(entry.requiredRole, role)) {
+    return null;
+  }
+
   if (isAdminNavGroup(entry)) {
-    const children = entry.children.filter((child) =>
-      hasPermission(permissions, child.requiredPermission),
+    const children = entry.children.filter(
+      (child) =>
+        matchesRequiredRole(child.requiredRole, role) &&
+        hasPermission(permissions, child.requiredPermission),
     );
 
     if (children.length === 0) {
@@ -207,18 +238,26 @@ function filterNavEntry(
 
 export function getAdminNavEntries(
   permissions: readonly string[],
+  role: AdminRole,
 ): AdminNavEntry[] {
-  return ADMIN_NAV_ENTRIES.flatMap((entry) => {
-    const filtered = filterNavEntry(entry, permissions);
+  const entries = ADMIN_NAV_ENTRIES.flatMap((entry) => {
+    const filtered = filterNavEntry(entry, permissions, role);
     return filtered ? [filtered] : [];
   });
+
+  if (role !== "department_manager") {
+    return entries;
+  }
+
+  return [EMPLOYEE_DASHBOARD_NAV_ITEM, ...entries];
 }
 
 /** @deprecated Use getAdminNavEntries. Kept for badge keys on top-level items. */
 export function getAdminNavItems(
   permissions: readonly string[],
+  role: AdminRole,
 ): AdminNavItem[] {
-  return getAdminNavEntries(permissions).flatMap((entry) =>
+  return getAdminNavEntries(permissions, role).flatMap((entry) =>
     isAdminNavGroup(entry) ? [] : [entry],
   );
 }

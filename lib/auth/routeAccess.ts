@@ -20,6 +20,7 @@ export interface RouteAccessUser {
 interface RoutePermissionRule {
   match: (pathname: string) => boolean;
   permissions: string[];
+  roles?: readonly PrimaryRole[];
 }
 
 const ADMIN_ROUTE_RULES: RoutePermissionRule[] = [
@@ -43,6 +44,7 @@ const ADMIN_ROUTE_RULES: RoutePermissionRule[] = [
   {
     match: (pathname) => pathname.startsWith("/admin-dashboard/leave-types"),
     permissions: ["leave_types.view"],
+    roles: ["super_admin"],
   },
   {
     match: (pathname) =>
@@ -109,8 +111,11 @@ function findMatchingRule(
   return rules.find((rule) => rule.match(pathname)) ?? null;
 }
 
-function isEmployeeOnlyUser(user: RouteAccessUser): boolean {
-  return user.primaryRole === "employee";
+function usesEmployeeHome(user: RouteAccessUser): boolean {
+  return (
+    user.primaryRole === "employee" ||
+    user.primaryRole === "department_manager"
+  );
 }
 
 export function getAdminRoutePermissions(pathname: string): string[] | null {
@@ -129,6 +134,10 @@ export function canAccessAdminPath(
   const rule = findMatchingRule(pathname, ADMIN_ROUTE_RULES);
 
   if (!rule) {
+    return false;
+  }
+
+  if (rule.roles && !rule.roles.includes(user.primaryRole)) {
     return false;
   }
 
@@ -172,7 +181,7 @@ export function canAccessRoute(
 }
 
 export function getPostLoginPath(user: RouteAccessUser): string {
-  if (isEmployeeOnlyUser(user)) {
+  if (usesEmployeeHome(user)) {
     return "/";
   }
 
@@ -189,7 +198,7 @@ export function getAuthorizedHomePath(
   locale: string,
   user: RouteAccessUser,
 ): string {
-  if (isEmployeeOnlyUser(user)) {
+  if (usesEmployeeHome(user)) {
     return homePathForRole(locale, "employee");
   }
 

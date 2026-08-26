@@ -1,5 +1,6 @@
 {
   "tabs": {
+    "managerDashboard": "Manager dashboard",
     "home": "Home",
     "attendance": "Attendance",
     "requests": "Requests",
@@ -11,7 +12,7 @@
     "employee": "Employee",
     "departmentManager": "Department Manager"
   },
-  "goToAdminDashboard": "Admin dashboard",
+  "goToAdminDashboard": "Manager dashboard",
   "comingSoon": {
     "badge": "Phase 2",
     "title": "Coming soon",

@@ -36,8 +36,7 @@ function mapDepartmentFromApi(record: DepartmentApiRecord): DepartmentRecord {
     managerUserId: record.manager ? String(record.manager.id) : "",
     managerName: normalizeText(record.manager?.full_name),
     managerEmail: normalizeText(record.manager?.email),
-    usersCount:
-      parseCount(record.users_count) + (record.manager ? 1 : 0),
+    usersCount: parseCount(record.users_count),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };

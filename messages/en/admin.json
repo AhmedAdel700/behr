@@ -2,7 +2,7 @@
   "brand": "Admin Dashboard",
   "signOut": "Sign out",
   "signingOut": "Signing out…",
-  "goToEmployeeDashboard": "My dashboard",
+  "goToEmployeeDashboard": "Employee dashboard",
   "roles": {
     "superAdmin": "Super Admin",
     "departmentManager": "Department Manager"
@@ -16,6 +16,7 @@
   },
   "nav": {
     "label": "Admin navigation",
+    "employeeDashboard": "Employee dashboard",
     "overview": "Overview",
     "employees": "Employees",
     "branches": "Branches",
@@ -672,10 +673,10 @@
   "departmentDetailPage": {
     "backToDepartments": "Back to departments",
     "loading": "Loading department…",
-    "subtitle": "{branch} · Managed by {manager} · {count, plural, =0 {no other employees} =1 {1 employee} other {# employees}}",
+    "subtitle": "{branch} · Managed by {manager} · {count, plural, =0 {no employees} =1 {1 employee} other {# employees}}",
     "managerLabel": "Department manager",
     "searchPlaceholder": "Search employees…",
-    "emptyMembers": "No other employees are assigned to this department yet.",
+    "emptyMembers": "No employees are assigned to this department yet.",
     "emptySearch": "No employees match your search.",
     "notFoundTitle": "Department not found",
     "notFoundDescription": "This department does not exist or is not available."
