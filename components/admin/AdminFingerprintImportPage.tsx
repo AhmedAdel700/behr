@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
@@ -9,6 +9,10 @@ import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   useGetBranchesQuery,
 } from "@/app/store/api/branches/branchesApi";
+import {
+  attendanceApi,
+  useGetAttendanceRecordsQuery,
+} from "@/app/store/api/attendance/attendanceApi";
 import {
   attendanceImportApi,
   useGetAttendanceImportHistoryQuery,
@@ -19,18 +23,14 @@ import { MainButton } from "@/components/shared/MainButton";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
 import { TablePagination } from "@/components/shared/TablePagination";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { AttendanceImportPreviewModal } from "@/components/admin/AttendanceImportPreviewModal";
 import { previewAttendanceImportClient, confirmAttendanceImportClient } from "@/lib/admin/attendanceImportClient";
 import { useModalTriggerRef } from "@/lib/useModalTriggerRef";
 import {
   buildMonthOptions,
   buildYearOptions,
-  fetchFingerprintImportMonth,
 } from "@/lib/admin/fingerprintImportService";
-import {
-  getFingerprintImportMonthSnapshot,
-  hydrateFingerprintImports,
-} from "@/lib/admin/fingerprintImportStore";
 import { searchFingerprintRecords } from "@/lib/admin/searchFingerprintRecords";
 import { formatDateTime12, formatStoredDate, formatStoredTime12, resolveTimeLocale } from "@/lib/formatTime";
 import {
@@ -39,20 +39,17 @@ import {
   ATTENDANCE_IMPORT_TEMPLATE_TYPE,
 } from "@/lib/admin/systemFileDownload";
 import { cn } from "@/lib/utils";
-import type { AttendanceImportHistoryRecord, AttendanceImportPreviewResult } from "@/types/AttendanceImportApiTypes";
-import type {
-  FingerprintAttendanceStatus,
-  FingerprintImportMonthData,
-} from "@/types/FingerprintImportApiTypes";
+import type { AttendanceImportPreviewResult } from "@/types/AttendanceImportApiTypes";
+import type { AttendanceRecordsQueryParams } from "@/types/AttendanceRecordsApiTypes";
+import { DEFAULT_ATTENDANCE_RECORDS_PER_PAGE } from "@/types/AttendanceRecordsApiTypes";
+import type { FingerprintAttendanceStatus } from "@/types/FingerprintImportApiTypes";
 import {
   TABLE_DATE_CELL_CLASS,
-  TABLE_DATE_RANGE_CELL_CLASS,
   TABLE_DATETIME_CELL_CLASS,
   TABLE_PERIOD_CELL_CLASS,
   TABLE_TIME_CELL_CLASS,
 } from "@/lib/tableCells";
 
-const RECORDS_PAGE_SIZE = 31;
 const HISTORY_PAGE_SIZE = 15;
 const RECORDS_COLUMN_COUNT = 8;
 const recordsTableHeaderClass =
@@ -68,50 +65,86 @@ const attendanceStatusSurface: Record<
   in_out: "bg-jade-50 text-jade-800",
 };
 
+function readRtkErrorMessage(error: unknown, fallback: string): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "string" &&
+    error.error.trim()
+  ) {
+    return error.error;
+  }
+
+  return fallback;
+}
+
 export function AdminFingerprintImportPage(): ReactElement {
   const t = useTranslations("admin.fingerprintImportPage");
   const locale = useLocale();
   const dispatch = useDispatch<AppDispatch>();
   const now = new Date();
+  const currentYear = now.getFullYear();
 
-  const [uploadYear, setUploadYear] = useState(String(now.getFullYear()));
+  const [uploadYear, setUploadYear] = useState(String(currentYear));
   const [uploadMonth, setUploadMonth] = useState(String(now.getMonth() + 1));
   const [uploadBranchId, setUploadBranchId] = useState("");
-  const [viewYear, setViewYear] = useState(String(now.getFullYear()));
-  const [viewMonth, setViewMonth] = useState(String(now.getMonth() + 1));
-  const [viewBranchId, setViewBranchId] = useState("");
+  const [historyYear, setHistoryYear] = useState(String(currentYear));
+  const [historyBranchId, setHistoryBranchId] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [recordsYear, setRecordsYear] = useState(String(currentYear));
+  const [recordsMonth, setRecordsMonth] = useState(String(now.getMonth() + 1));
+  const [recordsBranchId, setRecordsBranchId] = useState("");
+  const [recordsPage, setRecordsPage] = useState(1);
+  const [recordsSearchQuery, setRecordsSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [loadingMonth, setLoadingMonth] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [previewResult, setPreviewResult] =
     useState<AttendanceImportPreviewResult | null>(null);
-  const [monthData, setMonthData] = useState<FingerprintImportMonthData | null>(null);
-  const [recordsSearchQuery, setRecordsSearchQuery] = useState("");
-  const [recordsPage, setRecordsPage] = useState(1);
-  const [historyPage, setHistoryPage] = useState(1);
   const [downloadingGuide, setDownloadingGuide] = useState(false);
   const { triggerRef: previewTriggerRef, bindTrigger: bindPreviewTrigger } =
     useModalTriggerRef();
 
   const parsedUploadYear = Number(uploadYear);
   const parsedUploadMonth = Number(uploadMonth);
-  const parsedViewYear = Number(viewYear);
-  const parsedViewMonth = Number(viewMonth);
+  const parsedHistoryYear = Number(historyYear);
+  const parsedRecordsYear = Number(recordsYear);
+  const parsedRecordsMonth = Number(recordsMonth);
 
   const historyQueryArg = useMemo(
     () =>
-      viewBranchId.trim() && Number.isFinite(parsedViewYear)
+      historyBranchId.trim() && Number.isFinite(parsedHistoryYear)
         ? {
-            branch_id: viewBranchId.trim(),
-            year: parsedViewYear,
+            branch_id: historyBranchId.trim(),
+            year: parsedHistoryYear,
             page: historyPage,
           }
         : undefined,
-    [historyPage, parsedViewYear, viewBranchId],
+    [historyBranchId, historyPage, parsedHistoryYear],
   );
+
+  const recordsQueryArg = useMemo((): AttendanceRecordsQueryParams | undefined => {
+    const branchId = Number(recordsBranchId);
+    if (
+      !recordsBranchId.trim() ||
+      !Number.isFinite(branchId) ||
+      branchId <= 0 ||
+      !Number.isFinite(parsedRecordsYear) ||
+      !Number.isFinite(parsedRecordsMonth)
+    ) {
+      return undefined;
+    }
+
+    return {
+      branch_id: branchId,
+      year: parsedRecordsYear,
+      month: parsedRecordsMonth,
+      per_page: DEFAULT_ATTENDANCE_RECORDS_PER_PAGE,
+      page: recordsPage,
+    };
+  }, [parsedRecordsMonth, parsedRecordsYear, recordsBranchId, recordsPage]);
 
   const {
     data: historyResult,
@@ -120,6 +153,15 @@ export function AdminFingerprintImportPage(): ReactElement {
     error: historyQueryError,
   } = useGetAttendanceImportHistoryQuery(historyQueryArg, {
     skip: !historyQueryArg,
+  });
+
+  const {
+    data: recordsResult,
+    isFetching: loadingRecords,
+    isError: recordsError,
+    error: recordsQueryError,
+  } = useGetAttendanceRecordsQuery(recordsQueryArg, {
+    skip: !recordsQueryArg,
   });
 
   const { data: branchesResult, isLoading: isLoadingBranches } =
@@ -135,33 +177,41 @@ export function AdminFingerprintImportPage(): ReactElement {
     [branches],
   );
 
-  const handleViewBranchChange = (value: string): void => {
-    setViewBranchId(value);
-    setMonthData(null);
-    setFetchError(null);
+  const handleHistoryBranchChange = (value: string): void => {
+    setHistoryBranchId(value);
     setHistoryPage(1);
   };
 
-  const handleViewYearChange = (value: string): void => {
-    setViewYear(value);
-    setMonthData(null);
-    setFetchError(null);
+  const handleHistoryYearChange = (value: string): void => {
+    setHistoryYear(value);
     setHistoryPage(1);
   };
 
-  const handleViewMonthChange = (value: string): void => {
-    setViewMonth(value);
-    setMonthData(null);
-    setFetchError(null);
+  const handleRecordsBranchChange = (value: string): void => {
+    setRecordsBranchId(value);
+    setRecordsPage(1);
+    setRecordsSearchQuery("");
+  };
+
+  const handleRecordsYearChange = (value: string): void => {
+    setRecordsYear(value);
+    setRecordsPage(1);
+    setRecordsSearchQuery("");
+  };
+
+  const handleRecordsMonthChange = (value: string): void => {
+    setRecordsMonth(value);
+    setRecordsPage(1);
+    setRecordsSearchQuery("");
   };
 
   const yearOptions = useMemo(
     () =>
-      buildYearOptions(now.getFullYear()).map((value) => ({
+      buildYearOptions(currentYear).map((value) => ({
         value: String(value),
         label: String(value),
       })),
-    [now]
+    [currentYear],
   );
 
   const monthOptions = useMemo(
@@ -170,75 +220,16 @@ export function AdminFingerprintImportPage(): ReactElement {
         value: String(value),
         label: t(`months.${value}` as "months.1"),
       })),
-    [t]
+    [t],
   );
 
   useEffect(() => {
     setPreviewResult(null);
   }, [selectedFile, uploadBranchId, uploadYear, uploadMonth]);
 
-  const loadMonthData = useCallback(async (): Promise<void> => {
-    if (
-      !viewBranchId.trim() ||
-      !Number.isFinite(parsedViewYear) ||
-      !Number.isFinite(parsedViewMonth)
-    ) {
-      return;
-    }
-
-    setLoadingMonth(true);
-    setFetchError(null);
-
-    const response = await fetchFingerprintImportMonth(
-      viewBranchId,
-      parsedViewYear,
-      parsedViewMonth,
-    );
-
-    if (response.ok) {
-      setMonthData(response.data);
-    } else {
-      setFetchError(response.message);
-      setMonthData(
-        getFingerprintImportMonthSnapshot(
-          viewBranchId,
-          parsedViewYear,
-          parsedViewMonth,
-        ),
-      );
-    }
-
-    setLoadingMonth(false);
-  }, [parsedViewMonth, parsedViewYear, viewBranchId]);
-
-  useEffect(() => {
-    hydrateFingerprintImports();
-  }, []);
-
-  useEffect(() => {
-    void loadMonthData();
-  }, [loadMonthData]);
-
-  useEffect(() => {
-    setRecordsSearchQuery("");
-    setRecordsPage(1);
-  }, [viewBranchId, parsedViewYear, parsedViewMonth]);
-
-  useEffect(() => {
-    if (monthData || !viewBranchId.trim()) return;
-    setMonthData(
-      getFingerprintImportMonthSnapshot(
-        viewBranchId,
-        parsedViewYear,
-        parsedViewMonth,
-      ),
-    );
-  }, [monthData, parsedViewMonth, parsedViewYear, viewBranchId]);
-
-  const records = monthData?.records ?? [];
-
   const historyUploads = historyResult?.items ?? [];
   const historyTotalItems = historyResult?.meta.total ?? historyUploads.length;
+  const historyPageSize = historyResult?.meta.per_page ?? HISTORY_PAGE_SIZE;
   const historyTotalPages = Math.max(1, historyResult?.meta.last_page ?? 1);
   const safeHistoryPage = Math.min(historyPage, historyTotalPages);
 
@@ -248,37 +239,36 @@ export function AdminFingerprintImportPage(): ReactElement {
     }
   }, [historyPage, historyTotalPages]);
 
-  const historyLoadErrorMessage = useMemo((): string => {
-    if (
-      typeof historyQueryError === "object" &&
-      historyQueryError !== null &&
-      "error" in historyQueryError &&
-      typeof historyQueryError.error === "string" &&
-      historyQueryError.error.trim()
-    ) {
-      return historyQueryError.error;
-    }
+  const historyLoadErrorMessage = useMemo(
+    () => readRtkErrorMessage(historyQueryError, t("historyLoadError")),
+    [historyQueryError, t],
+  );
 
-    return t("historyLoadError");
-  }, [historyQueryError, t]);
+  const recordsLoadErrorMessage = useMemo(
+    () => readRtkErrorMessage(recordsQueryError, t("recordsLoadError")),
+    [recordsQueryError, t],
+  );
+
+  const records = recordsResult?.records ?? [];
+  const recordsMeta = recordsResult?.meta;
+  const recordsTotalItems = recordsMeta?.total ?? records.length;
+  const recordsPageSize =
+    recordsMeta?.per_page ?? DEFAULT_ATTENDANCE_RECORDS_PER_PAGE;
+  const recordsTotalPages = Math.max(1, recordsMeta?.last_page ?? 1);
+  const safeRecordsPage = Math.min(recordsPage, recordsTotalPages);
+
+  useEffect(() => {
+    if (recordsPage > recordsTotalPages) {
+      setRecordsPage(recordsTotalPages);
+    }
+  }, [recordsPage, recordsTotalPages]);
 
   const filteredRecords = useMemo(
     () => searchFingerprintRecords(records, recordsSearchQuery),
-    [records, recordsSearchQuery]
+    [records, recordsSearchQuery],
   );
 
-  const recordsTotalPages = Math.max(
-    1,
-    Math.ceil(filteredRecords.length / RECORDS_PAGE_SIZE)
-  );
-  const safeRecordsPage = Math.min(recordsPage, recordsTotalPages);
-
-  const pagedRecords = useMemo(() => {
-    const start = (safeRecordsPage - 1) * RECORDS_PAGE_SIZE;
-    return filteredRecords.slice(start, start + RECORDS_PAGE_SIZE);
-  }, [filteredRecords, safeRecordsPage]);
-
-  const recordsEmptyMessage = !viewBranchId.trim()
+  const recordsEmptyMessage = !recordsBranchId.trim()
     ? t("recordsSelectBranch")
     : records.length === 0
       ? t("recordsEmpty")
@@ -286,7 +276,6 @@ export function AdminFingerprintImportPage(): ReactElement {
 
   const handleRecordsSearchChange = (value: string): void => {
     setRecordsSearchQuery(value);
-    setRecordsPage(1);
   };
 
   const handleDownloadGuide = async (): Promise<void> => {
@@ -366,27 +355,21 @@ export function AdminFingerprintImportPage(): ReactElement {
       setPreviewResult(null);
       setSelectedFile(undefined);
       setUploadError(null);
-      setViewBranchId(uploadBranchId);
-      setViewYear(uploadYear);
-      setViewMonth(uploadMonth);
+      setRecordsBranchId(uploadBranchId);
+      setRecordsYear(uploadYear);
+      setRecordsMonth(uploadMonth);
+      setRecordsPage(1);
+      setRecordsSearchQuery("");
       dispatch(
         attendanceImportApi.util.invalidateTags([
           { type: "AttendanceImport", id: "HISTORY" },
         ]),
       );
-
-      const monthResponse = await fetchFingerprintImportMonth(
-        uploadBranchId,
-        parsedUploadYear,
-        parsedUploadMonth,
+      dispatch(
+        attendanceApi.util.invalidateTags([
+          { type: "Attendance", id: "RECORDS" },
+        ]),
       );
-
-      if (monthResponse.ok) {
-        setMonthData(monthResponse.data);
-        setFetchError(null);
-      } else {
-        setFetchError(monthResponse.message);
-      }
     } else {
       toast.error(response.message || t("preview.confirmError"));
     }
@@ -398,8 +381,8 @@ export function AdminFingerprintImportPage(): ReactElement {
     <div className="grid gap-3 sm:grid-cols-2">
       <MainSelect
         label={t("filters.branch")}
-        value={viewBranchId}
-        onValueChange={handleViewBranchChange}
+        value={historyBranchId}
+        onValueChange={handleHistoryBranchChange}
         options={branchOptions}
         placeholder={t("placeholders.branch")}
         startIcon={<MapPinned className="size-4" />}
@@ -407,12 +390,12 @@ export function AdminFingerprintImportPage(): ReactElement {
       />
       <MainSelect
         label={t("fields.year")}
-        value={viewYear}
-        onValueChange={handleViewYearChange}
+        value={historyYear}
+        onValueChange={handleHistoryYearChange}
         options={yearOptions}
         placeholder={t("placeholders.year")}
         startIcon={<Calendar className="size-4" />}
-        disabled={loadingMonth || !viewBranchId.trim()}
+        disabled={!historyBranchId.trim()}
       />
     </div>
   );
@@ -506,7 +489,7 @@ export function AdminFingerprintImportPage(): ReactElement {
               setPreviewResult(null);
             }}
             error={uploadError ?? undefined}
-            disabled={previewing || loadingMonth || !uploadBranchId.trim()}
+            disabled={previewing || !uploadBranchId.trim()}
           />
         </div>
 
@@ -518,8 +501,7 @@ export function AdminFingerprintImportPage(): ReactElement {
             disabled={
               !uploadBranchId.trim() ||
               !selectedFile ||
-              previewing ||
-              loadingMonth
+              previewing
             }
             onClick={(event) => {
               bindPreviewTrigger(event);
@@ -528,16 +510,7 @@ export function AdminFingerprintImportPage(): ReactElement {
           >
             {previewing ? t("upload.previewing") : t("upload.preview")}
           </MainButton>
-          {loadingMonth ? (
-            <p className="text-sm text-text-muted">{t("loadingMonth")}</p>
-          ) : null}
         </div>
-
-        {fetchError ? (
-          <p className="mt-3 text-sm text-danger-600" role="alert">
-            {fetchError}
-          </p>
-        ) : null}
       </section>
 
       <AttendanceImportPreviewModal
@@ -595,7 +568,7 @@ export function AdminFingerprintImportPage(): ReactElement {
                 {historyUploads.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-10 text-center text-sm text-text-muted">
-                      {viewBranchId.trim()
+                      {historyBranchId.trim()
                         ? loadingHistory
                           ? t("loadingHistory")
                           : t("historyEmpty")
@@ -606,12 +579,7 @@ export function AdminFingerprintImportPage(): ReactElement {
                   historyUploads.map((upload) => (
                     <tr
                       key={upload.id}
-                      className={cn(
-                        "border-b border-border last:border-b-0",
-                        upload.year === parsedViewYear &&
-                          upload.month === parsedViewMonth &&
-                          "bg-primary-50/40"
-                      )}
+                      className="border-b border-border last:border-b-0"
                     >
                       <td className="px-4 py-3 font-medium text-ink">{upload.fileName}</td>
                       <td className={cn("px-4 py-3 text-text-secondary", TABLE_PERIOD_CELL_CLASS)}>
@@ -634,7 +602,7 @@ export function AdminFingerprintImportPage(): ReactElement {
           </div>
           <TablePagination
             page={safeHistoryPage}
-            pageSize={HISTORY_PAGE_SIZE}
+            pageSize={historyPageSize}
             totalItems={historyTotalItems}
             onPageChange={setHistoryPage}
             previousLabel={t("pagination.previous")}
@@ -649,17 +617,17 @@ export function AdminFingerprintImportPage(): ReactElement {
       <section className="space-y-3">
         <p className="text-sm font-semibold text-ink">
           {t("recordsTitle", {
-            count: filteredRecords.length,
-            month: t(`months.${parsedViewMonth}` as "months.1"),
-            year: parsedViewYear,
+            count: recordsTotalItems,
+            month: t(`months.${parsedRecordsMonth}` as "months.1"),
+            year: parsedRecordsYear,
           })}
         </p>
 
         <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MainSelect
             label={t("filters.branch")}
-            value={viewBranchId}
-            onValueChange={handleViewBranchChange}
+            value={recordsBranchId}
+            onValueChange={handleRecordsBranchChange}
             options={branchOptions}
             placeholder={t("placeholders.branch")}
             startIcon={<MapPinned className="size-4" />}
@@ -667,20 +635,20 @@ export function AdminFingerprintImportPage(): ReactElement {
           />
           <MainSelect
             label={t("fields.year")}
-            value={viewYear}
-            onValueChange={handleViewYearChange}
+            value={recordsYear}
+            onValueChange={handleRecordsYearChange}
             options={yearOptions}
             placeholder={t("placeholders.year")}
             startIcon={<Calendar className="size-4" />}
-            disabled={loadingMonth || !viewBranchId.trim()}
+            disabled={!recordsBranchId.trim()}
           />
           <MainSelect
             label={t("fields.month")}
-            value={viewMonth}
-            onValueChange={handleViewMonthChange}
+            value={recordsMonth}
+            onValueChange={handleRecordsMonthChange}
             options={monthOptions}
             startIcon={<Calendar className="size-4" />}
-            disabled={loadingMonth || !viewBranchId.trim()}
+            disabled={!recordsBranchId.trim()}
           />
           <MainInput
             type="search"
@@ -689,9 +657,15 @@ export function AdminFingerprintImportPage(): ReactElement {
             onChange={(event) => handleRecordsSearchChange(event.target.value)}
             placeholder={t("recordsSearchPlaceholder")}
             startIcon={<Search />}
-            disabled={!viewBranchId.trim()}
+            disabled={!recordsBranchId.trim()}
           />
         </div>
+
+        {recordsError ? (
+          <p className="text-sm text-danger-600" role="alert">
+            {recordsLoadErrorMessage}
+          </p>
+        ) : null}
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
           <div className="admin-scroll-visible -mx-px overflow-x-auto">
@@ -725,14 +699,16 @@ export function AdminFingerprintImportPage(): ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {pagedRecords.length === 0 ? (
+                {loadingRecords ? (
+                  <TableSkeleton columnCount={RECORDS_COLUMN_COUNT} />
+                ) : filteredRecords.length === 0 ? (
                   <tr>
                     <td colSpan={RECORDS_COLUMN_COUNT} className="px-4 py-10 text-center text-sm text-text-muted">
                       {recordsEmptyMessage}
                     </td>
                   </tr>
                 ) : (
-                  pagedRecords.map((record) => (
+                  filteredRecords.map((record) => (
                     <tr key={record.id} className="border-b border-border last:border-b-0">
                       <td className={cn(recordsTableCellClass, "font-medium text-ink")} title={record.name ?? undefined}>
                         {record.name ?? t("recordsUnknownEmployee")}
@@ -773,8 +749,8 @@ export function AdminFingerprintImportPage(): ReactElement {
           </div>
           <TablePagination
             page={safeRecordsPage}
-            pageSize={RECORDS_PAGE_SIZE}
-            totalItems={filteredRecords.length}
+            pageSize={recordsPageSize}
+            totalItems={recordsTotalItems}
             onPageChange={setRecordsPage}
             previousLabel={t("pagination.previous")}
             nextLabel={t("pagination.next")}

@@ -16,6 +16,7 @@ import "@/app/store/api/public/publicOrgApi";
 import "@/app/store/api/system-files/systemFilesApi";
 import "@/app/store/api/overview/overviewApi";
 import "@/app/store/api/imports/attendanceImportApi";
+import "@/app/store/api/attendance/attendanceApi";
 
 export const makeStore = () => {
   const store = configureStore({
