@@ -7,6 +7,7 @@ import { appendListQueryParams } from "@services/http/listQuery";
 import type {
   EmployeeApiRecord,
   EmployeeBranchSummary,
+  CreateEmployeePayload,
   EmployeeDeleteResult,
   EmployeeDepartmentSummary,
   EmployeeJobPositionSummary,
@@ -210,6 +211,61 @@ export async function fetchEmployee(
   return mapEmployeeFromApi(data);
 }
 
+function toCreateEmployeeFormData(body: CreateEmployeePayload): FormData {
+  const formData = new FormData();
+  formData.append("name", body.name);
+  formData.append("email", body.email);
+  formData.append("phone", body.phone);
+  formData.append("fingerprint_number", body.fingerprint_number);
+  formData.append("password", body.password);
+  formData.append("password_confirmation", body.password_confirmation);
+  formData.append("branch_id", String(body.branch_id));
+  formData.append("department_id", String(body.department_id));
+  formData.append("job_position_id", String(body.job_position_id));
+  formData.append("role", body.role);
+
+  if (body.image) {
+    formData.append("image", body.image);
+  }
+
+  return formData;
+}
+
+export async function createEmployeeRequest(
+  accessToken: string,
+  lang: string,
+  body: CreateEmployeePayload,
+  tokenType = "Bearer",
+): Promise<EmployeeMutationResult> {
+  const { response, payload } = await api.authorizedFetch({
+    url: employeesCollectionUrl(),
+    accessToken,
+    lang,
+    tokenType,
+    method: "POST",
+    body: toCreateEmployeeFormData(body),
+    fallbackMessage: "Failed to create employee.",
+  });
+
+  if (!response.ok) {
+    api.throwFromPayload(payload, "Failed to create employee.");
+  }
+
+  const { message, data } = api.assertSuccessResponse<unknown>(
+    payload,
+    "Failed to create employee.",
+  );
+
+  if (!isEmployeeApiRecord(data)) {
+    throw new EmployeesApiError("Unexpected employee response.");
+  }
+
+  return {
+    message,
+    employee: mapEmployeeFromApi(data),
+  };
+}
+
 export async function updateEmployeeRequest(
   accessToken: string,
   lang: string,
@@ -228,9 +284,7 @@ export async function updateEmployeeRequest(
   });
 
   if (!response.ok) {
-    throw new EmployeesApiError(
-      api.parseApiMessage(payload, "Failed to update employee."),
-    );
+    api.throwFromPayload(payload, "Failed to update employee.");
   }
 
   if (
@@ -239,9 +293,7 @@ export async function updateEmployeeRequest(
     "success" in payload &&
     payload.success === false
   ) {
-    throw new EmployeesApiError(
-      api.parseApiMessage(payload, "Failed to update employee."),
-    );
+    api.throwFromPayload(payload, "Failed to update employee.");
   }
 
   const message = api.parseApiMessage(payload, "Employee updated successfully.");

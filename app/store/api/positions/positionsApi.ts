@@ -59,6 +59,7 @@ export const DEFAULT_POSITIONS_LIST_PARAMS: PositionsListQueryParams = {
 };
 
 export const positionsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getPositions: builder.query<
       PositionsListResult,

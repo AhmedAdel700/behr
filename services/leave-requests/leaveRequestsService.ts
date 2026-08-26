@@ -202,7 +202,10 @@ function mapApprovals(value: unknown): LeaveRequestApproval[] {
 function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
-  const leaveTypeId = record ? readId(record.leave_type_id) : null;
+  const nestedLeaveType = record ? asRecord(record.leave_type) : null;
+  const leaveTypeId =
+    (record ? readId(record.leave_type_id) : null) ??
+    (nestedLeaveType ? readId(nestedLeaveType.id) : null);
 
   if (!record || !id || !leaveTypeId) {
     throw new LeaveRequestsApiError("Unexpected leave request response.");
@@ -463,26 +466,50 @@ export async function cancelLeaveRequestRequest(
   leaveRequestId: string,
   tokenType = "Bearer",
 ): Promise<LeaveRequestCancelResult> {
+  const fallbackMessage = "Failed to cancel leave request.";
   const { response, payload } = await api.authorizedFetch({
     url: leaveRequestItemUrl(leaveRequestId),
     accessToken,
     lang,
     tokenType,
     method: "DELETE",
-    fallbackMessage: "Failed to cancel leave request.",
+    fallbackMessage,
   });
 
   if (!response.ok) {
-    api.throwFromPayload(payload, "Failed to cancel leave request.");
+    api.throwFromPayload(payload, fallbackMessage);
   }
 
-  api.assertDeleteSuccess(payload, "Failed to cancel leave request.");
+  api.assertDeleteSuccess(payload, fallbackMessage);
 
-  return {
-    message: api.parseDeleteMessage(
-      payload,
-      "Failed to cancel leave request.",
-      "Leave request cancelled.",
-    ),
-  };
+  const message = api.parseDeleteMessage(
+    payload,
+    fallbackMessage,
+    "Leave request cancelled.",
+  );
+  const payloadRecord = asRecord(payload);
+  const data = payloadRecord ? payloadRecord.data : null;
+
+  if (data != null) {
+    try {
+      return {
+        message,
+        leaveRequest: mapLeaveRequestFromApi(data),
+      };
+    } catch {
+      // Fall through to a GET so leave-type tags are still loaded.
+    }
+  }
+
+  try {
+    const leaveRequest = await fetchLeaveRequest(
+      accessToken,
+      lang,
+      leaveRequestId,
+      tokenType,
+    );
+    return { message, leaveRequest };
+  } catch {
+    return { message, leaveRequest: null };
+  }
 }

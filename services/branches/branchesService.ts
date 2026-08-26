@@ -54,6 +54,37 @@ export async function fetchBranches(
   };
 }
 
+const MAX_BRANCH_PAGES = 50;
+
+export async function fetchAllBranches(
+  accessToken: string,
+  lang: string,
+  tokenType = "Bearer",
+): Promise<AdminBranchRecord[]> {
+  const collected: AdminBranchRecord[] = [];
+  const seen = new Set<string>();
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const result = await fetchBranches(accessToken, lang, tokenType, { page });
+    lastPage = Math.max(1, result.meta.last_page);
+
+    for (const branch of result.branches) {
+      if (seen.has(branch.id)) {
+        continue;
+      }
+
+      seen.add(branch.id);
+      collected.push(branch);
+    }
+
+    page += 1;
+  } while (page <= lastPage && page <= MAX_BRANCH_PAGES);
+
+  return collected;
+}
+
 export async function fetchBranchById(
   accessToken: string,
   lang: string,

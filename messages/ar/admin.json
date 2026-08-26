@@ -73,6 +73,11 @@
     "notAssigned": "—",
     "loading": "جاري تحميل الموظف…",
     "updateSuccess": "تم تحديث الموظف بنجاح.",
+    "createEmployee": "إنشاء موظف",
+    "createTitle": "إنشاء موظف",
+    "createSubtitle": "أضف حساب موظف جديد مع الفرع والقسم والمسمى الوظيفي.",
+    "createSubmit": "إنشاء موظف",
+    "createSuccess": "تم إنشاء الموظف بنجاح.",
     "filters": {
       "department": "القسم",
       "branch": "الفرع",
@@ -102,8 +107,8 @@
     "edit": "تعديل الموظف",
     "view": "عرض الموظف",
     "delete": "حذف الموظف",
-    "editTitle": "تعديل التعيين",
-    "editSubtitle": "يمكنك تحديث الفرع والقسم والمسمى الوظيفي ورقم البصمة. لا يمكن تعديل بيانات التواصل من هنا.",
+    "editTitle": "تعديل الموظف",
+    "editSubtitle": "يمكنك تحديث الاسم والبريد والهاتف والفرع والقسم والمسمى الوظيفي ورقم البصمة.",
     "editFingerprint": "تعديل رقم البصمة",
     "fields": {
       "name": "الاسم الكامل",
@@ -112,21 +117,49 @@
       "position": "المسمى الوظيفي",
       "branch": "الفرع",
       "department": "القسم",
-      "fingerprintNumber": "رقم البصمة"
+      "fingerprintNumber": "رقم البصمة",
+      "password": "كلمة المرور",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "avatar": "الصورة"
     },
     "placeholders": {
+      "name": "مثال: أحمد محمد",
+      "email": "مثال: ahmed.mohamed@example.com",
+      "phone": "مثال: 01012345678",
       "branch": "اختر الفرع",
       "department": "اختر القسم",
+      "departmentNeedsBranch": "اختر الفرع أولاً",
+      "loadingBranches": "جاري تحميل الفروع…",
       "position": "اختر المسمى الوظيفي",
-      "fingerprintNumber": "مثال: FP0031"
+      "fingerprintNumber": "أدخل البصمة",
+      "password": "8 أحرف على الأقل",
+      "confirmPassword": "أعد إدخال كلمة المرور"
     },
+    "avatarHint": "JPG أو PNG أو WebP حتى 5 م.ب",
+    "avatarOptional": "اختياري",
+    "avatarUpload": "رفع صورة",
+    "avatarChange": "تغيير الصورة",
+    "avatarRemove": "إزالة",
     "errors": {
+      "nameRequired": "الاسم مطلوب.",
+      "nameMin": "يجب أن يكون الاسم حرفين على الأقل.",
+      "emailRequired": "البريد الإلكتروني مطلوب.",
+      "emailInvalid": "أدخل بريداً إلكترونياً صالحاً.",
+      "phoneRequired": "رقم الهاتف مطلوب.",
+      "phoneInvalid": "أدخل رقم هاتف صالحاً.",
       "branchRequired": "الفرع مطلوب.",
       "departmentRequired": "القسم مطلوب.",
       "positionRequired": "المسمى الوظيفي مطلوب.",
       "fingerprintRequired": "رقم البصمة مطلوب.",
       "fingerprintInvalid": "أدخل رقم بصمة صالحاً (حتى 20 حرفاً أو رقماً).",
-      "failed": "تعذر تحديث هذا الموظف."
+      "passwordRequired": "كلمة المرور مطلوبة.",
+      "passwordMin": "يجب أن تكون كلمة المرور 8 أحرف على الأقل.",
+      "confirmPasswordRequired": "يرجى تأكيد كلمة المرور.",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+      "avatarInvalidType": "ارفع ملف صورة صالحاً.",
+      "avatarTooLarge": "يجب ألا يتجاوز حجم الصورة 5 م.ب.",
+      "failed": "تعذر تحديث هذا الموظف.",
+      "createFailed": "تعذر إنشاء هذا الموظف."
     },
     "save": "حفظ التعديلات",
     "cancel": "إلغاء",
@@ -485,6 +518,37 @@
     "title": "أنواع الإجازات",
     "subtitle": "إعداد أنواع الإجازات المتاحة في المنظمة.",
     "create": "إنشاء نوع إجازة",
+    "assignByDepartment": "تعيين حسب القسم",
+    "assignByBranch": "تعيين حسب الفرع",
+    "assignHint": "بعد إضافة نوع إجازة جديد، عيّنه لفرع أو لقسم محدد حتى يحصل الموظفون على رصيد الإجازة.",
+    "assign": {
+      "branchTitle": "تعيين أرصدة الإجازات حسب الفرع",
+      "branchSubtitle": "إنشاء أرصدة إجازات لكل موظف في الفرع المحدد.",
+      "departmentTitle": "تعيين أرصدة الإجازات حسب القسم",
+      "departmentSubtitle": "إنشاء أرصدة إجازات لكل موظف في القسم المحدد.",
+      "submit": "تأكيد",
+      "cancel": "إلغاء",
+      "loading": "جارٍ التحميل…",
+      "branchSuccess": "تم تعيين أرصدة الإجازات للفرع.",
+      "departmentSuccess": "تم تعيين أرصدة الإجازات للقسم.",
+      "noBranches": "أنشئ فرعاً أولاً قبل تعيين أرصدة الإجازات.",
+      "noDepartments": "لا توجد أقسام في هذا الفرع بعد.",
+      "previewBranch": "سيتم تعيين الأرصدة للفرع: {branch}",
+      "previewDepartment": "سيتم تعيين الأرصدة لـ {department} في {branch}.",
+      "fields": {
+        "branch": "الفرع",
+        "department": "القسم"
+      },
+      "placeholders": {
+        "branch": "اختر فرعاً",
+        "department": "اختر قسماً"
+      },
+      "errors": {
+        "branchRequired": "اختر فرعاً.",
+        "departmentRequired": "اختر قسماً.",
+        "failed": "تعذر تعيين أرصدة الإجازات."
+      }
+    },
     "searchPlaceholder": "البحث في أنواع الإجازات…",
     "resultsTitle": "أنواع الإجازات ({count})",
     "empty": "لم يتم إعداد أنواع إجازات بعد.",

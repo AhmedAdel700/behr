@@ -115,10 +115,27 @@ export interface EmployeesListResult {
 }
 
 export interface EmployeePayload {
+  name: string;
+  email: string;
+  phone: string;
   branch_id: number;
   department_id: number;
   job_position_id: number;
   fingerprint_number: string;
+}
+
+export interface CreateEmployeePayload {
+  name: string;
+  email: string;
+  phone: string;
+  fingerprint_number: string;
+  password: string;
+  password_confirmation: string;
+  branch_id: number;
+  department_id: number;
+  job_position_id: number;
+  role: "employee";
+  image?: File;
 }
 
 export interface EmployeeMutationResult {
@@ -131,8 +148,11 @@ export interface EmployeeDeleteResult {
 }
 
 export class EmployeesApiError extends Error {
-  constructor(message: string) {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
     super(message);
     this.name = "EmployeesApiError";
+    this.fieldErrors = fieldErrors;
   }
 }

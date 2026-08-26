@@ -91,9 +91,21 @@ export function RequestDetail({
 
   const handleCancel = async (): Promise<void> => {
     try {
-      const result = await cancelLeaveRequest({ leaveRequestId: item.id }).unwrap();
+      const result = await cancelLeaveRequest({
+        leaveRequestId: item.id,
+      }).unwrap();
       toast.success(result.message || t("cancelSuccess"));
       setCancelOpen(false);
+      try {
+        await dispatch(
+          leaveRequestsApi.endpoints.getAllLeaveRequests.initiate(undefined, {
+            forceRefetch: true,
+          }),
+        ).unwrap();
+      } catch {
+        // The cancel response already patched the list cache.
+      }
+      router.refresh();
       router.push("/requests");
     } catch (error) {
       toast.error(getLeaveRequestMutationError(error, t("errors.failed")));

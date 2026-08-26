@@ -21,6 +21,10 @@ import {
 } from "@services/leave-requests/leaveRequestsService";
 import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
+import {
+  preserveLeaveTypeOnMerge,
+  upsertLeaveRequestInList,
+} from "@/lib/employee/leaveRequestCache";
 
 interface CreateLeaveRequestArgs {
   body: LeaveRequestPayload;
@@ -182,6 +186,18 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
               { type: "LeaveRequest", id: "LIST" },
             ]
           : [{ type: "LeaveRequest", id: "LIST" }],
+      merge(currentCacheData, responseData) {
+        const previousById = new Map(
+          currentCacheData.map((item) => [item.id, item]),
+        );
+        currentCacheData.splice(
+          0,
+          currentCacheData.length,
+          ...responseData.map((incoming) =>
+            preserveLeaveTypeOnMerge(previousById.get(incoming.id), incoming),
+          ),
+        );
+      },
     }),
     getLeaveRequest: builder.query<LeaveRequestRecord, string>({
       async queryFn(leaveRequestId) {
@@ -389,9 +405,63 @@ export const leaveRequestsApi = baseApi.injectEndpoints({
           return { error: { status: "CUSTOM_ERROR", error: message } };
         }
       },
+      async onQueryStarted({ leaveRequestId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const cancelledRequest = data.leaveRequest;
+          if (cancelledRequest) {
+            dispatch(
+              leaveRequestsApi.util.updateQueryData(
+                "getAllLeaveRequests",
+                undefined,
+                (draft) => {
+                  upsertLeaveRequestInList(draft, cancelledRequest);
+                },
+              ),
+            );
+            dispatch(
+              leaveRequestsApi.util.upsertQueryData(
+                "getLeaveRequest",
+                leaveRequestId,
+                cancelledRequest,
+              ),
+            );
+            return;
+          }
+
+          dispatch(
+            leaveRequestsApi.util.updateQueryData(
+              "getAllLeaveRequests",
+              undefined,
+              (draft) => {
+                const index = draft.findIndex(
+                  (item) => item.id === leaveRequestId,
+                );
+                const current = index >= 0 ? draft[index] : undefined;
+                if (!current) {
+                  return;
+                }
+                draft[index] = { ...current, status: "cancelled" };
+              },
+            ),
+          );
+          dispatch(
+            leaveRequestsApi.util.updateQueryData(
+              "getLeaveRequest",
+              leaveRequestId,
+              (draft) => {
+                draft.status = "cancelled";
+              },
+            ),
+          );
+        } catch {
+          // Mutation error is already surfaced by the hook.
+        }
+      },
       invalidatesTags: (_result, _error, { leaveRequestId }) => [
         { type: "LeaveRequest", id: leaveRequestId },
         { type: "LeaveRequest", id: "LIST" },
+        "LeaveBalance",
       ],
     }),
   }),

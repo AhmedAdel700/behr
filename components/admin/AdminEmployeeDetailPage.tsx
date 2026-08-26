@@ -81,14 +81,23 @@ export function AdminEmployeeDetailPage({
     );
   }
 
+  const [isLeavingAfterDelete, setIsLeavingAfterDelete] = useState(false);
+  const lastEmployeeRef = useRef<EmployeeRecord | undefined>(undefined);
+
   const {
     data: employeeData,
     isLoading,
     isError,
-  } = useGetEmployeeQuery(employeeId, { skip: !employeeId });
+  } = useGetEmployeeQuery(employeeId, {
+    skip: !employeeId || isLeavingAfterDelete,
+  });
 
   const admin = getAdminSessionSnapshot();
-  const employee = employeeData ?? initialData;
+  const queriedEmployee = employeeData ?? initialData;
+  if (queriedEmployee) {
+    lastEmployeeRef.current = queriedEmployee;
+  }
+  const employee = queriedEmployee ?? lastEmployeeRef.current;
   const canEdit = canManageEmployees(admin.role);
   const canDelete = isSuperAdmin(admin.role);
   const [deleteEmployeeMutation, { isLoading: deletingEmployee }] =
@@ -106,10 +115,12 @@ export function AdminEmployeeDetailPage({
 
     try {
       const result = await deleteEmployeeMutation({ employeeId: employee.id }).unwrap();
+      setIsLeavingAfterDelete(true);
       toast.success(result.message || tEmployees("deleteSuccess"));
       setDeleteOpen(false);
       router.push("/admin-dashboard/employees");
     } catch (error) {
+      setIsLeavingAfterDelete(false);
       const message =
         typeof error === "object" &&
         error !== null &&
@@ -122,7 +133,10 @@ export function AdminEmployeeDetailPage({
     }
   };
 
-  if (!employeeId || ((isError || !employee) && !isLoading)) {
+  if (
+    !isLeavingAfterDelete &&
+    (!employeeId || ((isError || !employee) && !isLoading))
+  ) {
     return (
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xs">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">

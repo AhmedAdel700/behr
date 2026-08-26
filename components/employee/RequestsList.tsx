@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect, type ReactElement } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -39,8 +39,15 @@ export function RequestsList({
   const locale = useLocale();
   const dispatch = useDispatch<AppDispatch>();
   const didSeedCache = useRef(false);
+  const cachedQuery = useSelector(
+    leaveRequestsApi.endpoints.getAllLeaveRequests.select(),
+  );
 
-  if (initialData && !didSeedCache.current) {
+  if (
+    initialData &&
+    !didSeedCache.current &&
+    cachedQuery.status === "uninitialized"
+  ) {
     didSeedCache.current = true;
     dispatch(
       leaveRequestsApi.util.upsertQueryData(
@@ -49,6 +56,8 @@ export function RequestsList({
         initialData,
       ),
     );
+  } else if (cachedQuery.status !== "uninitialized") {
+    didSeedCache.current = true;
   }
 
   const {

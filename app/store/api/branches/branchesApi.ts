@@ -11,7 +11,7 @@ import type {
   BranchesListQueryParams,
   BranchesListResult,
 } from "@/types/BranchesApiTypes";
-import { fetchBranches } from "@services/branches/branchesService";
+import { fetchAllBranches, fetchBranches } from "@services/branches/branchesService";
 import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
 
@@ -53,6 +53,7 @@ export const DEFAULT_BRANCHES_LIST_PARAMS: BranchesListQueryParams = {
 };
 
 export const branchesApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getBranches: builder.query<
       BranchesListResult,
@@ -70,20 +71,26 @@ export const branchesApi = baseApi.injectEndpoints({
           };
         }
 
-        const lang = await getRequestLang();
-        const tokenType =
-          typeof session.tokenType === "string" && session.tokenType
-            ? session.tokenType
-            : "Bearer";
+        try {
+          const lang = await getRequestLang();
+          const tokenType =
+            typeof session.tokenType === "string" && session.tokenType
+              ? session.tokenType
+              : "Bearer";
 
-        const result = await fetchBranches(
-          session.accessToken,
-          lang,
-          tokenType,
-          normalizeBranchesListParams(arg),
-        );
+          const result = await fetchBranches(
+            session.accessToken,
+            lang,
+            tokenType,
+            normalizeBranchesListParams(arg),
+          );
 
-        return { data: { branches: result.branches, meta: result.meta } };
+          return { data: { branches: result.branches, meta: result.meta } };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load branches.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
       },
       serializeQueryArgs: ({ queryArgs }) =>
         serializeBranchesListParams(normalizeBranchesListParams(queryArgs)),
@@ -91,6 +98,47 @@ export const branchesApi = baseApi.injectEndpoints({
         result
           ? [
               ...result.branches.map((branch) => ({
+                type: "Branch" as const,
+                id: branch.id,
+              })),
+              { type: "Branch", id: "LIST" },
+            ]
+          : [{ type: "Branch", id: "LIST" }],
+    }),
+    getAllBranches: builder.query<AdminBranchRecord[], void>({
+      async queryFn() {
+        const session = await getSession();
+
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const tokenType =
+            typeof session.tokenType === "string" && session.tokenType
+              ? session.tokenType
+              : "Bearer";
+          const branches = await fetchAllBranches(
+            session.accessToken,
+            await getRequestLang(),
+            tokenType,
+          );
+          return { data: branches };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load branches.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((branch) => ({
                 type: "Branch" as const,
                 id: branch.id,
               })),
@@ -174,6 +222,7 @@ export const branchesApi = baseApi.injectEndpoints({
 
 export const {
   useGetBranchesQuery,
+  useGetAllBranchesQuery,
   useGetBranchByIdQuery,
   useCreateBranchMutation,
   useUpdateBranchMutation,

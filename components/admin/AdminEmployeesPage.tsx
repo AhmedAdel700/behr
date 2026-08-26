@@ -11,7 +11,7 @@ import {
 import { useDispatch } from "react-redux";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import {
   DEFAULT_BRANCHES_LIST_PARAMS,
@@ -29,6 +29,7 @@ import {
   useGetEmployeesQuery,
 } from "@/app/store/api/employees/employeesApi";
 import type { AppDispatch } from "@/app/store/store";
+import { CreateEmployeeModal } from "@/components/admin/CreateEmployeeModal";
 import { EditEmployeeAssignmentModal } from "@/components/admin/EditEmployeeAssignmentModal";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { MainButton } from "@/components/shared/MainButton";
@@ -67,6 +68,7 @@ export function AdminEmployeesPage({
   const admin = getAdminSessionSnapshot();
   const canManage = canManageEmployees(admin.role);
 
+  const createEmployeeTriggerRef = useRef<HTMLButtonElement>(null);
   const { triggerRef: editEmployeeTriggerRef, bindTrigger: bindEditEmployeeTrigger } =
     useModalTriggerRef();
   const { triggerRef: deleteEmployeeTriggerRef, bindTrigger: bindDeleteEmployeeTrigger } =
@@ -76,6 +78,7 @@ export function AdminEmployeesPage({
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<EmployeeRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -289,6 +292,17 @@ export function AdminEmployeesPage({
               <p className="ms-auto shrink-0 text-sm font-semibold text-ink lg:ms-0">
                 {t("resultsTitle", { count: meta?.total ?? employees.length })}
               </p>
+              {canManage ? (
+                <MainButton
+                  ref={createEmployeeTriggerRef}
+                  variant="primary"
+                  size="sm"
+                  startIcon={<Plus className="size-4" />}
+                  onClick={() => setCreating(true)}
+                >
+                  {t("createEmployee")}
+                </MainButton>
+              ) : null}
             </div>
           </div>
         </div>
@@ -424,6 +438,14 @@ export function AdminEmployeesPage({
           ) : null}
         </div>
       </section>
+
+      {canManage ? (
+        <CreateEmployeeModal
+          open={creating}
+          onClose={() => setCreating(false)}
+          triggerRef={createEmployeeTriggerRef}
+        />
+      ) : null}
 
       {editing ? (
         <EditEmployeeAssignmentModal

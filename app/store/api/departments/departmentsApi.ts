@@ -10,6 +10,7 @@ import {
 import {
   createDepartmentRequest,
   deleteDepartmentRequest,
+  fetchAllDepartments,
   fetchDepartmentById,
   fetchDepartments,
   updateDepartmentRequest,
@@ -87,6 +88,7 @@ export const DEFAULT_DEPARTMENTS_LIST_PARAMS: DepartmentsListQueryParams = {
 };
 
 export const departmentsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getDepartments: builder.query<
       DepartmentsListResult,
@@ -123,6 +125,41 @@ export const departmentsApi = baseApi.injectEndpoints({
         result
           ? [
               ...result.departments.map((department) => ({
+                type: "Department" as const,
+                id: department.id,
+              })),
+              { type: "Department", id: "LIST" },
+            ]
+          : [{ type: "Department", id: "LIST" }],
+    }),
+    getAllDepartments: builder.query<DepartmentRecord[], string | void>({
+      async queryFn(branchId) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const departments = await fetchAllDepartments(
+            session.accessToken,
+            await getRequestLang(),
+            getTokenType(session.tokenType),
+            branchId ? { branch_id: branchId } : undefined,
+          );
+          return { data: departments };
+        } catch (error) {
+          return toQueryFnError(error, "Failed to load departments.");
+        }
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((department) => ({
                 type: "Department" as const,
                 id: department.id,
               })),
@@ -248,6 +285,7 @@ export const departmentsApi = baseApi.injectEndpoints({
 
 export const {
   useGetDepartmentsQuery,
+  useGetAllDepartmentsQuery,
   useGetDepartmentByIdQuery,
   useCreateDepartmentMutation,
   useUpdateDepartmentMutation,

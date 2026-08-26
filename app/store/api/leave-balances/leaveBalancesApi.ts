@@ -1,6 +1,13 @@
 import { baseApi } from "@/app/store/api/baseApi";
-import { fetchLeaveBalances } from "@services/leave-balances/leaveBalancesService";
+import {
+  assignLeaveBalancesByBranchRequest,
+  assignLeaveBalancesByDepartmentRequest,
+  fetchLeaveBalances,
+} from "@services/leave-balances/leaveBalancesService";
 import type {
+  AssignLeaveBalancesByBranchPayload,
+  AssignLeaveBalancesByDepartmentPayload,
+  LeaveBalanceAssignResult,
   LeaveBalanceRecord,
   LeaveBalancesQueryParams,
 } from "@/types/LeaveBalancesApiTypes";
@@ -9,6 +16,17 @@ import { getSession } from "next-auth/react";
 
 function getTokenType(tokenType: unknown): string {
   return typeof tokenType === "string" && tokenType ? tokenType : "Bearer";
+}
+
+function noSessionError(): {
+  error: { status: "CUSTOM_ERROR"; error: string };
+} {
+  return {
+    error: {
+      status: "CUSTOM_ERROR",
+      error: "No active session.",
+    },
+  };
 }
 
 export function normalizeLeaveBalancesParams(
@@ -36,12 +54,7 @@ export const leaveBalancesApi = baseApi.injectEndpoints({
       async queryFn(arg) {
         const session = await getSession();
         if (!session?.accessToken) {
-          return {
-            error: {
-              status: "CUSTOM_ERROR",
-              error: "No active session.",
-            },
-          };
+          return noSessionError();
         }
 
         try {
@@ -71,7 +84,67 @@ export const leaveBalancesApi = baseApi.injectEndpoints({
         },
       ],
     }),
+    assignLeaveBalancesByBranch: builder.mutation<
+      LeaveBalanceAssignResult,
+      AssignLeaveBalancesByBranchPayload
+    >({
+      async queryFn(body) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return noSessionError();
+        }
+
+        try {
+          const result = await assignLeaveBalancesByBranchRequest(
+            session.accessToken,
+            await getRequestLang(),
+            body,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to assign leave balances by branch.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: [{ type: "LeaveBalance" }],
+    }),
+    assignLeaveBalancesByDepartment: builder.mutation<
+      LeaveBalanceAssignResult,
+      AssignLeaveBalancesByDepartmentPayload
+    >({
+      async queryFn(body) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return noSessionError();
+        }
+
+        try {
+          const result = await assignLeaveBalancesByDepartmentRequest(
+            session.accessToken,
+            await getRequestLang(),
+            body,
+            getTokenType(session.tokenType),
+          );
+          return { data: result };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to assign leave balances by department.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
+      invalidatesTags: [{ type: "LeaveBalance" }],
+    }),
   }),
 });
 
-export const { useGetLeaveBalancesQuery } = leaveBalancesApi;
+export const {
+  useGetLeaveBalancesQuery,
+  useAssignLeaveBalancesByBranchMutation,
+  useAssignLeaveBalancesByDepartmentMutation,
+} = leaveBalancesApi;

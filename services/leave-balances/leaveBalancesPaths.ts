@@ -12,3 +12,11 @@ export function leaveBalancesCollectionUrl(
 
   return url.toString();
 }
+
+export function leaveBalancesAssignByBranchUrl(): string {
+  return `${getApiBaseUrl()}/leave-balances/assign-by-branch`;
+}
+
+export function leaveBalancesAssignByDepartmentUrl(): string {
+  return `${getApiBaseUrl()}/leave-balances/assign-by-department`;
+}

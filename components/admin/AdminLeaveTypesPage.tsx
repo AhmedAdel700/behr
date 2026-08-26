@@ -3,7 +3,11 @@
 import { useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useDispatch } from "react-redux";
 import { useTranslations } from "next-intl";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, CircleAlert, MapPinned, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AssignLeaveBalancesModal,
+  type AssignLeaveBalancesMode,
+} from "@/components/admin/AssignLeaveBalancesModal";
 import {
   DEFAULT_LEAVE_TYPES_LIST_PARAMS,
   leaveTypesApi,
@@ -11,6 +15,7 @@ import {
   useDeleteLeaveTypeMutation,
   useGetLeaveTypesQuery,
 } from "@/app/store/api/leave-types/leaveTypesApi";
+import { useGetAllBranchesQuery } from "@/app/store/api/branches/branchesApi";
 import type { AppDispatch } from "@/app/store/store";
 import { CreateLeaveTypeModal } from "@/components/admin/CreateLeaveTypeModal";
 import { EditLeaveTypeModal } from "@/components/admin/EditLeaveTypeModal";
@@ -70,8 +75,13 @@ export function AdminLeaveTypesPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
+  const [assignMode, setAssignMode] = useState<AssignLeaveBalancesMode | null>(
+    null,
+  );
   const [editing, setEditing] = useState<LeaveTypeRecord | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  useGetAllBranchesQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const leaveTypesQueryArg: LeaveTypesListQueryParams =
     normalizeLeaveTypesListParams({
@@ -153,21 +163,44 @@ export function AdminLeaveTypesPage({
               aria-label={t("searchPlaceholder")}
             />
           </div>
-          <div className="flex items-center justify-between gap-3 lg:justify-end">
-            <h2 className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <h2 className="text-sm font-semibold text-ink sm:me-auto lg:me-0">
               {t("resultsTitle", { count: meta?.total ?? leaveTypes.length })}
             </h2>
-            <MainButton
-              ref={createLeaveTypeTriggerRef}
-              variant="primary"
-              size="sm"
-              startIcon={<Plus className="size-4" />}
-              onClick={() => setCreating(true)}
-            >
-              {t("create")}
-            </MainButton>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <MainButton
+                variant="outline"
+                size="sm"
+                startIcon={<Building2 className="size-4" />}
+                onClick={() => setAssignMode("department")}
+              >
+                {t("assignByDepartment")}
+              </MainButton>
+              <MainButton
+                variant="outline"
+                size="sm"
+                startIcon={<MapPinned className="size-4" />}
+                onClick={() => setAssignMode("branch")}
+              >
+                {t("assignByBranch")}
+              </MainButton>
+              <MainButton
+                ref={createLeaveTypeTriggerRef}
+                variant="primary"
+                size="sm"
+                startIcon={<Plus className="size-4" />}
+                onClick={() => setCreating(true)}
+              >
+                {t("create")}
+              </MainButton>
+            </div>
           </div>
         </div>
+
+        <p className="flex items-start gap-2 rounded-xl border border-primary-200 bg-primary-50/50 px-3 py-2.5 text-sm text-primary-700">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{t("assignHint")}</span>
+        </p>
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
           <div className="admin-scroll-visible overflow-x-auto">
@@ -293,6 +326,12 @@ export function AdminLeaveTypesPage({
           ) : null}
         </div>
       </section>
+
+      <AssignLeaveBalancesModal
+        open={assignMode !== null}
+        mode={assignMode ?? "branch"}
+        onClose={() => setAssignMode(null)}
+      />
 
       <CreateLeaveTypeModal
         open={creating}

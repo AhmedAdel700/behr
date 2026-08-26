@@ -75,6 +75,41 @@ export async function fetchDepartments(
   };
 }
 
+const MAX_DEPARTMENT_PAGES = 50;
+
+export async function fetchAllDepartments(
+  accessToken: string,
+  lang: string,
+  tokenType = "Bearer",
+  params?: Pick<DepartmentsListQueryParams, "branch_id">,
+): Promise<DepartmentRecord[]> {
+  const collected: DepartmentRecord[] = [];
+  const seen = new Set<string>();
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const result = await fetchDepartments(accessToken, lang, tokenType, {
+      page,
+      ...(params?.branch_id ? { branch_id: params.branch_id } : {}),
+    });
+    lastPage = Math.max(1, result.meta.last_page);
+
+    for (const department of result.departments) {
+      if (seen.has(department.id)) {
+        continue;
+      }
+
+      seen.add(department.id);
+      collected.push(department);
+    }
+
+    page += 1;
+  } while (page <= lastPage && page <= MAX_DEPARTMENT_PAGES);
+
+  return collected;
+}
+
 export async function fetchDepartmentById(
   accessToken: string,
   lang: string,

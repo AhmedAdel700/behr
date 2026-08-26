@@ -162,6 +162,7 @@ export interface LeaveRequestMutationResult {
 
 export interface LeaveRequestCancelResult {
   message: string;
+  leaveRequest: LeaveRequestRecord | null;
 }
 
 export class LeaveRequestsApiError extends Error {

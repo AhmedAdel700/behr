@@ -8,6 +8,7 @@ import {
   Briefcase,
   Building2,
   Fingerprint,
+  Lock,
   Mail,
   MapPinned,
   Phone,
@@ -16,34 +17,33 @@ import {
 import { toast } from "sonner";
 import { useGetAllBranchesQuery } from "@/app/store/api/branches/branchesApi";
 import { useGetAllDepartmentsQuery } from "@/app/store/api/departments/departmentsApi";
-import { useUpdateEmployeeMutation } from "@/app/store/api/employees/employeesApi";
+import { useCreateEmployeeMutation } from "@/app/store/api/employees/employeesApi";
 import { useGetAllPositionsQuery } from "@/app/store/api/positions/positionsApi";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
+import { AvatarUpload } from "@/components/shared/AvatarUpload";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
-import { applyUpdateEmployeeMutationErrors } from "@/lib/admin/employeeMutationErrors";
+import { applyCreateEmployeeMutationErrors } from "@/lib/admin/employeeMutationErrors";
 import {
-  toEmployeePayload,
-  updateEmployeeAssignmentSchema,
-  type UpdateEmployeeAssignmentFormValues,
+  createEmployeeSchema,
+  emptyCreateEmployeeFormValues,
+  toCreateEmployeePayload,
+  type CreateEmployeeFormValues,
 } from "@/schemas/admin/employee.schema";
-import type { EmployeeRecord } from "@/types/EmployeesApiTypes";
 
-interface EditEmployeeAssignmentModalProps {
-  employee: EmployeeRecord;
+interface CreateEmployeeModalProps {
   open: boolean;
   onClose: () => void;
   triggerRef?: RefObject<HTMLElement | null>;
 }
 
-export function EditEmployeeAssignmentModal({
-  employee,
+export function CreateEmployeeModal({
   open,
   onClose,
   triggerRef,
-}: EditEmployeeAssignmentModalProps): ReactElement | null {
+}: CreateEmployeeModalProps): ReactElement | null {
   const t = useTranslations("admin.employees");
 
   return (
@@ -54,45 +54,45 @@ export function EditEmployeeAssignmentModal({
       backdropAriaLabel={t("cancel")}
       panelClassName="max-w-2xl"
     >
-      <EditEmployeeAssignmentForm
-        employee={employee}
-        open={open}
-        onClose={onClose}
-      />
+      <CreateEmployeeForm open={open} onClose={onClose} />
     </ModalShell>
   );
 }
 
-interface EditEmployeeAssignmentFormProps {
-  employee: EmployeeRecord;
+interface CreateEmployeeFormProps {
   open: boolean;
   onClose: () => void;
 }
 
-function EditEmployeeAssignmentForm({
-  employee,
+function CreateEmployeeForm({
   open,
   onClose,
-}: EditEmployeeAssignmentFormProps): ReactElement {
+}: CreateEmployeeFormProps): ReactElement {
   const t = useTranslations("admin.employees");
   const closeModal = useGenieModalClose(onClose);
-  const [updateEmployeeMutation, { isLoading: submitting }] =
-    useUpdateEmployeeMutation();
+  const [createEmployeeMutation, { isLoading: submitting }] =
+    useCreateEmployeeMutation();
 
   const schema = useMemo(
     () =>
-      updateEmployeeAssignmentSchema({
+      createEmployeeSchema({
         nameRequired: t("errors.nameRequired"),
         nameMin: t("errors.nameMin"),
         emailRequired: t("errors.emailRequired"),
         emailInvalid: t("errors.emailInvalid"),
         phoneRequired: t("errors.phoneRequired"),
         phoneInvalid: t("errors.phoneInvalid"),
+        fingerprintRequired: t("errors.fingerprintRequired"),
+        fingerprintInvalid: t("errors.fingerprintInvalid"),
         branchRequired: t("errors.branchRequired"),
         departmentRequired: t("errors.departmentRequired"),
         positionRequired: t("errors.positionRequired"),
-        fingerprintRequired: t("errors.fingerprintRequired"),
-        fingerprintInvalid: t("errors.fingerprintInvalid"),
+        passwordRequired: t("errors.passwordRequired"),
+        passwordMin: t("errors.passwordMin"),
+        confirmPasswordRequired: t("errors.confirmPasswordRequired"),
+        passwordMismatch: t("errors.passwordMismatch"),
+        avatarInvalidType: t("errors.avatarInvalidType"),
+        avatarTooLarge: t("errors.avatarTooLarge"),
       }),
     [t],
   );
@@ -106,51 +106,32 @@ function EditEmployeeAssignmentForm({
     setError,
     reset,
     formState: { errors, isSubmitted },
-  } = useForm<UpdateEmployeeAssignmentFormValues>({
+  } = useForm<CreateEmployeeFormValues>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onSubmit",
-    defaultValues: toFormValues(employee),
+    defaultValues: emptyCreateEmployeeFormValues(),
   });
 
   useEffect(() => {
-    if (!open) return;
-    reset(toFormValues(employee));
-  }, [open, employee, reset]);
+    if (!open) {
+      return;
+    }
+    reset(emptyCreateEmployeeFormValues());
+  }, [open, reset]);
 
   const selectedBranchId = watch("branchId");
-  const selectedDepartmentId = watch("departmentId");
-  const { data: branches = [], isLoading: branchesLoading } =
-    useGetAllBranchesQuery(undefined, { skip: !open });
-  const { data: departments = [], isFetching: departmentsLoading, isSuccess: departmentsReady } =
-    useGetAllDepartmentsQuery(selectedBranchId || undefined, {
-      skip: !open || !selectedBranchId,
-    });
+  const {
+    data: branches = [],
+    isLoading: branchesLoading,
+  } = useGetAllBranchesQuery(undefined, { skip: !open });
+  const { data: departments = [] } = useGetAllDepartmentsQuery(
+    selectedBranchId || undefined,
+    { skip: !open || !selectedBranchId },
+  );
   const { data: positions = [] } = useGetAllPositionsQuery(undefined, {
     skip: !open,
   });
-
-  useEffect(() => {
-    if (!open || !selectedBranchId || departmentsLoading || !departmentsReady) {
-      return;
-    }
-
-    if (
-      selectedDepartmentId &&
-      !departments.some((department) => department.id === selectedDepartmentId)
-    ) {
-      setValue("departmentId", "", { shouldValidate: isSubmitted });
-    }
-  }, [
-    departments,
-    departmentsLoading,
-    departmentsReady,
-    isSubmitted,
-    open,
-    selectedBranchId,
-    selectedDepartmentId,
-    setValue,
-  ]);
 
   const branchOptions = useMemo(
     () =>
@@ -170,41 +151,27 @@ function EditEmployeeAssignmentForm({
     [departments],
   );
 
-  const positionOptions = useMemo(() => {
-    const options = positions.map((position) => ({
-      value: position.id,
-      label: position.name,
-    }));
-    const currentPosition = employee.jobPosition;
+  const positionOptions = useMemo(
+    () =>
+      positions.map((position) => ({
+        value: position.id,
+        label: position.name,
+      })),
+    [positions],
+  );
 
-    if (
-      currentPosition &&
-      !options.some((option) => option.value === currentPosition.id)
-    ) {
-      options.unshift({
-        value: currentPosition.id,
-        label: currentPosition.name,
-      });
-    }
-
-    return options;
-  }, [employee.jobPosition, positions]);
-
-  const onSubmit = async (
-    values: UpdateEmployeeAssignmentFormValues,
-  ): Promise<void> => {
+  const onSubmit = async (values: CreateEmployeeFormValues): Promise<void> => {
     try {
-      await updateEmployeeMutation({
-        employeeId: employee.id,
-        body: toEmployeePayload(values),
+      const result = await createEmployeeMutation({
+        body: toCreateEmployeePayload(values),
       }).unwrap();
-      toast.success(t("updateSuccess"));
+      toast.success(result.message || t("createSuccess"));
       closeModal();
     } catch (error) {
-      const message = applyUpdateEmployeeMutationErrors(
+      const message = applyCreateEmployeeMutationErrors(
         error,
         setError,
-        t("errors.failed"),
+        t("errors.createFailed"),
       );
       toast.error(message);
     }
@@ -212,14 +179,33 @@ function EditEmployeeAssignmentForm({
 
   return (
     <>
-      <h2 className="text-base font-semibold text-ink">{t("editTitle")}</h2>
-      <p className="mt-1 text-sm text-text-secondary">{t("editSubtitle")}</p>
+      <h2 className="text-base font-semibold text-ink">{t("createTitle")}</h2>
+      <p className="mt-1 text-sm text-text-secondary">{t("createSubtitle")}</p>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="mt-4 space-y-3"
         noValidate
       >
+        <Controller
+          control={control}
+          name="avatar"
+          render={({ field }) => (
+            <AvatarUpload
+              label={t("fields.avatar")}
+              hint={t("avatarHint")}
+              optionalLabel={t("avatarOptional")}
+              uploadLabel={t("avatarUpload")}
+              changeLabel={t("avatarChange")}
+              removeLabel={t("avatarRemove")}
+              optional
+              value={field.value}
+              error={isSubmitted ? errors.avatar?.message : undefined}
+              onChange={field.onChange}
+            />
+          )}
+        />
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 *:min-w-0">
           <MainInput
             label={t("fields.name")}
@@ -327,29 +313,35 @@ function EditEmployeeAssignmentForm({
               )}
             />
           </div>
+
+          <MainInput
+            label={t("fields.password")}
+            type="password"
+            startIcon={<Lock />}
+            autoComplete="new-password"
+            error={isSubmitted ? errors.password?.message : undefined}
+            {...register("password")}
+            placeholder={t("placeholders.password")}
+          />
+
+          <MainInput
+            label={t("fields.confirmPassword")}
+            type="password"
+            startIcon={<Lock />}
+            autoComplete="new-password"
+            error={isSubmitted ? errors.confirmPassword?.message : undefined}
+            {...register("confirmPassword")}
+            placeholder={t("placeholders.confirmPassword")}
+          />
         </div>
 
         <ModalFormActions
           cancelLabel={t("cancel")}
           onCancel={closeModal}
-          submitLabel={t("save")}
+          submitLabel={t("createSubmit")}
           loading={submitting}
         />
       </form>
     </>
   );
-}
-
-function toFormValues(
-  employee: EmployeeRecord,
-): UpdateEmployeeAssignmentFormValues {
-  return {
-    name: employee.fullName,
-    email: employee.email,
-    phone: employee.phone,
-    branchId: employee.branch?.id ?? "",
-    departmentId: employee.department?.id ?? "",
-    jobPositionId: employee.jobPosition?.id ?? "",
-    fingerprintNumber: employee.fingerprintNumber,
-  };
 }

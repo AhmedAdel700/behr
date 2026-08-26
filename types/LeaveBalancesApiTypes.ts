@@ -42,3 +42,16 @@ export class LeaveBalancesApiError extends Error {
     this.name = "LeaveBalancesApiError";
   }
 }
+
+export interface AssignLeaveBalancesByBranchPayload {
+  branch_id: number;
+}
+
+export interface AssignLeaveBalancesByDepartmentPayload {
+  branch_id: number;
+  department_id: number;
+}
+
+export interface LeaveBalanceAssignResult {
+  message: string;
+}

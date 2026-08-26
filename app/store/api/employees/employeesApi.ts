@@ -1,12 +1,16 @@
 import { baseApi } from "@/app/store/api/baseApi";
-import type {
-  EmployeeDeleteResult,
-  EmployeePayload,
-  EmployeeRecord,
-  EmployeesListQueryParams,
-  EmployeesListResult,
+import {
+  EmployeesApiError,
+  type CreateEmployeePayload,
+  type EmployeeDeleteResult,
+  type EmployeeMutationResult,
+  type EmployeePayload,
+  type EmployeeRecord,
+  type EmployeesListQueryParams,
+  type EmployeesListResult,
 } from "@/types/EmployeesApiTypes";
 import {
+  createEmployeeRequest,
   deleteEmployeeRequest,
   fetchEmployee,
   fetchEmployees,
@@ -14,6 +18,10 @@ import {
 } from "@services/employees/employeesService";
 import { getRequestLang } from "@/lib/i18n/getRequestLang";
 import { getSession } from "next-auth/react";
+
+interface CreateEmployeeArgs {
+  body: CreateEmployeePayload;
+}
 
 interface UpdateEmployeeArgs {
   employeeId: string;
@@ -26,6 +34,30 @@ interface DeleteEmployeeArgs {
 
 function getTokenType(tokenType: unknown): string {
   return typeof tokenType === "string" && tokenType ? tokenType : "Bearer";
+}
+
+function toQueryFnError(
+  error: unknown,
+  fallback: string,
+): {
+  error: {
+    status: "CUSTOM_ERROR";
+    error: string;
+    data?: { fieldErrors: Record<string, string> };
+  };
+} {
+  if (error instanceof EmployeesApiError) {
+    return {
+      error: {
+        status: "CUSTOM_ERROR",
+        error: error.message,
+        data: { fieldErrors: error.fieldErrors },
+      },
+    };
+  }
+
+  const message = error instanceof Error ? error.message : fallback;
+  return { error: { status: "CUSTOM_ERROR", error: message } };
 }
 
 export function normalizeEmployeesListParams(
@@ -140,6 +172,32 @@ export const employeesApi = baseApi.injectEndpoints({
         { type: "Employee", id: employeeId },
       ],
     }),
+    createEmployee: builder.mutation<EmployeeMutationResult, CreateEmployeeArgs>({
+      async queryFn({ body }) {
+        const session = await getSession();
+        if (!session?.accessToken) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "No active session.",
+            },
+          };
+        }
+
+        try {
+          const data = await createEmployeeRequest(
+            session.accessToken,
+            await getRequestLang(),
+            body,
+            getTokenType(session.tokenType),
+          );
+          return { data };
+        } catch (error) {
+          return toQueryFnError(error, "Failed to create employee.");
+        }
+      },
+      invalidatesTags: [{ type: "Employee", id: "LIST" }],
+    }),
     updateEmployee: builder.mutation<EmployeeRecord, UpdateEmployeeArgs>({
       async queryFn({ employeeId, body }) {
         const session = await getSession();
@@ -162,11 +220,7 @@ export const employeesApi = baseApi.injectEndpoints({
           );
           return { data: result.employee };
         } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Failed to update employee.";
-          return { error: { status: "CUSTOM_ERROR", error: message } };
+          return toQueryFnError(error, "Failed to update employee.");
         }
       },
       invalidatesTags: (_result, _error, args) => [
@@ -213,6 +267,7 @@ export const employeesApi = baseApi.injectEndpoints({
 export const {
   useGetEmployeesQuery,
   useGetEmployeeQuery,
+  useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
 } = employeesApi;

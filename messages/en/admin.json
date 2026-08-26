@@ -73,6 +73,11 @@
     "notAssigned": "—",
     "loading": "Loading employee…",
     "updateSuccess": "Employee updated successfully.",
+    "createEmployee": "Create employee",
+    "createTitle": "Create employee",
+    "createSubtitle": "Add a new employee account with branch, department, and position.",
+    "createSubmit": "Create employee",
+    "createSuccess": "Employee created successfully.",
     "filters": {
       "department": "Department",
       "branch": "Branch",
@@ -102,8 +107,8 @@
     "edit": "Edit employee",
     "view": "View employee",
     "delete": "Delete employee",
-    "editTitle": "Edit assignment",
-    "editSubtitle": "Update branch, department, position, and fingerprint number. Contact details cannot be changed here.",
+    "editTitle": "Edit employee",
+    "editSubtitle": "Update name, email, phone, branch, department, position, and fingerprint number.",
     "editFingerprint": "Edit fingerprint number",
     "fields": {
       "name": "Full name",
@@ -112,21 +117,49 @@
       "position": "Position",
       "branch": "Branch",
       "department": "Department",
-      "fingerprintNumber": "Fingerprint number"
+      "fingerprintNumber": "Fingerprint number",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "avatar": "Photo"
     },
     "placeholders": {
+      "name": "e.g. Ahmed Mohamed",
+      "email": "e.g. ahmed.mohamed@example.com",
+      "phone": "e.g. 01012345678",
       "branch": "Select branch",
       "department": "Select department",
+      "departmentNeedsBranch": "Select a branch first",
+      "loadingBranches": "Loading branches…",
       "position": "Select position",
-      "fingerprintNumber": "e.g. FP0031"
+      "fingerprintNumber": "Enter fingerprint",
+      "password": "At least 8 characters",
+      "confirmPassword": "Re-enter password"
     },
+    "avatarHint": "JPG, PNG, or WebP up to 5 MB",
+    "avatarOptional": "optional",
+    "avatarUpload": "Upload photo",
+    "avatarChange": "Change photo",
+    "avatarRemove": "Remove",
     "errors": {
+      "nameRequired": "Name is required.",
+      "nameMin": "Name must be at least 2 characters.",
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "phoneRequired": "Phone number is required.",
+      "phoneInvalid": "Enter a valid phone number.",
       "branchRequired": "Branch is required.",
       "departmentRequired": "Department is required.",
       "positionRequired": "Position is required.",
       "fingerprintRequired": "Fingerprint number is required.",
       "fingerprintInvalid": "Enter a valid fingerprint number (up to 20 letters or digits).",
-      "failed": "Could not update this employee."
+      "passwordRequired": "Password is required.",
+      "passwordMin": "Password must be at least 8 characters.",
+      "confirmPasswordRequired": "Please confirm the password.",
+      "passwordMismatch": "Passwords do not match.",
+      "avatarInvalidType": "Upload a valid image file.",
+      "avatarTooLarge": "Image must be 5 MB or smaller.",
+      "failed": "Could not update this employee.",
+      "createFailed": "Could not create this employee."
     },
     "save": "Save changes",
     "cancel": "Cancel",
@@ -485,6 +518,37 @@
     "title": "Leave types",
     "subtitle": "Configure leave types available across the organization.",
     "create": "Create leave type",
+    "assignByDepartment": "Assign by department",
+    "assignByBranch": "Assign by branch",
+    "assignHint": "After you add a new leave type, assign it to a branch or a specific department so employees get a leave balance.",
+    "assign": {
+      "branchTitle": "Assign leave balances by branch",
+      "branchSubtitle": "Create leave balances for every employee in the selected branch.",
+      "departmentTitle": "Assign leave balances by department",
+      "departmentSubtitle": "Create leave balances for every employee in the selected department.",
+      "submit": "Confirm",
+      "cancel": "Cancel",
+      "loading": "Loading…",
+      "branchSuccess": "Leave balances assigned to the branch.",
+      "departmentSuccess": "Leave balances assigned to the department.",
+      "noBranches": "Create a branch first before assigning leave balances.",
+      "noDepartments": "This branch has no departments yet.",
+      "previewBranch": "Will assign balances for branch: {branch}",
+      "previewDepartment": "Will assign balances for {department} in {branch}.",
+      "fields": {
+        "branch": "Branch",
+        "department": "Department"
+      },
+      "placeholders": {
+        "branch": "Select a branch",
+        "department": "Select a department"
+      },
+      "errors": {
+        "branchRequired": "Select a branch.",
+        "departmentRequired": "Select a department.",
+        "failed": "Could not assign leave balances."
+      }
+    },
     "searchPlaceholder": "Search leave types…",
     "resultsTitle": "Leave types ({count})",
     "empty": "No leave types configured yet.",
