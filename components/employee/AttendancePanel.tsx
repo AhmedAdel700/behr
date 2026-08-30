@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { MainButton } from "@/components/shared/MainButton";
-import { formatStoredTime12, formatTime12, resolveTimeLocale } from "@/lib/formatTime";
+import { formatStoredTime12, formatRangeLabel, formatTime12, resolveTimeLocale } from "@/lib/formatTime";
 import {
   getCurrentPosition,
   LocationError,
@@ -173,7 +173,11 @@ export function AttendancePanel() {
                 <p className="text-sm font-medium text-ink">{day.date}</p>
                 <p className="text-xs text-text-muted">
                   {day.checkIn || day.checkOut
-                    ? `${formatStoredTime12(day.checkIn, resolveTimeLocale(locale))} → ${formatStoredTime12(day.checkOut, resolveTimeLocale(locale))}`
+                    ? formatRangeLabel(
+                        formatStoredTime12(day.checkIn, resolveTimeLocale(locale)),
+                        formatStoredTime12(day.checkOut, resolveTimeLocale(locale)),
+                        locale,
+                      )
                     : "—"}
                 </p>
               </div>

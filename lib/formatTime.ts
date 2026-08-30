@@ -95,6 +95,22 @@ export function resolveTimeLocale(locale: string): string {
   return locale === "ar" ? "ar-EG" : "en-US";
 }
 
+export function formatRangeSeparator(locale: string): string {
+  return locale === "ar" ? "←" : "→";
+}
+
+export function formatRangeLabel(
+  start: string,
+  end: string,
+  locale: string,
+): string {
+  if (start === end) {
+    return start;
+  }
+
+  return `${start} ${formatRangeSeparator(locale)} ${end}`;
+}
+
 export function parseStoredDate(isoDate: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return null;

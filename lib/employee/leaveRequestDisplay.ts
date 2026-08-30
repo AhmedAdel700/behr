@@ -1,7 +1,12 @@
 import type { LeaveRequestRecord } from "@/types/LeaveRequestsApiTypes";
 import type { LeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
 import type { RequestFormValues } from "@/schemas/employee/request.schema";
-import { formatDateTime12 } from "@/lib/formatTime";
+import {
+  formatDateTime12,
+  formatRangeLabel,
+  formatStoredDate,
+  resolveTimeLocale,
+} from "@/lib/formatTime";
 
 export const DEFAULT_DAY_START_TIME = "09:00";
 export const DEFAULT_DAY_END_TIME = "17:00";
@@ -107,21 +112,43 @@ export function formatLeaveRequestRange(
   locale: string,
   unit: LeaveTypeUnit,
 ): string {
+  const timeLocale = resolveTimeLocale(locale);
+
+  if (unit === "hour") {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return formatRangeLabel(startAt, endAt, locale);
+    }
+
+    return formatRangeLabel(
+      formatDateTime12(start, timeLocale),
+      formatDateTime12(end, timeLocale),
+      locale,
+    );
+  }
+
+  const startDate = readIsoDate(startAt);
+  const endDate = readIsoDate(endAt);
+
+  if (startDate && endDate) {
+    const startLabel = formatStoredDate(startDate, timeLocale);
+    const endLabel = formatStoredDate(endDate, timeLocale);
+    return formatRangeLabel(startLabel, endLabel, locale);
+  }
+
   const start = new Date(startAt);
   const end = new Date(endAt);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return startAt === endAt ? startAt : `${startAt} → ${endAt}`;
+    return formatRangeLabel(startAt, endAt, locale);
   }
 
-  if (unit === "hour") {
-    return `${formatDateTime12(start, locale)} → ${formatDateTime12(end, locale)}`;
-  }
-
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const dateFmt = new Intl.DateTimeFormat(timeLocale, { dateStyle: "medium" });
   const startLabel = dateFmt.format(start);
   const endLabel = dateFmt.format(end);
-  return startLabel === endLabel ? startLabel : `${startLabel} → ${endLabel}`;
+  return formatRangeLabel(startLabel, endLabel, locale);
 }
 
 export function getLeaveRequestMutationError(

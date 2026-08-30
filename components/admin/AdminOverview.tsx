@@ -23,7 +23,6 @@ import type { AppDispatch } from "@/app/store/store";
 import { MainButton } from "@/components/shared/MainButton";
 import { Link } from "@/i18n/navigation";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
-import { resolveTimeLocale } from "@/lib/formatTime";
 import {
   getAdminSessionSnapshot,
   subscribeAdminSession,
@@ -166,12 +165,7 @@ function formatOverviewLeaveRange(
   endAt: string,
   locale: string,
 ): string {
-  return formatLeaveRequestRange(
-    startAt,
-    endAt,
-    resolveTimeLocale(locale),
-    "day",
-  );
+  return formatLeaveRequestRange(startAt, endAt, locale, "day");
 }
 
 function buildStatCards(
