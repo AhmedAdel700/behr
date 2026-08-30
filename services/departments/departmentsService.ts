@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import {
   departmentItemUrl,
   departmentsCollectionUrl,
@@ -26,10 +27,16 @@ function parseCount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function mapDepartmentFromApi(record: DepartmentApiRecord): DepartmentRecord {
+function mapDepartmentFromApi(
+  record: DepartmentApiRecord,
+  lang: string,
+): DepartmentRecord {
+  const name = parseLocalizedField(record.name, lang);
+
   return {
     id: String(record.id),
-    name: normalizeText(record.name),
+    name: name.display,
+    nameLocalized: name.localized,
     branchId: record.branch ? String(record.branch.id) : "",
     branchName: normalizeText(record.branch?.name),
     branchCity: normalizeText(record.branch?.city),
@@ -70,7 +77,7 @@ export async function fetchDepartments(
   }
 
   return {
-    departments: data.map(mapDepartmentFromApi),
+    departments: data.map((record) => mapDepartmentFromApi(record, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -133,7 +140,7 @@ export async function fetchDepartmentById(
     "Failed to load department.",
   );
 
-  return mapDepartmentFromApi(data);
+  return mapDepartmentFromApi(data, lang);
 }
 
 export async function createDepartmentRequest(
@@ -163,7 +170,7 @@ export async function createDepartmentRequest(
 
   return {
     message,
-    department: mapDepartmentFromApi(data),
+    department: mapDepartmentFromApi(data, lang),
   };
 }
 
@@ -195,7 +202,7 @@ export async function updateDepartmentRequest(
 
   return {
     message,
-    department: mapDepartmentFromApi(data),
+    department: mapDepartmentFromApi(data, lang),
   };
 }
 

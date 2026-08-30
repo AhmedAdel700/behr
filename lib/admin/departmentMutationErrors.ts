@@ -1,8 +1,10 @@
-import type { UseFormSetError } from "react-hook-form";
+import type { UseFormSetError, Path } from "react-hook-form";
 import type { CreateDepartmentFormValues } from "@/schemas/admin/org.schema";
 
-const API_TO_FORM_FIELD: Record<string, keyof CreateDepartmentFormValues> = {
-  name: "name",
+const API_TO_FORM_FIELD: Record<string, Path<CreateDepartmentFormValues>> = {
+  name: "name.en",
+  "name.en": "name.en",
+  "name.ar": "name.ar",
   branch_id: "branchId",
   manager_user_id: "managerEmployeeId",
 };
@@ -71,12 +73,12 @@ export function applyDepartmentMutationErrors(
   const entries = Object.entries(fieldErrors);
 
   if (entries.length === 0) {
-    setError("name", { message });
+    setError("name.en", { message });
     return message;
   }
 
   for (const [apiField, fieldMessage] of entries) {
-    const formField = API_TO_FORM_FIELD[apiField] ?? "name";
+    const formField = API_TO_FORM_FIELD[apiField] ?? "name.en";
     setError(formField, { message: fieldMessage });
   }
 

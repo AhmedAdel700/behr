@@ -42,10 +42,14 @@ import {
 } from "@/lib/admin/adminOrgStore";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
 import type {
-  BranchPayload,
   BranchesListQueryParams,
   BranchesListResult,
+  LocalizedTextPayload,
 } from "@/types/BranchesApiTypes";
+import {
+  emptyLocalizedText,
+  toBranchPayload,
+} from "@/lib/admin/branchLocalizedText";
 
 interface BranchTableRow {
   branch: AdminBranchRecord;
@@ -160,15 +164,7 @@ export function AdminBranchesPage({
 
     setSavingEdit(true);
 
-    const body: BranchPayload = {
-      name: draft.name.trim(),
-      city: draft.city.trim(),
-      address: draft.address.trim(),
-      phone: draft.phone.trim(),
-      email: draft.email.trim(),
-      latitude: draft.latitude,
-      longitude: draft.longitude,
-    };
+    const body = toBranchPayload(draft);
 
     try {
       const branch = await updateBranchMutation({
@@ -389,8 +385,12 @@ export function AdminBranchesPage({
             searchingLabel={t("searching")}
             searchNoResultsLabel={t("searchNoResults")}
             fieldLabels={{
-              name: t("fields.name"),
-              city: t("fields.city"),
+              nameEn: t("fields.nameEn"),
+              nameAr: t("fields.nameAr"),
+              cityEn: t("fields.cityEn"),
+              cityAr: t("fields.cityAr"),
+              addressEn: t("fields.addressEn"),
+              addressAr: t("fields.addressAr"),
               phone: t("fields.phone"),
               email: t("fields.email"),
             }}
@@ -427,9 +427,9 @@ export function AdminBranchesPage({
 }
 
 interface UpdateBranchDraft {
-  name: string;
-  city: string;
-  address: string;
+  name: LocalizedTextPayload;
+  city: LocalizedTextPayload;
+  address: LocalizedTextPayload;
   phone: string;
   email: string;
   latitude: number;
@@ -452,8 +452,12 @@ interface EditBranchDialogProps {
   searchingLabel: string;
   searchNoResultsLabel: string;
   fieldLabels: {
-    name: string;
-    city: string;
+    nameEn: string;
+    nameAr: string;
+    cityEn: string;
+    cityAr: string;
+    addressEn: string;
+    addressAr: string;
     phone: string;
     email: string;
   };
@@ -493,17 +497,45 @@ function EditBranchDialog({
       <div className="mt-4 flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <MainInput
-            label={fieldLabels.name}
-            value={draft.name}
+            label={fieldLabels.nameEn}
+            value={draft.name.en}
             onChange={(event) =>
-              setDraft((prev) => ({ ...prev, name: event.target.value }))
+              setDraft((prev) => ({
+                ...prev,
+                name: { ...prev.name, en: event.target.value },
+              }))
             }
           />
           <MainInput
-            label={fieldLabels.city}
-            value={draft.city}
+            label={fieldLabels.nameAr}
+            value={draft.name.ar}
             onChange={(event) =>
-              setDraft((prev) => ({ ...prev, city: event.target.value }))
+              setDraft((prev) => ({
+                ...prev,
+                name: { ...prev.name, ar: event.target.value },
+              }))
+            }
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={fieldLabels.cityEn}
+            value={draft.city.en}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                city: { ...prev.city, en: event.target.value },
+              }))
+            }
+          />
+          <MainInput
+            label={fieldLabels.cityAr}
+            value={draft.city.ar}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                city: { ...prev.city, ar: event.target.value },
+              }))
             }
           />
         </div>
@@ -534,8 +566,14 @@ function EditBranchDialog({
           searchingLabel={searchingLabel}
           searchNoResultsLabel={searchNoResultsLabel}
           title={
-            [draft.name.trim(), draft.city.trim()].filter(Boolean).join(" · ") ||
-            undefined
+            [
+              draft.name.en.trim(),
+              draft.name.ar.trim(),
+              draft.city.en.trim(),
+              draft.city.ar.trim(),
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined
           }
           value={{
             latitude: draft.latitude,
@@ -556,9 +594,34 @@ function EditBranchDialog({
             }))
           }
           onResolvedAddress={(nextAddress) =>
-            setDraft((prev) => ({ ...prev, address: nextAddress }))
+            setDraft((prev) => ({
+              ...prev,
+              address: { ...prev.address, en: nextAddress },
+            }))
           }
         />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={fieldLabels.addressEn}
+            value={draft.address.en}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                address: { ...prev.address, en: event.target.value },
+              }))
+            }
+          />
+          <MainInput
+            label={fieldLabels.addressAr}
+            value={draft.address.ar}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                address: { ...prev.address, ar: event.target.value },
+              }))
+            }
+          />
+        </div>
       </div>
       <ModalFormActions
         className="mt-4 pt-0"
@@ -576,9 +639,9 @@ function EditBranchDialog({
 
 function emptyDraft(): UpdateBranchDraft {
   return {
-    name: "",
-    city: "",
-    address: "",
+    name: emptyLocalizedText(),
+    city: emptyLocalizedText(),
+    address: emptyLocalizedText(),
     phone: "",
     email: "",
     latitude: DEFAULT_BRANCH_LOCATION.latitude,
@@ -588,9 +651,9 @@ function emptyDraft(): UpdateBranchDraft {
 
 function branchToDraft(branch: AdminBranchRecord): UpdateBranchDraft {
   return {
-    name: branch.name ?? "",
-    city: branch.city ?? "",
-    address: branch.address ?? "",
+    name: { ...branch.nameLocalized },
+    city: { ...branch.cityLocalized },
+    address: { ...branch.addressLocalized },
     phone: branch.phone ?? "",
     email: branch.email ?? "",
     latitude: branch.latitude ?? DEFAULT_BRANCH_LOCATION.latitude,

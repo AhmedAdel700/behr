@@ -115,12 +115,27 @@ export function getBranchDepartmentsForBranch(
 
 export function createBranch(input: CreateBranchInput): AdminBranchRecord {
   const slug = buildUniqueBranchSlug(input.name, branches);
+  const localized = {
+    en: input.name.trim(),
+    ar: input.name.trim(),
+  };
+  const cityLocalized = {
+    en: input.city.trim(),
+    ar: input.city.trim(),
+  };
+  const addressLocalized = {
+    en: input.address.trim(),
+    ar: input.address.trim(),
+  };
   const next: AdminBranchRecord = {
     id: `branch-${Date.now()}`,
     slug,
     name: input.name.trim(),
     city: input.city.trim(),
     address: input.address.trim(),
+    nameLocalized: localized,
+    cityLocalized,
+    addressLocalized,
     phone: input.phone.trim(),
     email: input.email.trim(),
     latitude: input.latitude,
@@ -148,6 +163,18 @@ export function updateBranch(
     name: input.name.trim(),
     city: input.city.trim(),
     address: input.address.trim(),
+    nameLocalized: {
+      en: input.name.trim(),
+      ar: input.name.trim(),
+    },
+    cityLocalized: {
+      en: input.city.trim(),
+      ar: input.city.trim(),
+    },
+    addressLocalized: {
+      en: input.address.trim(),
+      ar: input.address.trim(),
+    },
     phone: input.phone.trim(),
     email: input.email.trim(),
     latitude: input.latitude,

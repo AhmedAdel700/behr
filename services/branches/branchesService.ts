@@ -49,7 +49,7 @@ export async function fetchBranches(
   }
 
   return {
-    branches: mapBranchesFromApi(data),
+    branches: mapBranchesFromApi(data, lang),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -110,7 +110,7 @@ export async function fetchBranchById(
     "Failed to load branch.",
   );
 
-  return mapBranchFromApi(data);
+  return mapBranchFromApi(data, lang);
 }
 
 export async function createBranchRequest(
@@ -146,7 +146,7 @@ export async function createBranchRequest(
 
   return {
     message,
-    branch: mapBranchFromApi(data),
+    branch: mapBranchFromApi(data, lang),
   };
 }
 
@@ -184,7 +184,7 @@ export async function updateBranchRequest(
 
   return {
     message,
-    branch: mapBranchFromApi(data),
+    branch: mapBranchFromApi(data, lang),
   };
 }
 

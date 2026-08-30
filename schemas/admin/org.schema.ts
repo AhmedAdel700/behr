@@ -1,22 +1,38 @@
 import { z } from "zod";
 
 export type CreateBranchFormErrorMessages = {
-  nameRequired: string;
-  nameMin: string;
-  cityRequired: string;
-  addressRequired: string;
+  nameEnRequired: string;
+  nameEnMin: string;
+  nameArRequired: string;
+  nameArMin: string;
+  cityEnRequired: string;
+  cityArRequired: string;
+  addressEnRequired: string;
+  addressArRequired: string;
   emailInvalid: string;
   locationRequired: string;
 };
 
 export function createBranchSchema(errors: CreateBranchFormErrorMessages) {
   return z.object({
-    name: z
-      .string()
-      .min(1, { error: errors.nameRequired })
-      .min(2, { error: errors.nameMin }),
-    city: z.string().min(1, { error: errors.cityRequired }),
-    address: z.string().min(1, { error: errors.addressRequired }),
+    name: z.object({
+      en: z
+        .string()
+        .min(1, { error: errors.nameEnRequired })
+        .min(2, { error: errors.nameEnMin }),
+      ar: z
+        .string()
+        .min(1, { error: errors.nameArRequired })
+        .min(2, { error: errors.nameArMin }),
+    }),
+    city: z.object({
+      en: z.string().min(1, { error: errors.cityEnRequired }),
+      ar: z.string().min(1, { error: errors.cityArRequired }),
+    }),
+    address: z.object({
+      en: z.string().min(1, { error: errors.addressEnRequired }),
+      ar: z.string().min(1, { error: errors.addressArRequired }),
+    }),
     phone: z.string(),
     email: z.string().refine(
       (value) => {
@@ -36,8 +52,10 @@ export type CreateBranchFormValues = z.infer<
 
 export type CreateDepartmentFormErrorMessages = {
   branchRequired: string;
-  nameRequired: string;
-  nameMin: string;
+  nameEnRequired: string;
+  nameEnMin: string;
+  nameArRequired: string;
+  nameArMin: string;
   managerRequired: string;
 };
 
@@ -46,10 +64,16 @@ export function createDepartmentSchema(
 ) {
   return z.object({
     branchId: z.string().min(1, { error: errors.branchRequired }),
-    name: z
-      .string()
-      .min(1, { error: errors.nameRequired })
-      .min(2, { error: errors.nameMin }),
+    name: z.object({
+      en: z
+        .string()
+        .min(1, { error: errors.nameEnRequired })
+        .min(2, { error: errors.nameEnMin }),
+      ar: z
+        .string()
+        .min(1, { error: errors.nameArRequired })
+        .min(2, { error: errors.nameArMin }),
+    }),
     managerEmployeeId: z.string(),
   });
 }

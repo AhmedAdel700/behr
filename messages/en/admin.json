@@ -375,9 +375,12 @@
     "cancel": "Cancel",
     "save": "Save changes",
     "fields": {
-      "name": "Branch name",
-      "city": "City",
-      "address": "Address",
+      "nameEn": "Branch name (English)",
+      "nameAr": "Branch name (Arabic)",
+      "cityEn": "City (English)",
+      "cityAr": "City (Arabic)",
+      "addressEn": "Address (English)",
+      "addressAr": "Address (Arabic)",
       "phone": "Phone (optional)",
       "email": "Email (optional)",
       "location": "Map location"
@@ -401,25 +404,35 @@
     "searching": "Searching…",
     "searchNoResults": "No places found.",
     "fields": {
-      "name": "Branch name",
-      "city": "City",
-      "address": "Address",
+      "nameEn": "Branch name (English)",
+      "nameAr": "Branch name (Arabic)",
+      "cityEn": "City (English)",
+      "cityAr": "City (Arabic)",
+      "addressEn": "Address (English)",
+      "addressAr": "Address (Arabic)",
       "phone": "Phone (optional)",
       "email": "Email (optional)",
       "location": "Map location"
     },
     "placeholders": {
-      "name": "e.g. Riyadh Office",
-      "city": "e.g. Riyadh",
-      "address": "Street, district…",
+      "nameEn": "e.g. Riyadh Office",
+      "nameAr": "مثال: فرع الرياض",
+      "cityEn": "e.g. Riyadh",
+      "cityAr": "مثال: الرياض",
+      "addressEn": "Street, district…",
+      "addressAr": "الشارع، الحي…",
       "phone": "0112345678",
       "email": "branch@behr.com"
     },
     "errors": {
-      "nameRequired": "Branch name is required.",
-      "nameMin": "Branch name must be at least 2 characters.",
-      "cityRequired": "City is required.",
-      "addressRequired": "Address is required.",
+      "nameEnRequired": "English branch name is required.",
+      "nameEnMin": "English branch name must be at least 2 characters.",
+      "nameArRequired": "Arabic branch name is required.",
+      "nameArMin": "Arabic branch name must be at least 2 characters.",
+      "cityEnRequired": "English city is required.",
+      "cityArRequired": "Arabic city is required.",
+      "addressEnRequired": "English address is required.",
+      "addressArRequired": "Arabic address is required.",
       "emailInvalid": "Enter a valid email address.",
       "locationRequired": "Pick a location on the map."
     }
@@ -439,17 +452,21 @@
     "noEmployeesFound": "No employees match your search.",
     "fields": {
       "branch": "Branch",
-      "name": "Department name"
+      "nameEn": "Department name (English)",
+      "nameAr": "Department name (Arabic)"
     },
     "placeholders": {
       "branch": "Select a branch",
-      "name": "e.g. Human Resources",
+      "nameEn": "e.g. Human Resources",
+      "nameAr": "مثال: الموارد البشرية",
       "managerSearch": "Search employees by name, email, or position…"
     },
     "errors": {
       "branchRequired": "Select a branch.",
-      "nameRequired": "Department name is required.",
-      "nameMin": "Department name must be at least 2 characters.",
+      "nameEnRequired": "English department name is required.",
+      "nameEnMin": "English department name must be at least 2 characters.",
+      "nameArRequired": "Arabic department name is required.",
+      "nameArMin": "Arabic department name must be at least 2 characters.",
       "managerRequired": "Select an employee as department manager.",
       "duplicate": "A department with this name already exists in the selected branch.",
       "failed": "Could not save this department."

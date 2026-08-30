@@ -1,4 +1,10 @@
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import type {
+  BranchesPaginationMeta,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+} from "@/types/BranchesApiTypes";
+
+export type { LocalizedApiValue, LocalizedTextPayload };
 
 export interface DepartmentApiBranch {
   id: number;
@@ -28,7 +34,7 @@ export interface DepartmentApiManager {
 
 export interface DepartmentApiRecord {
   id: number;
-  name: string;
+  name: LocalizedApiValue;
   branch: DepartmentApiBranch | null;
   manager: DepartmentApiManager | null;
   users_count: string;
@@ -39,6 +45,7 @@ export interface DepartmentApiRecord {
 export interface DepartmentRecord {
   id: string;
   name: string;
+  nameLocalized: LocalizedTextPayload;
   branchId: string;
   branchName: string;
   branchCity: string;
@@ -62,7 +69,7 @@ export interface DepartmentsListResult {
 }
 
 export interface DepartmentPayload {
-  name: string;
+  name: LocalizedTextPayload;
   branch_id: number;
   manager_user_id?: number | null;
 }

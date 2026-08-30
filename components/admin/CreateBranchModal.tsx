@@ -18,7 +18,10 @@ import {
   createBranchSchema,
   type CreateBranchFormValues,
 } from "@/schemas/admin/org.schema";
-import type { BranchPayload } from "@/types/BranchesApiTypes";
+import {
+  emptyLocalizedText,
+  toBranchPayload,
+} from "@/lib/admin/branchLocalizedText";
 
 interface CreateBranchModalProps {
   open: boolean;
@@ -59,10 +62,14 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
   const schema = useMemo(
     () =>
       createBranchSchema({
-        nameRequired: t("errors.nameRequired"),
-        nameMin: t("errors.nameMin"),
-        cityRequired: t("errors.cityRequired"),
-        addressRequired: t("errors.addressRequired"),
+        nameEnRequired: t("errors.nameEnRequired"),
+        nameEnMin: t("errors.nameEnMin"),
+        nameArRequired: t("errors.nameArRequired"),
+        nameArMin: t("errors.nameArMin"),
+        cityEnRequired: t("errors.cityEnRequired"),
+        cityArRequired: t("errors.cityArRequired"),
+        addressEnRequired: t("errors.addressEnRequired"),
+        addressArRequired: t("errors.addressArRequired"),
         emailInvalid: t("errors.emailInvalid"),
         locationRequired: t("errors.locationRequired"),
       }),
@@ -84,8 +91,10 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
     defaultValues: emptyValues(),
   });
 
-  const watchedName = watch("name");
-  const watchedCity = watch("city");
+  const watchedNameEn = watch("name.en");
+  const watchedNameAr = watch("name.ar");
+  const watchedCityEn = watch("city.en");
+  const watchedCityAr = watch("city.ar");
 
   useEffect(() => {
     if (!open) return;
@@ -93,15 +102,7 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
   }, [open, reset]);
 
   const onSubmit = async (values: CreateBranchFormValues): Promise<void> => {
-    const body: BranchPayload = {
-      name: values.name.trim(),
-      city: values.city.trim(),
-      address: values.address.trim(),
-      phone: values.phone.trim(),
-      email: values.email.trim(),
-      latitude: values.latitude,
-      longitude: values.longitude,
-    };
+    const body = toBranchPayload(values);
 
     try {
       const branch = await createBranchMutation({ body }).unwrap();
@@ -125,18 +126,34 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <MainInput
-            label={t("fields.name")}
+            label={t("fields.nameEn")}
             startIcon={<Building2 />}
-            error={isSubmitted ? errors.name?.message : undefined}
-            {...register("name")}
-            placeholder={t("placeholders.name")}
+            error={isSubmitted ? errors.name?.en?.message : undefined}
+            {...register("name.en")}
+            placeholder={t("placeholders.nameEn")}
           />
           <MainInput
-            label={t("fields.city")}
+            label={t("fields.nameAr")}
+            startIcon={<Building2 />}
+            error={isSubmitted ? errors.name?.ar?.message : undefined}
+            {...register("name.ar")}
+            placeholder={t("placeholders.nameAr")}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={t("fields.cityEn")}
             startIcon={<MapPinned />}
-            error={isSubmitted ? errors.city?.message : undefined}
-            {...register("city")}
-            placeholder={t("placeholders.city")}
+            error={isSubmitted ? errors.city?.en?.message : undefined}
+            {...register("city.en")}
+            placeholder={t("placeholders.cityEn")}
+          />
+          <MainInput
+            label={t("fields.cityAr")}
+            startIcon={<MapPinned />}
+            error={isSubmitted ? errors.city?.ar?.message : undefined}
+            {...register("city.ar")}
+            placeholder={t("placeholders.cityAr")}
           />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -175,7 +192,12 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
                   searchingLabel={t("searching")}
                   searchNoResultsLabel={t("searchNoResults")}
                   title={
-                    [watchedName.trim(), watchedCity.trim()]
+                    [
+                      watchedNameEn.trim(),
+                      watchedNameAr.trim(),
+                      watchedCityEn.trim(),
+                      watchedCityAr.trim(),
+                    ]
                       .filter(Boolean)
                       .join(" · ") || undefined
                   }
@@ -192,7 +214,7 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
                     lngField.onChange(place.location.longitude);
                   }}
                   onResolvedAddress={(nextAddress) => {
-                    setValue("address", nextAddress, {
+                    setValue("address.en", nextAddress, {
                       shouldDirty: true,
                       shouldValidate: isSubmitted,
                     });
@@ -201,7 +223,8 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
                     isSubmitted
                       ? errors.latitude?.message ??
                         errors.longitude?.message ??
-                        errors.address?.message
+                        errors.address?.en?.message ??
+                        errors.address?.ar?.message
                       : undefined
                   }
                 />
@@ -209,6 +232,23 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
             />
           )}
         />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MainInput
+            label={t("fields.addressEn")}
+            startIcon={<MapPinned />}
+            error={isSubmitted ? errors.address?.en?.message : undefined}
+            {...register("address.en")}
+            placeholder={t("placeholders.addressEn")}
+          />
+          <MainInput
+            label={t("fields.addressAr")}
+            startIcon={<MapPinned />}
+            error={isSubmitted ? errors.address?.ar?.message : undefined}
+            {...register("address.ar")}
+            placeholder={t("placeholders.addressAr")}
+          />
+        </div>
 
         <ModalFormActions
           cancelLabel={t("cancel")}
@@ -223,9 +263,9 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
 
 function emptyValues(): CreateBranchFormValues {
   return {
-    name: "",
-    city: "",
-    address: "",
+    name: emptyLocalizedText(),
+    city: emptyLocalizedText(),
+    address: emptyLocalizedText(),
     phone: "",
     email: "",
     latitude: DEFAULT_BRANCH_LOCATION.latitude,

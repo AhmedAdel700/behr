@@ -1,10 +1,17 @@
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
 
+export interface LocalizedTextPayload {
+  en: string;
+  ar: string;
+}
+
+export type LocalizedApiValue = string | LocalizedTextPayload;
+
 export interface BranchApiRecord {
   id: number;
-  name: string;
-  city: string | null;
-  address: string | null;
+  name: LocalizedApiValue;
+  city: LocalizedApiValue | null;
+  address: LocalizedApiValue | null;
   phone: string | null;
   email: string | null;
   latitude: number | null;
@@ -29,13 +36,13 @@ export interface BranchesListQueryParams {
 }
 
 export interface BranchPayload {
-  name: string;
-  city: string;
+  name: LocalizedTextPayload;
+  city: LocalizedTextPayload;
   phone: string;
   email: string;
   latitude: number;
   longitude: number;
-  address: string;
+  address: LocalizedTextPayload;
 }
 
 export interface BranchApiResponse {

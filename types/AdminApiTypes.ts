@@ -45,12 +45,17 @@ export interface AdminDepartmentManager {
   position: string;
 }
 
+import type { LocalizedTextPayload } from "@/types/BranchesApiTypes";
+
 export interface AdminBranchRecord {
   id: string;
   slug: string;
   name: string;
   city: string;
   address: string;
+  nameLocalized: LocalizedTextPayload;
+  cityLocalized: LocalizedTextPayload;
+  addressLocalized: LocalizedTextPayload;
   phone: string;
   email: string;
   latitude: number;

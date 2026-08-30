@@ -23,12 +23,13 @@ import { ModalShell } from "@/components/shared/ModalShell";
 import { useGenieModalClose } from "@/components/shared/GenieModalShell";
 import { MainInput } from "@/components/shared/MainInput";
 import { MainSelect } from "@/components/shared/MainSelect";
+import { emptyLocalizedText } from "@/lib/admin/branchLocalizedText";
+import { applyDepartmentMutationErrors } from "@/lib/admin/departmentMutationErrors";
+import { toDepartmentPayload } from "@/lib/admin/departmentLocalizedText";
 import {
   createDepartmentSchema,
   type CreateDepartmentFormValues,
 } from "@/schemas/admin/org.schema";
-import { applyDepartmentMutationErrors } from "@/lib/admin/departmentMutationErrors";
-import type { DepartmentPayload } from "@/types/DepartmentsApiTypes";
 
 interface CreateDepartmentModalProps {
   open: boolean;
@@ -75,8 +76,10 @@ function CreateDepartmentForm({
     () =>
       createDepartmentSchema({
         branchRequired: t("errors.branchRequired"),
-        nameRequired: t("errors.nameRequired"),
-        nameMin: t("errors.nameMin"),
+        nameEnRequired: t("errors.nameEnRequired"),
+        nameEnMin: t("errors.nameEnMin"),
+        nameArRequired: t("errors.nameArRequired"),
+        nameArMin: t("errors.nameArMin"),
         managerRequired: t("errors.managerRequired"),
       }),
     [t],
@@ -124,26 +127,25 @@ function CreateDepartmentForm({
   };
 
   const onSubmit = async (values: CreateDepartmentFormValues): Promise<void> => {
-    const branchId = Number(values.branchId);
+    const body = toDepartmentPayload(values);
 
-    if (!Number.isFinite(branchId)) {
-      setError("branchId", { message: t("errors.branchRequired") });
+    if (!body) {
+      const branchId = Number(values.branchId);
+      if (!Number.isFinite(branchId)) {
+        setError("branchId", { message: t("errors.branchRequired") });
+        return;
+      }
+
+      const managerValue = values.managerEmployeeId.trim();
+      const managerUserId =
+        managerValue.length > 0 ? Number(managerValue) : null;
+
+      if (managerUserId !== null && !Number.isFinite(managerUserId)) {
+        setError("managerEmployeeId", { message: t("errors.managerRequired") });
+      }
+
       return;
     }
-    const managerValue = values.managerEmployeeId.trim();
-    const managerUserId =
-      managerValue.length > 0 ? Number(managerValue) : null;
-
-    if (managerUserId !== null && !Number.isFinite(managerUserId)) {
-      setError("managerEmployeeId", { message: t("errors.managerRequired") });
-      return;
-    }
-
-    const body: DepartmentPayload = {
-      name: values.name.trim(),
-      branch_id: branchId,
-      manager_user_id: managerUserId,
-    };
 
     try {
       await createDepartmentMutation({ body }).unwrap();
@@ -196,13 +198,22 @@ function CreateDepartmentForm({
             )}
           />
 
-          <MainInput
-            label={t("fields.name")}
-            startIcon={<Building2 />}
-            error={isSubmitted ? errors.name?.message : undefined}
-            {...register("name")}
-            placeholder={t("placeholders.name")}
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <MainInput
+              label={t("fields.nameEn")}
+              startIcon={<Building2 />}
+              error={isSubmitted ? errors.name?.en?.message : undefined}
+              {...register("name.en")}
+              placeholder={t("placeholders.nameEn")}
+            />
+            <MainInput
+              label={t("fields.nameAr")}
+              startIcon={<Building2 />}
+              error={isSubmitted ? errors.name?.ar?.message : undefined}
+              {...register("name.ar")}
+              placeholder={t("placeholders.nameAr")}
+            />
+          </div>
 
           <Controller
             control={control}
@@ -239,7 +250,7 @@ function CreateDepartmentForm({
 function emptyValues(): CreateDepartmentFormValues {
   return {
     branchId: "",
-    name: "",
+    name: emptyLocalizedText(),
     managerEmployeeId: "",
   };
 }
