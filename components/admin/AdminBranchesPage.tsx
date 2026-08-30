@@ -11,6 +11,7 @@ import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   normalizeBranchesListParams,
   useDeleteBranchMutation,
+  useGetBranchByIdQuery,
   useGetBranchesQuery,
   useUpdateBranchMutation,
 } from "@/app/store/api/branches/branchesApi";
@@ -121,6 +122,10 @@ export function AdminBranchesPage({
   const [updateBranchMutation] = useUpdateBranchMutation();
   const [deleteBranchMutation, { isLoading: deletingBranch }] =
     useDeleteBranchMutation();
+  const editingBranchId = editing?.id.trim() ?? "";
+  const { data: editingBranchDetails } = useGetBranchByIdQuery(editingBranchId, {
+    skip: !editingBranchId,
+  });
 
   const resolvedBranches =
     branchesResult?.branches ?? initialData?.branches ?? [];
@@ -155,6 +160,14 @@ export function AdminBranchesPage({
     setEditing(branch);
     setDraft(branchToDraft(branch));
   };
+
+  useEffect(() => {
+    if (!editingBranchDetails) {
+      return;
+    }
+
+    setDraft(branchToDraft(editingBranchDetails));
+  }, [editingBranchDetails]);
 
   const saveEdit = async (): Promise<boolean> => {
     if (!editing?.id.trim()) {

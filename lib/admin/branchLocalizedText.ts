@@ -12,20 +12,13 @@ export function parseLocalizedField(
   value: LocalizedApiValue | null | undefined,
   lang: string,
 ): { display: string; localized: LocalizedTextPayload } {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    ("en" in value || "ar" in value)
-  ) {
-    const localized: LocalizedTextPayload = {
-      en: typeof value.en === "string" ? value.en : "",
-      ar: typeof value.ar === "string" ? value.ar : "",
-    };
+  const fromObject = readLocalizedObject(value);
+  if (fromObject) {
     const display =
       lang === "ar"
-        ? localized.ar || localized.en
-        : localized.en || localized.ar;
-    return { display, localized };
+        ? fromObject.ar || fromObject.en
+        : fromObject.en || fromObject.ar;
+    return { display, localized: fromObject };
   }
 
   const text = typeof value === "string" ? value : "";
@@ -37,6 +30,27 @@ export function parseLocalizedField(
   }
 
   return { display: text, localized };
+}
+
+function readLocalizedObject(value: unknown): LocalizedTextPayload | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const en = record.en;
+  const ar = record.ar;
+  const hasEn = typeof en === "string";
+  const hasAr = typeof ar === "string";
+
+  if (!hasEn && !hasAr) {
+    return null;
+  }
+
+  return {
+    en: hasEn ? en : "",
+    ar: hasAr ? ar : "",
+  };
 }
 
 export function trimLocalizedText(
@@ -72,16 +86,4 @@ export function toBranchPayload(values: BranchLocalizedFormValues): BranchPayloa
     latitude: values.latitude,
     longitude: values.longitude,
   };
-}
-
-export function localizedTextFromDisplay(
-  display: string,
-  localized?: LocalizedTextPayload,
-): LocalizedTextPayload {
-  if (localized) {
-    return { ...localized };
-  }
-
-  const trimmed = display.trim();
-  return { en: trimmed, ar: trimmed };
 }

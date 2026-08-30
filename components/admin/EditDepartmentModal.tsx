@@ -15,7 +15,10 @@ import {
   DEFAULT_BRANCHES_LIST_PARAMS,
   useGetBranchesQuery,
 } from "@/app/store/api/branches/branchesApi";
-import { useUpdateDepartmentMutation } from "@/app/store/api/departments/departmentsApi";
+import {
+  useGetDepartmentByIdQuery,
+  useUpdateDepartmentMutation,
+} from "@/app/store/api/departments/departmentsApi";
 import { EmployeeManagerPicker } from "@/components/admin/EmployeeManagerPicker";
 import { ModalFormActions } from "@/components/shared/ModalFormActions";
 import { ModalShell } from "@/components/shared/ModalShell";
@@ -74,6 +77,10 @@ function EditDepartmentForm({
   const closeModal = useGenieModalClose(onClose);
   const [updateDepartmentMutation, { isLoading: submitting }] =
     useUpdateDepartmentMutation();
+  const { data: departmentDetails } = useGetDepartmentByIdQuery(department.id, {
+    skip: !open,
+  });
+  const resolvedDepartment = departmentDetails ?? department;
   const { data: branchesResult } = useGetBranchesQuery(DEFAULT_BRANCHES_LIST_PARAMS);
   const branches = branchesResult?.branches ?? [];
 
@@ -104,33 +111,33 @@ function EditDepartmentForm({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onSubmit",
-    defaultValues: toFormValues(department),
+    defaultValues: toFormValues(resolvedDepartment),
   });
 
   useEffect(() => {
     if (!open) return;
-    reset(toFormValues(department));
-  }, [open, department, reset]);
+    reset(toFormValues(resolvedDepartment));
+  }, [open, resolvedDepartment, reset]);
 
   const selectedBranchId = watch("branchId");
 
   const initialSelectedManager = useMemo((): EmployeeManagerRecord | null => {
-    if (!department.managerUserId) {
+    if (!resolvedDepartment.managerUserId) {
       return null;
     }
 
     return {
-      id: department.managerUserId,
-      name: department.managerName,
-      email: department.managerEmail,
+      id: resolvedDepartment.managerUserId,
+      name: resolvedDepartment.managerName,
+      email: resolvedDepartment.managerEmail,
       position: "",
-      branchId: department.branchId,
+      branchId: resolvedDepartment.branchId,
     };
   }, [
-    department.branchId,
-    department.managerEmail,
-    department.managerName,
-    department.managerUserId,
+    resolvedDepartment.branchId,
+    resolvedDepartment.managerEmail,
+    resolvedDepartment.managerName,
+    resolvedDepartment.managerUserId,
   ]);
 
   const branchOptions = useMemo(
