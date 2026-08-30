@@ -293,7 +293,7 @@ export function ModalShell({
   const shouldAnimate = isLargeScreen && reduceMotion !== true;
 
   const resolvedPanelClassName = cn(
-    "relative z-10 w-full max-w-md rounded-2xl border border-border bg-surface p-4 shadow-md",
+    "relative z-10 w-full max-w-[38.5rem] rounded-2xl border border-border bg-surface p-4 shadow-md",
     panelClassName
   );
 

@@ -1,4 +1,10 @@
 import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import type {
+  LocalizedApiValue,
+  LocalizedTextPayload,
+} from "@/types/BranchesApiTypes";
+
+export type { LocalizedApiValue, LocalizedTextPayload };
 
 export type LeaveTypeUnit = "day" | "hour";
 export type LeaveTypeAllocationType = "yearly" | "monthly" | "none";
@@ -23,8 +29,8 @@ export function parseLeaveTypeUnit(value: unknown): LeaveTypeUnit {
 
 export interface LeaveTypeApiRecord {
   id: number;
-  name: string;
-  description: string | null;
+  name: LocalizedApiValue;
+  description: LocalizedApiValue | null;
   unit: LeaveTypeUnit;
   allocation_type: LeaveTypeAllocationType;
   allocation_amount: number;
@@ -43,6 +49,8 @@ export interface LeaveTypeRecord {
   id: string;
   name: string;
   description: string;
+  nameLocalized: LocalizedTextPayload;
+  descriptionLocalized: LocalizedTextPayload;
   unit: LeaveTypeUnit;
   allocationType: LeaveTypeAllocationType;
   allocationAmount: number;
@@ -68,8 +76,8 @@ export interface LeaveTypesListResult {
 }
 
 export interface LeaveTypePayload {
-  name: string;
-  description: string;
+  name: LocalizedTextPayload;
+  description: LocalizedTextPayload;
   unit: LeaveTypeUnit;
   allocation_type: LeaveTypeAllocationType;
   allocation_amount: number;

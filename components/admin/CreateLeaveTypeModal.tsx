@@ -62,9 +62,12 @@ function CreateLeaveTypeForm({
   const schema = useMemo(
     () =>
       createLeaveTypeSchema({
-        nameRequired: t("errors.nameRequired"),
-        nameMin: t("errors.nameMin"),
-        descriptionRequired: t("errors.descriptionRequired"),
+        nameEnRequired: t("errors.nameEnRequired"),
+        nameEnMin: t("errors.nameEnMin"),
+        nameArRequired: t("errors.nameArRequired"),
+        nameArMin: t("errors.nameArMin"),
+        descriptionEnRequired: t("errors.descriptionEnRequired"),
+        descriptionArRequired: t("errors.descriptionArRequired"),
         unitRequired: t("errors.unitRequired"),
         allocationTypeRequired: t("errors.allocationTypeRequired"),
         allocationAmountRequired: t("errors.allocationAmountRequired"),

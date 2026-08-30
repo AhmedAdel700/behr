@@ -74,20 +74,37 @@ export function LeaveTypeFormFields({
 
   return (
     <>
-      <MainInput
-        label={t("fields.name")}
-        error={isSubmitted ? errors.name?.message : undefined}
-        {...register("name")}
-        placeholder={t("placeholders.name")}
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <MainInput
+          label={t("fields.nameEn")}
+          error={isSubmitted ? errors.name?.en?.message : undefined}
+          {...register("name.en")}
+          placeholder={t("placeholders.nameEn")}
+        />
+        <MainInput
+          label={t("fields.nameAr")}
+          error={isSubmitted ? errors.name?.ar?.message : undefined}
+          {...register("name.ar")}
+          placeholder={t("placeholders.nameAr")}
+        />
+      </div>
 
-      <MainInput
-        as="textarea"
-        label={t("fields.description")}
-        error={isSubmitted ? errors.description?.message : undefined}
-        {...register("description")}
-        placeholder={t("placeholders.description")}
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <MainInput
+          as="textarea"
+          label={t("fields.descriptionEn")}
+          error={isSubmitted ? errors.description?.en?.message : undefined}
+          {...register("description.en")}
+          placeholder={t("placeholders.descriptionEn")}
+        />
+        <MainInput
+          as="textarea"
+          label={t("fields.descriptionAr")}
+          error={isSubmitted ? errors.description?.ar?.message : undefined}
+          {...register("description.ar")}
+          placeholder={t("placeholders.descriptionAr")}
+        />
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Controller

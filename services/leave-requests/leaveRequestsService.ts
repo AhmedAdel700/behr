@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import {
   leaveRequestApproveUrl,
   leaveRequestItemUrl,
@@ -119,14 +120,17 @@ function resolveReviewMetadata(
 function mapLeaveTypeSummary(
   value: unknown,
   fallbackId: string,
+  lang: string,
 ): LeaveRequestTypeSummary {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
+  const name = parseLocalizedField(record?.name, lang);
+  const description = parseLocalizedField(record?.description, lang);
 
   return {
     id: id ?? fallbackId,
-    name: record ? normalizeText(record.name) : "",
-    description: record ? normalizeText(record.description) : "",
+    name: name.display,
+    description: description.display,
     unit: record ? parseLeaveTypeUnit(record.unit) : "day",
   };
 }
@@ -199,7 +203,7 @@ function mapApprovals(value: unknown): LeaveRequestApproval[] {
     .filter((item): item is LeaveRequestApproval => item !== null);
 }
 
-function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
+function mapLeaveRequestFromApi(value: unknown, lang: string): LeaveRequestRecord {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
   const nestedLeaveType = record ? asRecord(record.leave_type) : null;
@@ -219,7 +223,7 @@ function mapLeaveRequestFromApi(value: unknown): LeaveRequestRecord {
     employeeId: readId(record.employee_id) ?? "",
     employee: mapEmployeeSummary(record.employee),
     leaveTypeId,
-    leaveType: mapLeaveTypeSummary(record.leave_type, leaveTypeId),
+    leaveType: mapLeaveTypeSummary(record.leave_type, leaveTypeId, lang),
     startAt: normalizeText(record.start_at),
     endAt: normalizeText(record.end_at),
     durationMinutes: parseDuration(record.duration_minutes),
@@ -262,7 +266,7 @@ export async function fetchLeaveRequests(
   }
 
   return {
-    leaveRequests: data.map(mapLeaveRequestFromApi),
+    leaveRequests: data.map((item) => mapLeaveRequestFromApi(item, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -323,7 +327,7 @@ export async function fetchLeaveRequest(
     "Failed to load leave request.",
   );
 
-  return mapLeaveRequestFromApi(data);
+  return mapLeaveRequestFromApi(data, lang);
 }
 
 export async function createLeaveRequestRequest(
@@ -353,7 +357,7 @@ export async function createLeaveRequestRequest(
 
   return {
     message,
-    leaveRequest: mapLeaveRequestFromApi(data),
+    leaveRequest: mapLeaveRequestFromApi(data, lang),
   };
 }
 
@@ -394,7 +398,7 @@ export async function updateLeaveRequestRequest(
 
   return {
     message,
-    leaveRequest: mapLeaveRequestFromApi(data),
+    leaveRequest: mapLeaveRequestFromApi(data, lang),
   };
 }
 
@@ -424,7 +428,7 @@ async function postLeaveRequestReview(
 
   return {
     message,
-    leaveRequest: mapLeaveRequestFromApi(data),
+    leaveRequest: mapLeaveRequestFromApi(data, lang),
   };
 }
 
@@ -494,7 +498,7 @@ export async function cancelLeaveRequestRequest(
     try {
       return {
         message,
-        leaveRequest: mapLeaveRequestFromApi(data),
+        leaveRequest: mapLeaveRequestFromApi(data, lang),
       };
     } catch {
       // Fall through to a GET so leave-type tags are still loaded.

@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import { minutesToLeaveUnits } from "@/lib/employee/leaveBalanceUnits";
 import type { LeaveBalanceApiRecord } from "@/types/LeaveBalancesApiTypes";
 import type { LeaveBalanceRecord } from "@/types/LeaveBalancesApiTypes";
@@ -26,17 +27,22 @@ function parseAllocationType(value: unknown): LeaveTypeAllocationType {
   return "none";
 }
 
-function mapLeaveBalanceRecord(record: LeaveBalanceApiRecord): LeaveBalanceRecord {
+function mapLeaveBalanceRecord(
+  record: LeaveBalanceApiRecord,
+  lang: string,
+): LeaveBalanceRecord {
   const unit = parseLeaveTypeUnit(record.leave_type.unit);
   const used = minutesToLeaveUnits(record.used_minutes, unit);
   const remaining = minutesToLeaveUnits(record.remaining_minutes, unit);
   const total = minutesToLeaveUnits(record.allocated_minutes, unit);
+  const name = parseLocalizedField(record.leave_type.name, lang);
+  const description = parseLocalizedField(record.leave_type.description, lang);
 
   return {
     id: readId(record.id),
     leaveTypeId: readId(record.leave_type_id) || readId(record.leave_type.id),
-    name: record.leave_type.name.trim(),
-    description: record.leave_type.description?.trim() ?? "",
+    name: name.display,
+    description: description.display,
     unit,
     allocationType: parseAllocationType(record.leave_type.allocation_type),
     used,
@@ -49,6 +55,7 @@ function mapLeaveBalanceRecord(record: LeaveBalanceApiRecord): LeaveBalanceRecor
 
 export function mapLeaveBalancesFromApi(
   records: readonly LeaveBalanceApiRecord[],
+  lang: string,
 ): LeaveBalanceRecord[] {
-  return records.map(mapLeaveBalanceRecord);
+  return records.map((record) => mapLeaveBalanceRecord(record, lang));
 }

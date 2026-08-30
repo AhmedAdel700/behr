@@ -479,8 +479,10 @@
     "cancel": "إلغاء",
     "success": "تم إنشاء نوع الإجازة بنجاح.",
     "fields": {
-      "name": "اسم نوع الإجازة",
-      "description": "الوصف",
+      "nameEn": "اسم نوع الإجازة (إنجليزي)",
+      "nameAr": "اسم نوع الإجازة (عربي)",
+      "descriptionEn": "الوصف (إنجليزي)",
+      "descriptionAr": "الوصف (عربي)",
       "unit": "الوحدة",
       "allocationType": "نوع الرصيد",
       "allocationAmount": "مقدار الرصيد",
@@ -492,8 +494,10 @@
       "isActive": "نشط"
     },
     "placeholders": {
-      "name": "مثال: إجازة سنوية",
-      "description": "مثال: إجازة سنوية مدفوعة",
+      "nameEn": "e.g. Annual Leave",
+      "nameAr": "مثال: إجازة سنوية",
+      "descriptionEn": "e.g. Paid annual vacation leave",
+      "descriptionAr": "مثال: إجازة سنوية مدفوعة الأجر",
       "unit": "اختر الوحدة",
       "allocationType": "اختر نوع الرصيد",
       "allocationAmount": "مثال: 21",
@@ -518,9 +522,12 @@
       }
     },
     "errors": {
-      "nameRequired": "اسم نوع الإجازة مطلوب.",
-      "nameMin": "يجب أن يكون اسم نوع الإجازة حرفين على الأقل.",
-      "descriptionRequired": "الوصف مطلوب.",
+      "nameEnRequired": "اسم نوع الإجازة بالإنجليزية مطلوب.",
+      "nameEnMin": "يجب أن يكون اسم نوع الإجازة بالإنجليزية حرفين على الأقل.",
+      "nameArRequired": "اسم نوع الإجازة بالعربية مطلوب.",
+      "nameArMin": "يجب أن يكون اسم نوع الإجازة بالعربية حرفين على الأقل.",
+      "descriptionEnRequired": "الوصف بالإنجليزية مطلوب.",
+      "descriptionArRequired": "الوصف بالعربية مطلوب.",
       "unitRequired": "اختر وحدة.",
       "allocationTypeRequired": "اختر نوع الرصيد.",
       "allocationAmountRequired": "مقدار الرصيد مطلوب.",

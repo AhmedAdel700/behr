@@ -13,7 +13,7 @@ const Textarea = React.forwardRef<
       data-slot="textarea"
       className={cn(
         inputBaseClassName,
-        "field-sizing-content min-h-24 h-auto resize-y py-2.5",
+        "field-sizing-content min-h-[9.375rem] h-auto resize-y py-2.5",
         className
       )}
       {...props}

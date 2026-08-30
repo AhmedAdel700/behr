@@ -479,8 +479,10 @@
     "cancel": "Cancel",
     "success": "Leave type created successfully.",
     "fields": {
-      "name": "Leave type name",
-      "description": "Description",
+      "nameEn": "Leave type name (English)",
+      "nameAr": "Leave type name (Arabic)",
+      "descriptionEn": "Description (English)",
+      "descriptionAr": "Description (Arabic)",
       "unit": "Unit",
       "allocationType": "Allocation type",
       "allocationAmount": "Allocation amount",
@@ -492,8 +494,10 @@
       "isActive": "Active"
     },
     "placeholders": {
-      "name": "e.g. Annual Leave",
-      "description": "e.g. Paid annual vacation leave",
+      "nameEn": "e.g. Annual Leave",
+      "nameAr": "مثال: إجازة سنوية",
+      "descriptionEn": "e.g. Paid annual vacation leave",
+      "descriptionAr": "مثال: إجازة سنوية مدفوعة الأجر",
       "unit": "Select unit",
       "allocationType": "Select allocation",
       "allocationAmount": "e.g. 21",
@@ -518,9 +522,12 @@
       }
     },
     "errors": {
-      "nameRequired": "Leave type name is required.",
-      "nameMin": "Leave type name must be at least 2 characters.",
-      "descriptionRequired": "Description is required.",
+      "nameEnRequired": "English leave type name is required.",
+      "nameEnMin": "English leave type name must be at least 2 characters.",
+      "nameArRequired": "Arabic leave type name is required.",
+      "nameArMin": "Arabic leave type name must be at least 2 characters.",
+      "descriptionEnRequired": "English description is required.",
+      "descriptionArRequired": "Arabic description is required.",
       "unitRequired": "Select a unit.",
       "allocationTypeRequired": "Select an allocation type.",
       "allocationAmountRequired": "Allocation amount is required.",

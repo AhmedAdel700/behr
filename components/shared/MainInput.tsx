@@ -136,7 +136,7 @@ export const MainInput = React.forwardRef<
     hasStart &&
       (isTel ? sizing.padIconStart[iconDir] : sizing.padStart),
     hasEnd && (isTel ? sizing.padIconEnd[iconDir] : sizing.padEnd),
-    as === "textarea" && "min-h-24 h-auto py-2.5",
+    as === "textarea" && "min-h-[9.375rem] h-auto py-2.5",
     className
   );
 

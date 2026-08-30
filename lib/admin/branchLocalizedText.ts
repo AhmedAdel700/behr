@@ -9,7 +9,7 @@ export function emptyLocalizedText(): LocalizedTextPayload {
 }
 
 export function parseLocalizedField(
-  value: LocalizedApiValue | null | undefined,
+  value: unknown,
   lang: string,
 ): { display: string; localized: LocalizedTextPayload } {
   const fromObject = readLocalizedObject(value);

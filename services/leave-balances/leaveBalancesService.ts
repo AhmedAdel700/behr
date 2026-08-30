@@ -65,7 +65,7 @@ export async function fetchLeaveBalances(
     "Failed to load leave balances.",
   );
 
-  return mapLeaveBalancesFromApi(data);
+  return mapLeaveBalancesFromApi(data, lang);
 }
 
 export async function assignLeaveBalancesByBranchRequest(

@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import {
   leaveTypeItemUrl,
   leaveTypesCollectionUrl,
@@ -17,10 +18,6 @@ import {
 } from "@/types/LeaveTypesApiTypes";
 
 const api = createApiHttp(LeaveTypesApiError, "leave types server");
-
-function normalizeText(value: string | null | undefined): string {
-  return value ?? "";
-}
 
 function parseCount(value: string | undefined): number {
   if (!value) {
@@ -43,11 +40,19 @@ function isLeaveTypeGenderRestriction(
   return value === "none" || value === "female" || value === "male";
 }
 
-function mapLeaveTypeFromApi(record: LeaveTypeApiRecord): LeaveTypeRecord {
+function mapLeaveTypeFromApi(
+  record: LeaveTypeApiRecord,
+  lang: string,
+): LeaveTypeRecord {
+  const name = parseLocalizedField(record.name, lang);
+  const description = parseLocalizedField(record.description, lang);
+
   return {
     id: String(record.id),
-    name: normalizeText(record.name),
-    description: normalizeText(record.description),
+    name: name.display,
+    description: description.display,
+    nameLocalized: name.localized,
+    descriptionLocalized: description.localized,
     unit: parseLeaveTypeUnit(record.unit),
     allocationType: isLeaveTypeAllocationType(record.allocation_type)
       ? record.allocation_type
@@ -97,7 +102,7 @@ export async function fetchLeaveTypes(
   }
 
   return {
-    leaveTypes: data.map(mapLeaveTypeFromApi),
+    leaveTypes: data.map((record) => mapLeaveTypeFromApi(record, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -127,7 +132,7 @@ export async function fetchLeaveType(
     "Failed to load leave type.",
   );
 
-  return mapLeaveTypeFromApi(data);
+  return mapLeaveTypeFromApi(data, lang);
 }
 
 const MAX_LEAVE_TYPE_PAGES = 50;
@@ -195,7 +200,7 @@ export async function createLeaveTypeRequest(
 
   return {
     message,
-    leaveType: mapLeaveTypeFromApi(data),
+    leaveType: mapLeaveTypeFromApi(data, lang),
   };
 }
 
@@ -229,7 +234,7 @@ export async function updateLeaveTypeRequest(
 
   return {
     message,
-    leaveType: mapLeaveTypeFromApi(data),
+    leaveType: mapLeaveTypeFromApi(data, lang),
   };
 }
 

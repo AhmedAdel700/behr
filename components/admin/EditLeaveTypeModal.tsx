@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useUpdateLeaveTypeMutation } from "@/app/store/api/leave-types/leaveTypesApi";
+import { useUpdateLeaveTypeMutation, useGetLeaveTypeQuery } from "@/app/store/api/leave-types/leaveTypesApi";
 import {
   getLeaveTypeMutationError,
   LeaveTypeFormFields,
@@ -55,8 +55,8 @@ interface EditLeaveTypeFormProps {
 
 function toFormValues(leaveType: LeaveTypeRecord): LeaveTypeFormValues {
   return {
-    name: leaveType.name,
-    description: leaveType.description,
+    name: { ...leaveType.nameLocalized },
+    description: { ...leaveType.descriptionLocalized },
     unit: leaveType.unit,
     allocationType: leaveType.allocationType,
     allocationAmount: String(leaveType.allocationAmount),
@@ -82,13 +82,20 @@ function EditLeaveTypeForm({
   const closeModal = useGenieModalClose(onClose);
   const [updateLeaveTypeMutation, { isLoading: submitting }] =
     useUpdateLeaveTypeMutation();
+  const { data: leaveTypeDetails } = useGetLeaveTypeQuery(leaveType.id, {
+    skip: !open,
+  });
+  const resolvedLeaveType = leaveTypeDetails ?? leaveType;
 
   const schema = useMemo(
     () =>
       createLeaveTypeSchema({
-        nameRequired: t("errors.nameRequired"),
-        nameMin: t("errors.nameMin"),
-        descriptionRequired: t("errors.descriptionRequired"),
+        nameEnRequired: t("errors.nameEnRequired"),
+        nameEnMin: t("errors.nameEnMin"),
+        nameArRequired: t("errors.nameArRequired"),
+        nameArMin: t("errors.nameArMin"),
+        descriptionEnRequired: t("errors.descriptionEnRequired"),
+        descriptionArRequired: t("errors.descriptionArRequired"),
         unitRequired: t("errors.unitRequired"),
         allocationTypeRequired: t("errors.allocationTypeRequired"),
         allocationAmountRequired: t("errors.allocationAmountRequired"),
@@ -111,13 +118,13 @@ function EditLeaveTypeForm({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onSubmit",
-    defaultValues: toFormValues(leaveType),
+    defaultValues: toFormValues(resolvedLeaveType),
   });
 
   useEffect(() => {
     if (!open) return;
-    reset(toFormValues(leaveType));
-  }, [open, leaveType, reset]);
+    reset(toFormValues(resolvedLeaveType));
+  }, [open, resolvedLeaveType, reset]);
 
   const onSubmit = async (values: LeaveTypeFormValues): Promise<void> => {
     try {

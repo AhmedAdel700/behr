@@ -1,10 +1,17 @@
 import { z } from "zod";
+import {
+  emptyLocalizedText,
+  trimLocalizedText,
+} from "@/lib/admin/branchLocalizedText";
 import type { LeaveTypePayload } from "@/types/LeaveTypesApiTypes";
 
 export type LeaveTypeFormErrorMessages = {
-  nameRequired: string;
-  nameMin: string;
-  descriptionRequired: string;
+  nameEnRequired: string;
+  nameEnMin: string;
+  nameArRequired: string;
+  nameArMin: string;
+  descriptionEnRequired: string;
+  descriptionArRequired: string;
   unitRequired: string;
   allocationTypeRequired: string;
   allocationAmountRequired: string;
@@ -19,11 +26,20 @@ const booleanSelect = z.enum(["true", "false"]);
 export function createLeaveTypeSchema(errors: LeaveTypeFormErrorMessages) {
   return z
     .object({
-      name: z
-        .string()
-        .min(1, { error: errors.nameRequired })
-        .min(2, { error: errors.nameMin }),
-      description: z.string().min(1, { error: errors.descriptionRequired }),
+      name: z.object({
+        en: z
+          .string()
+          .min(1, { error: errors.nameEnRequired })
+          .min(2, { error: errors.nameEnMin }),
+        ar: z
+          .string()
+          .min(1, { error: errors.nameArRequired })
+          .min(2, { error: errors.nameArMin }),
+      }),
+      description: z.object({
+        en: z.string().min(1, { error: errors.descriptionEnRequired }),
+        ar: z.string().min(1, { error: errors.descriptionArRequired }),
+      }),
       unit: z.enum(["day", "hour"], { error: errors.unitRequired }),
       allocationType: z.enum(["yearly", "monthly", "none"], {
         error: errors.allocationTypeRequired,
@@ -78,8 +94,8 @@ export type LeaveTypeFormValues = z.infer<
 
 export function emptyLeaveTypeFormValues(): LeaveTypeFormValues {
   return {
-    name: "",
-    description: "",
+    name: emptyLocalizedText(),
+    description: emptyLocalizedText(),
     unit: "day",
     allocationType: "yearly",
     allocationAmount: "1",
@@ -96,8 +112,8 @@ export function toLeaveTypePayload(values: LeaveTypeFormValues): LeaveTypePayloa
   const canCarryForward = values.canCarryForward === "true";
 
   return {
-    name: values.name.trim(),
-    description: values.description.trim(),
+    name: trimLocalizedText(values.name),
+    description: trimLocalizedText(values.description),
     unit: values.unit,
     allocation_type: values.allocationType,
     allocation_amount: Number(values.allocationAmount),
