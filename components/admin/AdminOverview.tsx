@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useRef, type ReactElement, type ReactNode } from "react";
+import {
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { useDispatch } from "react-redux";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -18,6 +24,11 @@ import { MainButton } from "@/components/shared/MainButton";
 import { Link } from "@/i18n/navigation";
 import { formatLeaveRequestRange } from "@/lib/employee/leaveRequestDisplay";
 import { resolveTimeLocale } from "@/lib/formatTime";
+import {
+  getAdminSessionSnapshot,
+  subscribeAdminSession,
+} from "@/lib/admin/adminSessionStore";
+import { hasPermission } from "@/lib/auth/permissions";
 import type { OverviewResult } from "@/types/OverviewApiTypes";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -165,6 +176,7 @@ function formatOverviewLeaveRange(
 
 function buildStatCards(
   overview: OverviewResult,
+  permissions: readonly string[],
   translate: {
     (key: "employees"): string;
     (key: "employeesHint"): string;
@@ -207,7 +219,10 @@ function buildStatCards(
     });
   }
 
-  if (counts.branches > 0) {
+  if (
+    counts.branches > 0 &&
+    hasPermission(permissions, "branches.view")
+  ) {
     statCards.push({
       key: "branches",
       label: translate("branches"),
@@ -231,6 +246,13 @@ export function AdminOverview({
   const dispatch = useDispatch<AppDispatch>();
   const didSeedCache = useRef(false);
 
+  useSyncExternalStore(
+    subscribeAdminSession,
+    getAdminSessionSnapshot,
+    getAdminSessionSnapshot,
+  );
+  const admin = getAdminSessionSnapshot();
+
   if (initialData && !didSeedCache.current) {
     didSeedCache.current = true;
     dispatch(
@@ -252,8 +274,9 @@ export function AdminOverview({
     (isLoading || isFetching) && !(hasSeededInitialData && overview);
 
   const statCards = useMemo(
-    () => (overview ? buildStatCards(overview, t) : []),
-    [overview, t],
+    () =>
+      overview ? buildStatCards(overview, admin.permissions, t) : [],
+    [overview, admin.permissions, t],
   );
 
   if (isOverviewLoading && !overview) {
