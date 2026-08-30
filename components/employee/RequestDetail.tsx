@@ -41,6 +41,7 @@ export function RequestDetail({
   const dispatch = useDispatch<AppDispatch>();
   const didSeedCache = useRef(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const cancelRequestTriggerRef = useRef<HTMLButtonElement>(null);
   const [cancelLeaveRequest, { isLoading: cancelling }] =
     useCancelLeaveRequestMutation();
 
@@ -143,6 +144,7 @@ export function RequestDetail({
                   {t("edit")}
                 </MainButton>
                 <MainButton
+                  ref={cancelRequestTriggerRef}
                   variant="delete-soft"
                   size="sm"
                   onClick={() => setCancelOpen(true)}
@@ -226,6 +228,7 @@ export function RequestDetail({
         }}
         onCancel={() => setCancelOpen(false)}
         loading={cancelling}
+        triggerRef={cancelRequestTriggerRef}
       />
     </div>
   );

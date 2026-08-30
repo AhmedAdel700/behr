@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   type ReactElement,
+  type RefObject,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,12 +39,14 @@ interface AssignLeaveBalancesModalProps {
   open: boolean;
   mode: AssignLeaveBalancesMode;
   onClose: () => void;
+  triggerRef?: RefObject<HTMLElement | null>;
 }
 
 export function AssignLeaveBalancesModal({
   open,
   mode,
   onClose,
+  triggerRef,
 }: AssignLeaveBalancesModalProps): ReactElement | null {
   const t = useTranslations("admin.leaveTypesPage.assign");
 
@@ -51,6 +54,7 @@ export function AssignLeaveBalancesModal({
     <ModalShell
       open={open}
       onClose={onClose}
+      triggerRef={triggerRef}
       backdropAriaLabel={t("cancel")}
       panelClassName="overflow-visible"
     >

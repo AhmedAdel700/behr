@@ -71,6 +71,10 @@ export function AdminLeaveTypesPage({
     useModalTriggerRef();
   const { triggerRef: deleteLeaveTypeTriggerRef, bindTrigger: bindDeleteLeaveTypeTrigger } =
     useModalTriggerRef();
+  const {
+    triggerRef: assignLeaveBalancesTriggerRef,
+    bindTrigger: bindAssignLeaveBalancesTrigger,
+  } = useModalTriggerRef();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -172,7 +176,10 @@ export function AdminLeaveTypesPage({
                 variant="outline"
                 size="sm"
                 startIcon={<Building2 className="size-4" />}
-                onClick={() => setAssignMode("department")}
+                onClick={(event) => {
+                  bindAssignLeaveBalancesTrigger(event);
+                  setAssignMode("department");
+                }}
               >
                 {t("assignByDepartment")}
               </MainButton>
@@ -180,7 +187,10 @@ export function AdminLeaveTypesPage({
                 variant="outline"
                 size="sm"
                 startIcon={<MapPinned className="size-4" />}
-                onClick={() => setAssignMode("branch")}
+                onClick={(event) => {
+                  bindAssignLeaveBalancesTrigger(event);
+                  setAssignMode("branch");
+                }}
               >
                 {t("assignByBranch")}
               </MainButton>
@@ -331,6 +341,7 @@ export function AdminLeaveTypesPage({
         open={assignMode !== null}
         mode={assignMode ?? "branch"}
         onClose={() => setAssignMode(null)}
+        triggerRef={assignLeaveBalancesTriggerRef}
       />
 
       <CreateLeaveTypeModal
