@@ -1,8 +1,14 @@
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import type {
+  BranchesPaginationMeta,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+} from "@/types/BranchesApiTypes";
+
+export type { LocalizedApiValue, LocalizedTextPayload };
 
 export interface PositionApiRecord {
   id: number;
-  name: string;
+  name: LocalizedApiValue;
   created_at: string;
   updated_at: string;
 }
@@ -10,6 +16,7 @@ export interface PositionApiRecord {
 export interface PositionRecord {
   id: string;
   name: string;
+  nameLocalized?: LocalizedTextPayload;
   slug?: string;
   createdAt?: string;
   updatedAt?: string;

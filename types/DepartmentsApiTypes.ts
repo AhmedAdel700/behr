@@ -8,9 +8,9 @@ export type { LocalizedApiValue, LocalizedTextPayload };
 
 export interface DepartmentApiBranch {
   id: number;
-  name: string;
-  city: string | null;
-  address: string | null;
+  name: LocalizedApiValue;
+  city: LocalizedApiValue | null;
+  address: LocalizedApiValue | null;
   phone: string | null;
   email: string | null;
   latitude: number | null;

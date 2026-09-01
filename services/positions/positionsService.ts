@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import {
   positionItemUrl,
   positionsCollectionUrl,
@@ -17,14 +18,16 @@ import { PositionsApiError } from "@/types/PositionsApiTypes";
 
 const api = createApiHttp(PositionsApiError, "positions server");
 
-function normalizeText(value: string | null | undefined): string {
-  return value ?? "";
-}
+function mapPositionFromApi(
+  record: PositionApiRecord,
+  lang: string,
+): PositionRecord {
+  const name = parseLocalizedField(record.name, lang);
 
-function mapPositionFromApi(record: PositionApiRecord): PositionRecord {
   return {
     id: String(record.id),
-    name: normalizeText(record.name),
+    name: name.display,
+    nameLocalized: name.localized,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -60,7 +63,7 @@ export async function fetchPositions(
   }
 
   return {
-    positions: data.map(mapPositionFromApi),
+    positions: data.map((record) => mapPositionFromApi(record, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -125,7 +128,7 @@ export async function createPositionRequest(
 
   return {
     message,
-    position: mapPositionFromApi(data),
+    position: mapPositionFromApi(data, lang),
   };
 }
 
@@ -159,7 +162,7 @@ export async function updatePositionRequest(
 
   return {
     message,
-    position: mapPositionFromApi(data),
+    position: mapPositionFromApi(data, lang),
   };
 }
 
