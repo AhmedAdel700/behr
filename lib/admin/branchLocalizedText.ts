@@ -1,7 +1,7 @@
 import type {
   BranchPayload,
+  LocalizedApiObject,
   LocalizedTextPayload,
-  LocalizedApiValue,
 } from "@/types/BranchesApiTypes";
 
 export function emptyLocalizedText(): LocalizedTextPayload {

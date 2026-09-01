@@ -1,10 +1,20 @@
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
 import type {
+  ApiBooleanValue,
+  ApiCountValue,
+  ApiItemResponse,
+  ApiListResponse,
+  ApiPaginationMeta,
+  LocalizedApiObject,
   LocalizedApiValue,
   LocalizedTextPayload,
-} from "@/types/BranchesApiTypes";
+} from "@/types/ApiSharedTypes";
 
-export type { LocalizedApiValue, LocalizedTextPayload };
+export type {
+  ApiCountValue,
+  LocalizedApiObject,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+};
 
 export type LeaveTypeUnit = "day" | "hour";
 export type LeaveTypeAllocationType = "yearly" | "monthly" | "none";
@@ -31,16 +41,16 @@ export interface LeaveTypeApiRecord {
   id: number;
   name: LocalizedApiValue;
   description: LocalizedApiValue | null;
-  unit: LeaveTypeUnit;
-  allocation_type: LeaveTypeAllocationType;
-  allocation_amount: number;
-  can_carry_forward: boolean;
-  carry_forward_limit: number | null;
-  is_paid: boolean;
-  requires_approval: boolean;
-  gender_restriction: LeaveTypeGenderRestriction;
-  is_active: boolean;
-  leave_requests_count?: string;
+  unit: string;
+  allocation_type: string;
+  allocation_amount: number | string;
+  can_carry_forward: ApiBooleanValue;
+  carry_forward_limit: number | string | null;
+  is_paid: ApiBooleanValue;
+  requires_approval: ApiBooleanValue;
+  gender_restriction: string;
+  is_active: ApiBooleanValue;
+  leave_requests_count?: ApiCountValue;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +75,8 @@ export interface LeaveTypeRecord {
   updatedAt: string;
 }
 
+export type LeaveTypesPaginationMeta = ApiPaginationMeta;
+
 export interface LeaveTypesListQueryParams {
   search?: string;
   page?: number;
@@ -72,8 +84,12 @@ export interface LeaveTypesListQueryParams {
 
 export interface LeaveTypesListResult {
   leaveTypes: LeaveTypeRecord[];
-  meta: BranchesPaginationMeta;
+  meta: LeaveTypesPaginationMeta;
 }
+
+export type LeaveTypesListApiResponse = ApiListResponse<LeaveTypeApiRecord>;
+
+export type LeaveTypeApiResponse = ApiItemResponse<LeaveTypeApiRecord>;
 
 export interface LeaveTypePayload {
   name: LocalizedTextPayload;

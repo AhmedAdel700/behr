@@ -5,6 +5,7 @@ import {
 } from "@services/departments/departmentsPaths";
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
+import { parseApiCount } from "@services/http/parseApiValues";
 import type {
   DepartmentApiRecord,
   DepartmentDeleteResult,
@@ -20,11 +21,6 @@ const api = createApiHttp(DepartmentsApiError, "departments server");
 
 function normalizeText(value: string | null | undefined): string {
   return value ?? "";
-}
-
-function parseCount(value: string): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function mapDepartmentFromApi(
@@ -43,7 +39,7 @@ function mapDepartmentFromApi(
     managerUserId: record.manager ? String(record.manager.id) : "",
     managerName: normalizeText(record.manager?.full_name),
     managerEmail: normalizeText(record.manager?.email),
-    usersCount: parseCount(record.users_count),
+    usersCount: parseApiCount(record.users_count),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };

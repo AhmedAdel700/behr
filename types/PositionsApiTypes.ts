@@ -1,10 +1,17 @@
 import type {
-  BranchesPaginationMeta,
+  ApiItemResponse,
+  ApiListResponse,
+  ApiPaginationMeta,
+  LocalizedApiObject,
   LocalizedApiValue,
   LocalizedTextPayload,
-} from "@/types/BranchesApiTypes";
+} from "@/types/ApiSharedTypes";
 
-export type { LocalizedApiValue, LocalizedTextPayload };
+export type {
+  LocalizedApiObject,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+};
 
 export interface PositionApiRecord {
   id: number;
@@ -16,11 +23,13 @@ export interface PositionApiRecord {
 export interface PositionRecord {
   id: string;
   name: string;
-  nameLocalized?: LocalizedTextPayload;
+  nameLocalized: LocalizedTextPayload;
   slug?: string;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type PositionsPaginationMeta = ApiPaginationMeta;
 
 export interface PositionsListQueryParams {
   search?: string;
@@ -29,8 +38,12 @@ export interface PositionsListQueryParams {
 
 export interface PositionsListResult {
   positions: PositionRecord[];
-  meta: BranchesPaginationMeta;
+  meta: PositionsPaginationMeta;
 }
+
+export type PositionsListApiResponse = ApiListResponse<PositionApiRecord>;
+
+export type PositionApiResponse = ApiItemResponse<PositionApiRecord>;
 
 export interface PositionPayload {
   name: string;

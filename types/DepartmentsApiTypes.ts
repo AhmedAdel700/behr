@@ -1,10 +1,19 @@
 import type {
-  BranchesPaginationMeta,
+  ApiCountValue,
+  ApiItemResponse,
+  ApiListResponse,
+  ApiPaginationMeta,
+  LocalizedApiObject,
   LocalizedApiValue,
   LocalizedTextPayload,
-} from "@/types/BranchesApiTypes";
+} from "@/types/ApiSharedTypes";
 
-export type { LocalizedApiValue, LocalizedTextPayload };
+export type {
+  ApiCountValue,
+  LocalizedApiObject,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+};
 
 export interface DepartmentApiBranch {
   id: number;
@@ -37,7 +46,7 @@ export interface DepartmentApiRecord {
   name: LocalizedApiValue;
   branch: DepartmentApiBranch | null;
   manager: DepartmentApiManager | null;
-  users_count: string;
+  users_count: ApiCountValue;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +66,8 @@ export interface DepartmentRecord {
   updatedAt: string;
 }
 
+export type DepartmentsPaginationMeta = ApiPaginationMeta;
+
 export interface DepartmentsListQueryParams {
   search?: string;
   branch_id?: string;
@@ -65,8 +76,12 @@ export interface DepartmentsListQueryParams {
 
 export interface DepartmentsListResult {
   departments: DepartmentRecord[];
-  meta: BranchesPaginationMeta;
+  meta: DepartmentsPaginationMeta;
 }
+
+export type DepartmentsListApiResponse = ApiListResponse<DepartmentApiRecord>;
+
+export type DepartmentApiResponse = ApiItemResponse<DepartmentApiRecord>;
 
 export interface DepartmentPayload {
   name: LocalizedTextPayload;

@@ -25,10 +25,11 @@ import { MainInput } from "@/components/shared/MainInput";
 import {
   DEFAULT_BRANCH_LOCATION,
   formatBranchCoordinates,
-  reverseGeocodeAddress,
+  reverseGeocodeLocalizedAddress,
   searchBranchPlaces,
   type BranchMapLocation,
   type BranchPlaceSearchResult,
+  type LocalizedAddressResolution,
 } from "@/lib/admin/branchLocations";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,7 @@ export interface MapLocationPickerProps {
   /** Optional tooltip heading (e.g. branch name). */
   title?: string;
   /** Called when a resolved/search address is available. */
-  onResolvedAddress?: (address: string) => void;
+  onResolvedAddress?: (address: LocalizedAddressResolution) => void;
   /** Label while reverse-geocoding the pin. */
   findingAddressLabel?: string;
   searchPlaceholder?: string;
@@ -156,7 +157,8 @@ export function MapLocationPicker({
 
   const typedAddress = address?.trim() ?? "";
   const tooltipTitle = title?.trim() ?? "";
-  const [resolvedAddress, setResolvedAddress] = useState<string>("");
+  const [resolvedAddress, setResolvedAddress] =
+    useState<LocalizedAddressResolution | null>(null);
   const [resolvingAddress, setResolvingAddress] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BranchPlaceSearchResult[]>(
@@ -171,7 +173,7 @@ export function MapLocationPicker({
 
   useEffect(() => {
     if (typedAddress.length > 0) {
-      setResolvedAddress("");
+      setResolvedAddress(null);
       setResolvingAddress(false);
       return;
     }
@@ -180,18 +182,18 @@ export function MapLocationPicker({
     setResolvingAddress(true);
 
     const timer = window.setTimeout(() => {
-      void reverseGeocodeAddress(location, locale)
+      void reverseGeocodeLocalizedAddress(location)
         .then((result) => {
           if (cancelled) return;
-          const nextAddress = result ?? formatBranchCoordinates(location);
-          setResolvedAddress(result ?? "");
-          onResolvedAddressRef.current?.(nextAddress);
+          setResolvedAddress(result);
+          onResolvedAddressRef.current?.(result);
         })
         .catch(() => {
           if (cancelled) return;
           const fallback = formatBranchCoordinates(location);
-          setResolvedAddress("");
-          onResolvedAddressRef.current?.(fallback);
+          const nextAddress = { en: fallback, ar: fallback };
+          setResolvedAddress(nextAddress);
+          onResolvedAddressRef.current?.(nextAddress);
         })
         .finally(() => {
           if (cancelled) return;
@@ -203,7 +205,7 @@ export function MapLocationPicker({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [location.latitude, location.longitude, typedAddress, locale]);
+  }, [location.latitude, location.longitude, typedAddress]);
 
   useEffect(() => {
     if (!interactive) return;
@@ -249,9 +251,16 @@ export function MapLocationPicker({
     };
   }, [interactive, locale, searchQuery]);
 
+  const localizedResolvedAddress =
+    resolvedAddress === null
+      ? ""
+      : locale === "ar"
+        ? resolvedAddress.ar
+        : resolvedAddress.en;
+
   const tooltipAddress =
     typedAddress ||
-    resolvedAddress ||
+    localizedResolvedAddress ||
     (resolvingAddress
       ? findingAddressLabel
       : formatBranchCoordinates(location));
@@ -267,11 +276,10 @@ export function MapLocationPicker({
     setSearchResults([]);
     setSearchOpen(false);
     setSearching(false);
-    setResolvedAddress(place.label);
+    setResolvedAddress(null);
     setViewZoom(16);
     onChange?.(place.location);
     onPlaceSelect?.(place);
-    onResolvedAddress?.(place.label);
 
     const active = document.activeElement;
     if (active instanceof HTMLElement) {

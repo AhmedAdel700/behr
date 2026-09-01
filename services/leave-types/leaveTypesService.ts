@@ -6,10 +6,17 @@ import {
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import {
+  parseApiBoolean,
+  parseApiCount,
+  parseApiNumber,
+} from "@services/http/parseApiValues";
+import {
   LeaveTypesApiError,
   parseLeaveTypeUnit,
+  type LeaveTypeAllocationType,
   type LeaveTypeApiRecord,
   type LeaveTypeDeleteResult,
+  type LeaveTypeGenderRestriction,
   type LeaveTypeMutationResult,
   type LeaveTypePayload,
   type LeaveTypeRecord,
@@ -19,24 +26,15 @@ import {
 
 const api = createApiHttp(LeaveTypesApiError, "leave types server");
 
-function parseCount(value: string | undefined): number {
-  if (!value) {
-    return 0;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function isLeaveTypeAllocationType(
   value: unknown,
-): value is LeaveTypeApiRecord["allocation_type"] {
+): value is LeaveTypeAllocationType {
   return value === "yearly" || value === "monthly" || value === "none";
 }
 
 function isLeaveTypeGenderRestriction(
   value: unknown,
-): value is LeaveTypeApiRecord["gender_restriction"] {
+): value is LeaveTypeGenderRestriction {
   return value === "none" || value === "female" || value === "male";
 }
 
@@ -57,16 +55,19 @@ function mapLeaveTypeFromApi(
     allocationType: isLeaveTypeAllocationType(record.allocation_type)
       ? record.allocation_type
       : "none",
-    allocationAmount: record.allocation_amount,
-    canCarryForward: Boolean(record.can_carry_forward),
-    carryForwardLimit: record.carry_forward_limit,
-    isPaid: Boolean(record.is_paid),
-    requiresApproval: Boolean(record.requires_approval),
+    allocationAmount: parseApiNumber(record.allocation_amount),
+    canCarryForward: parseApiBoolean(record.can_carry_forward),
+    carryForwardLimit:
+      record.carry_forward_limit === null
+        ? null
+        : parseApiNumber(record.carry_forward_limit),
+    isPaid: parseApiBoolean(record.is_paid),
+    requiresApproval: parseApiBoolean(record.requires_approval),
     genderRestriction: isLeaveTypeGenderRestriction(record.gender_restriction)
       ? record.gender_restriction
       : "none",
-    isActive: Boolean(record.is_active),
-    leaveRequestsCount: parseCount(record.leave_requests_count),
+    isActive: parseApiBoolean(record.is_active),
+    leaveRequestsCount: parseApiCount(record.leave_requests_count),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };

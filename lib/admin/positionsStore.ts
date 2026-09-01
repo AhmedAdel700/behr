@@ -1,4 +1,5 @@
 import { MOCK_POSITIONS } from "@/lib/admin/demo-positions";
+import { emptyLocalizedText } from "@/lib/admin/branchLocalizedText";
 import type { PositionRecord } from "@/types/PositionsApiTypes";
 
 export interface CreatePositionInput {
@@ -84,10 +85,14 @@ export function createPosition(
   const name = input.name.trim();
   if (!name || isDuplicateName(name, positions)) return undefined;
 
+  const nameLocalized = emptyLocalizedText();
+  nameLocalized.en = name;
+
   const next: PositionRecord = {
     id: `pos-${Date.now()}`,
     slug: buildUniquePositionSlug(name, positions),
     name,
+    nameLocalized,
   };
 
   positions = [...positions, next];
@@ -108,9 +113,15 @@ export function updatePosition(
   const name = input.name.trim();
   if (!name || isDuplicateName(name, positions, id)) return undefined;
 
+  const nameLocalized = {
+    ...current.nameLocalized,
+    en: name,
+  };
+
   const next: PositionRecord = {
     ...current,
     name,
+    nameLocalized,
     slug: buildUniquePositionSlug(name, positions, id),
   };
 

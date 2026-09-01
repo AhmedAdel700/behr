@@ -1,12 +1,8 @@
 import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import { slugifyBranchName } from "@/lib/admin/demo-org-data";
+import { parseApiCount } from "@services/http/parseApiValues";
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
 import type { BranchApiRecord } from "@/types/BranchesApiTypes";
-
-function parseCount(value: string): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function normalizeBranchText(value: string | null | undefined): string {
   return value ?? "";
@@ -34,8 +30,8 @@ export function mapBranchFromApi(
     latitude: record.latitude ?? 0,
     longitude: record.longitude ?? 0,
     createdAt: record.created_at.slice(0, 10),
-    departmentsCount: parseCount(record.departments_count),
-    usersCount: parseCount(record.users_count),
+    departmentsCount: parseApiCount(record.departments_count),
+    usersCount: parseApiCount(record.users_count),
   };
 }
 

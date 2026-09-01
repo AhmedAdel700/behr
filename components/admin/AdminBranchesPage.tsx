@@ -609,7 +609,10 @@ function EditBranchDialog({
           onResolvedAddress={(nextAddress) =>
             setDraft((prev) => ({
               ...prev,
-              address: { ...prev.address, en: nextAddress },
+              address: {
+                en: nextAddress.en,
+                ar: nextAddress.ar,
+              },
             }))
           }
         />

@@ -3,6 +3,11 @@ export interface BranchMapLocation {
   longitude: number;
 }
 
+export interface LocalizedAddressResolution {
+  en: string;
+  ar: string;
+}
+
 /** Default map center (Riyadh). */
 export const DEFAULT_BRANCH_LOCATION: BranchMapLocation = {
   latitude: 24.7136,
@@ -86,6 +91,21 @@ export async function reverseGeocodeAddress(
     localityLanguage,
     separator,
   ).catch(() => null);
+}
+
+export async function reverseGeocodeLocalizedAddress(
+  location: BranchMapLocation,
+): Promise<LocalizedAddressResolution> {
+  const fallback = formatBranchCoordinates(location);
+  const [en, ar] = await Promise.all([
+    reverseGeocodeAddress(location, "en"),
+    reverseGeocodeAddress(location, "ar"),
+  ]);
+
+  return {
+    en: en ?? fallback,
+    ar: ar ?? fallback,
+  };
 }
 
 async function reverseGeocodeNominatim(

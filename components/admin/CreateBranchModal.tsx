@@ -214,7 +214,11 @@ function CreateBranchForm({ open, onClose }: CreateBranchFormProps): ReactElemen
                     lngField.onChange(place.location.longitude);
                   }}
                   onResolvedAddress={(nextAddress) => {
-                    setValue("address.en", nextAddress, {
+                    setValue("address.en", nextAddress.en, {
+                      shouldDirty: true,
+                      shouldValidate: isSubmitted,
+                    });
+                    setValue("address.ar", nextAddress.ar, {
                       shouldDirty: true,
                       shouldValidate: isSubmitted,
                     });

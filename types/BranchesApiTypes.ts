@@ -1,11 +1,21 @@
 import type { AdminBranchRecord } from "@/types/AdminApiTypes";
+import type {
+  ApiCountValue,
+  ApiItemResponse,
+  ApiListResponse,
+  ApiPaginationMeta,
+  LocalizedApiObject,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+} from "@/types/ApiSharedTypes";
 
-export interface LocalizedTextPayload {
-  en: string;
-  ar: string;
-}
-
-export type LocalizedApiValue = string | LocalizedTextPayload;
+export type {
+  ApiCountValue,
+  ApiPaginationMeta,
+  LocalizedApiObject,
+  LocalizedApiValue,
+  LocalizedTextPayload,
+};
 
 export interface BranchApiRecord {
   id: number;
@@ -17,18 +27,13 @@ export interface BranchApiRecord {
   latitude: number | null;
   longitude: number | null;
   radius_meters: number | null;
-  departments_count: string;
-  users_count: string;
+  departments_count: ApiCountValue;
+  users_count: ApiCountValue;
   created_at: string;
   updated_at: string;
 }
 
-export interface BranchesPaginationMeta {
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-}
+export type BranchesPaginationMeta = ApiPaginationMeta;
 
 export interface BranchesListQueryParams {
   search?: string;
@@ -45,18 +50,9 @@ export interface BranchPayload {
   address: LocalizedTextPayload;
 }
 
-export interface BranchApiResponse {
-  success: boolean;
-  message: string;
-  data: BranchApiRecord | null;
-}
+export type BranchApiResponse = ApiItemResponse<BranchApiRecord>;
 
-export interface BranchesListApiResponse {
-  success: boolean;
-  message: string;
-  data: BranchApiRecord[] | null;
-  meta: BranchesPaginationMeta;
-}
+export type BranchesListApiResponse = ApiListResponse<BranchApiRecord>;
 
 export interface BranchesListResult {
   branches: AdminBranchRecord[];

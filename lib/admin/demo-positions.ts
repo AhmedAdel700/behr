@@ -1,23 +1,36 @@
+import { emptyLocalizedText } from "@/lib/admin/branchLocalizedText";
 import type { PositionRecord } from "@/types/PositionsApiTypes";
+
+function demoPosition(id: string, slug: string, name: string): PositionRecord {
+  const nameLocalized = emptyLocalizedText();
+  nameLocalized.en = name;
+
+  return {
+    id,
+    slug,
+    name,
+    nameLocalized,
+  };
+}
 
 /** Seeded from demo employee job titles so register/edit stay aligned. */
 export const MOCK_POSITIONS: PositionRecord[] = [
-  { id: "pos-1", slug: "hr-specialist", name: "HR Specialist" },
-  { id: "pos-2", slug: "operations-lead", name: "Operations Lead" },
-  { id: "pos-3", slug: "accountant", name: "Accountant" },
-  { id: "pos-4", slug: "software-engineer", name: "Software Engineer" },
-  { id: "pos-5", slug: "sales-executive", name: "Sales Executive" },
-  { id: "pos-6", slug: "recruiter", name: "Recruiter" },
-  { id: "pos-7", slug: "hr-coordinator", name: "HR Coordinator" },
-  { id: "pos-8", slug: "warehouse-supervisor", name: "Warehouse Supervisor" },
-  { id: "pos-9", slug: "financial-analyst", name: "Financial Analyst" },
-  { id: "pos-10", slug: "support-engineer", name: "Support Engineer" },
-  { id: "pos-11", slug: "sales-associate", name: "Sales Associate" },
-  { id: "pos-12", slug: "logistics-coordinator", name: "Logistics Coordinator" },
-  { id: "pos-13", slug: "payroll-assistant", name: "Payroll Assistant" },
-  { id: "pos-14", slug: "budget-analyst", name: "Budget Analyst" },
-  { id: "pos-15", slug: "qa-tester", name: "QA Tester" },
-  { id: "pos-16", slug: "business-developer", name: "Business Developer" },
-  { id: "pos-17", slug: "training-specialist", name: "Training Specialist" },
-  { id: "pos-18", slug: "account-manager", name: "Account Manager" },
+  demoPosition("pos-1", "hr-specialist", "HR Specialist"),
+  demoPosition("pos-2", "operations-lead", "Operations Lead"),
+  demoPosition("pos-3", "accountant", "Accountant"),
+  demoPosition("pos-4", "software-engineer", "Software Engineer"),
+  demoPosition("pos-5", "sales-executive", "Sales Executive"),
+  demoPosition("pos-6", "recruiter", "Recruiter"),
+  demoPosition("pos-7", "hr-coordinator", "HR Coordinator"),
+  demoPosition("pos-8", "warehouse-supervisor", "Warehouse Supervisor"),
+  demoPosition("pos-9", "financial-analyst", "Financial Analyst"),
+  demoPosition("pos-10", "support-engineer", "Support Engineer"),
+  demoPosition("pos-11", "sales-associate", "Sales Associate"),
+  demoPosition("pos-12", "logistics-coordinator", "Logistics Coordinator"),
+  demoPosition("pos-13", "payroll-assistant", "Payroll Assistant"),
+  demoPosition("pos-14", "budget-analyst", "Budget Analyst"),
+  demoPosition("pos-15", "qa-tester", "QA Tester"),
+  demoPosition("pos-16", "business-developer", "Business Developer"),
+  demoPosition("pos-17", "training-specialist", "Training Specialist"),
+  demoPosition("pos-18", "account-manager", "Account Manager"),
 ];
