@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
+import { isTimeBasedLeaveUnit } from "@/types/LeaveTypesApiTypes";
 
 export type RequestFormErrorMessages = {
   fromRequired: string;
@@ -27,7 +28,7 @@ export function createRequestSchema(
     endTime: z.string().optional(),
   });
 
-  if (unit === "hour") {
+  if (isTimeBasedLeaveUnit(unit)) {
     return z
       .object({
         from: z.string().min(1, { error: errors.fromRequired }),

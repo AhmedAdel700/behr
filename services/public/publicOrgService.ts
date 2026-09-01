@@ -1,4 +1,5 @@
 import { createApiHttp } from "@services/http/apiHttp";
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import {
   publicBranchDepartmentsUrl,
   publicBranchesUrl,
@@ -28,10 +29,10 @@ function assertNamedList(
   return data;
 }
 
-function mapNamedRecord(record: PublicNamedApiRecord): PublicNamedRecord {
+function mapNamedRecord(record: PublicNamedApiRecord, lang: string): PublicNamedRecord {
   return {
     id: String(record.id),
-    name: record.name,
+    name: parseLocalizedField(record.name, lang).display,
   };
 }
 
@@ -51,7 +52,9 @@ async function fetchNamedList(
     throw new PublicOrgApiError(api.parseApiMessage(payload, fallbackMessage));
   }
 
-  return assertNamedList(payload, fallbackMessage).map(mapNamedRecord);
+  return assertNamedList(payload, fallbackMessage).map((record) =>
+    mapNamedRecord(record, lang),
+  );
 }
 
 export async function fetchPublicBranches(
@@ -78,8 +81,11 @@ export async function fetchPublicBranchDepartments(
 export function parsePublicNamedList(
   payload: unknown,
   fallbackMessage: string,
+  lang: string,
 ): PublicNamedRecord[] {
-  return assertNamedList(payload, fallbackMessage).map(mapNamedRecord);
+  return assertNamedList(payload, fallbackMessage).map((record) =>
+    mapNamedRecord(record, lang),
+  );
 }
 
 export async function fetchPublicJobPositions(

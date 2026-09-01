@@ -9,7 +9,7 @@ import { registerWithDetails } from "@services/auth/registerService";
 import {
   fetchPublicBranchDepartments,
   fetchPublicBranches,
-  parsePublicNamedList,
+  fetchPublicJobPositions,
 } from "@services/public/publicOrgService";
 import { getRequestLang } from "@/lib/i18n/getRequestLang";
 
@@ -49,9 +49,19 @@ export const publicOrgApi = publicApi.injectEndpoints({
       ],
     }),
     getPublicJobPositions: builder.query<PublicNamedRecord[], void>({
-      query: () => "/public/job-positions",
-      transformResponse: (payload: unknown): PublicNamedRecord[] =>
-        parsePublicNamedList(payload, "Failed to load job positions."),
+      async queryFn() {
+        try {
+          const lang = await getRequestLang();
+          const data = await fetchPublicJobPositions(lang);
+          return { data };
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to load job positions.";
+          return { error: { status: "CUSTOM_ERROR", error: message } };
+        }
+      },
       providesTags: [{ type: "PublicJobPosition", id: "LIST" }],
     }),
     registerAccount: builder.mutation<RegisterResult, RegisterPayload>({

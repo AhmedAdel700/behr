@@ -1,3 +1,5 @@
+import type { LocalizedApiValue } from "@/types/ApiSharedTypes";
+
 export interface PublicNamedRecord {
   id: string;
   name: string;
@@ -5,7 +7,7 @@ export interface PublicNamedRecord {
 
 export interface PublicNamedApiRecord {
   id: number;
-  name: string;
+  name: LocalizedApiValue;
 }
 
 export interface PublicNamedListApiResponse {

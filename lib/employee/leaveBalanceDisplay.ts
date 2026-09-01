@@ -51,6 +51,7 @@ export function getLeaveUsagePercent(balance: LeaveBalanceRecord): number {
 export interface LeaveStatsSummary {
   daysRemaining: number;
   hoursRemaining: number;
+  minutesRemaining: number;
   typesCount: number;
 }
 
@@ -59,10 +60,13 @@ export function summarizeLeaveStats(
 ): LeaveStatsSummary {
   let daysRemaining = 0;
   let hoursRemaining = 0;
+  let minutesRemaining = 0;
 
   for (const balance of balances) {
     if (balance.unit === "hour") {
       hoursRemaining += balance.remaining;
+    } else if (balance.unit === "min") {
+      minutesRemaining += balance.remaining;
     } else {
       daysRemaining += balance.remaining;
     }
@@ -71,6 +75,7 @@ export function summarizeLeaveStats(
   return {
     daysRemaining,
     hoursRemaining,
+    minutesRemaining,
     typesCount: balances.length,
   };
 }

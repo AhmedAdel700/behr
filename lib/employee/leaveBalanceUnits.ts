@@ -8,7 +8,12 @@ export function minutesToLeaveUnits(
   unit: LeaveTypeUnit,
 ): number {
   const safeMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
-  const divisor = unit === "hour" ? MINUTES_PER_HOUR : MINUTES_PER_WORK_DAY;
+  const divisor =
+    unit === "min"
+      ? 1
+      : unit === "hour"
+        ? MINUTES_PER_HOUR
+        : MINUTES_PER_WORK_DAY;
   const value = safeMinutes / divisor;
 
   if (Number.isInteger(value)) {
@@ -20,6 +25,14 @@ export function minutesToLeaveUnits(
 
 export function leaveUnitLabelKey(
   unit: LeaveTypeUnit,
-): "days" | "hours" {
-  return unit === "hour" ? "hours" : "days";
+): "days" | "hours" | "minutes" {
+  if (unit === "hour") {
+    return "hours";
+  }
+
+  if (unit === "min") {
+    return "minutes";
+  }
+
+  return "days";
 }

@@ -1,4 +1,5 @@
 import { resolveAvatarSrc } from "@/lib/employee/avatar";
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import { resolveTimeLocale } from "@/lib/formatTime";
 import type { ProfileApiRecord, ProfileResult } from "@/types/ProfileApiTypes";
 
@@ -46,14 +47,15 @@ function formatJoinDate(value: string, locale: string): string {
 
 function formatBranchLabel(
   branch: ProfileApiRecord["branch"],
+  lang: string,
   fallback: string,
 ): string {
   if (!branch) {
     return fallback;
   }
 
-  const name = normalizeText(branch.name);
-  const city = normalizeText(branch.city);
+  const name = parseLocalizedField(branch.name, lang).display;
+  const city = parseLocalizedField(branch.city, lang).display;
 
   if (name && city) {
     return `${name} · ${city}`;
@@ -68,8 +70,8 @@ export function mapProfileFromApi(
   notAvailableLabel: string,
 ): ProfileResult {
   const avatarSrc = resolveAvatarSrc(record.image) ?? "";
-  const jobPosition = normalizeText(record.job_position?.name);
-  const department = normalizeText(record.department?.name);
+  const jobPosition = parseLocalizedField(record.job_position?.name, locale).display;
+  const department = parseLocalizedField(record.department?.name, locale).display;
   const manager = record.department?.manager;
 
   return {
@@ -81,7 +83,7 @@ export function mapProfileFromApi(
       normalizeText(record.fingerprint_number) || notAvailableLabel,
     avatarSrc,
     department: department || notAvailableLabel,
-    branch: formatBranchLabel(record.branch, notAvailableLabel),
+    branch: formatBranchLabel(record.branch, locale, notAvailableLabel),
     lineManager: normalizeText(manager?.full_name) || notAvailableLabel,
     lineManagerRole: normalizeText(manager?.email),
     employeeId: readId(record.id) ?? notAvailableLabel,

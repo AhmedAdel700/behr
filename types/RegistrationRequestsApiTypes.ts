@@ -1,12 +1,18 @@
-import type { BranchesPaginationMeta } from "@/types/BranchesApiTypes";
+import type {
+  ApiPaginationMeta,
+  LocalizedApiObject,
+  LocalizedApiValue,
+} from "@/types/ApiSharedTypes";
+
+export type { LocalizedApiObject, LocalizedApiValue };
 
 export type RegistrationRequestStatus = "pending" | "accepted" | "rejected";
 
 export interface RegistrationRequestApiBranch {
   id: number;
-  name: string;
-  city: string | null;
-  address: string | null;
+  name: LocalizedApiValue;
+  city: LocalizedApiValue | null;
+  address: LocalizedApiValue | null;
   phone: string | null;
   email: string | null;
   latitude: number | null;
@@ -18,12 +24,12 @@ export interface RegistrationRequestApiBranch {
 
 export interface RegistrationRequestApiDepartment {
   id: number;
-  name: string;
+  name: LocalizedApiValue;
 }
 
 export interface RegistrationRequestApiJobPosition {
   id: number;
-  name: string;
+  name: LocalizedApiValue;
   created_at: string;
   updated_at: string;
 }
@@ -86,7 +92,7 @@ export interface RegistrationRequestsListQueryParams {
 
 export interface RegistrationRequestsListResult {
   requests: RegistrationRequestRecord[];
-  meta: BranchesPaginationMeta;
+  meta: ApiPaginationMeta;
 }
 
 export interface RegistrationReviewResult {

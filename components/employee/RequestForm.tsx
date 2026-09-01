@@ -24,6 +24,7 @@ import {
   type RequestFormValues,
 } from "@/schemas/employee/request.schema";
 import type { LeaveTypeRecord } from "@/types/LeaveTypesApiTypes";
+import { isTimeBasedLeaveUnit } from "@/types/LeaveTypesApiTypes";
 
 export interface RequestFormProps {
   leaveType: Pick<LeaveTypeRecord, "id" | "name" | "unit" | "description">;
@@ -81,7 +82,7 @@ export function RequestForm({
     },
   });
 
-  const isHourUnit = leaveType.unit === "hour";
+  const isTimeBasedUnit = isTimeBasedLeaveUnit(leaveType.unit);
   const fromValue = watch("from");
   const fromDate = fromValue
     ? new Date(
@@ -117,11 +118,11 @@ export function RequestForm({
       return;
     }
 
-    const startTime = isHourUnit
+    const startTime = isTimeBasedUnit
       ? (values.startTime ?? "")
       : DEFAULT_DAY_START_TIME;
-    const endTime = isHourUnit ? (values.endTime ?? "") : DEFAULT_DAY_END_TIME;
-    const endDate = isHourUnit ? values.from : (values.to ?? values.from);
+    const endTime = isTimeBasedUnit ? (values.endTime ?? "") : DEFAULT_DAY_END_TIME;
+    const endDate = isTimeBasedUnit ? values.from : (values.to ?? values.from);
 
     try {
       const result = await createLeaveRequest({
@@ -158,7 +159,13 @@ export function RequestForm({
           <p className="text-sm text-text-secondary">
             {leaveType.description.trim()
               ? leaveType.description
-              : t(isHourUnit ? "unitHintHour" : "unitHintDay")}
+              : t(
+                  leaveType.unit === "min"
+                    ? "unitHintMin"
+                    : isTimeBasedUnit
+                      ? "unitHintHour"
+                      : "unitHintDay",
+                )}
           </p>
         </div>
       </section>
@@ -173,13 +180,13 @@ export function RequestForm({
           control={control}
           render={({ field }) => (
             <MainDatePicker
-              label={isHourUnit ? t("date") : t("from")}
+              label={isTimeBasedUnit ? t("date") : t("from")}
               required
               placeholder={t("pickDate")}
               value={field.value}
               onChange={(value) => {
                 field.onChange(value);
-                if (isHourUnit) {
+                if (isTimeBasedUnit) {
                   setValue("to", value, { shouldValidate: false });
                 }
               }}
@@ -189,7 +196,7 @@ export function RequestForm({
           )}
         />
 
-        {isHourUnit ? null : (
+        {isTimeBasedUnit ? null : (
           <Controller
             name="to"
             control={control}
@@ -208,7 +215,7 @@ export function RequestForm({
           />
         )}
 
-        {isHourUnit ? (
+        {isTimeBasedUnit ? (
           <>
             <Controller
               name="startTime"

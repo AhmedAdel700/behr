@@ -508,7 +508,8 @@
       "no": "لا",
       "unit": {
         "day": "يوم",
-        "hour": "ساعة"
+        "hour": "ساعة",
+        "min": "دقيقة"
       },
       "allocationType": {
         "yearly": "سنوي",

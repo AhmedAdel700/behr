@@ -1,3 +1,5 @@
+import type { LocalizedApiValue } from "@/types/ApiSharedTypes";
+
 export interface OverviewCountsApi {
   employees: number;
   pending_registration_requests: number;
@@ -9,17 +11,17 @@ export interface OverviewCountsApi {
 export interface OverviewLatestRegistrationRequestApi {
   id: number;
   full_name: string;
-  job_position: string;
-  department: string;
-  city: string;
+  job_position: LocalizedApiValue;
+  department: LocalizedApiValue;
+  city: LocalizedApiValue;
   created_at: string;
 }
 
 export interface OverviewLatestLeaveRequestApi {
   id: number;
   employee_name: string;
-  leave_type: string;
-  department: string;
+  leave_type: LocalizedApiValue;
+  department: LocalizedApiValue;
   start_at: string;
   end_at: string;
   duration_minutes: number;

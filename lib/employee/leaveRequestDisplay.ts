@@ -1,5 +1,6 @@
 import type { LeaveRequestRecord } from "@/types/LeaveRequestsApiTypes";
 import type { LeaveTypeUnit } from "@/types/LeaveTypesApiTypes";
+import { isTimeBasedLeaveUnit } from "@/types/LeaveTypesApiTypes";
 import type { RequestFormValues } from "@/schemas/employee/request.schema";
 import {
   formatDateTime12,
@@ -37,7 +38,7 @@ export function buildLeaveRequestUpdatePayload(
 } {
   const reason = values.reason.trim();
 
-  if (unit === "hour") {
+  if (isTimeBasedLeaveUnit(unit)) {
     return {
       leave_type_id: leaveTypeId,
       start_at: buildLeaveRequestDateTime(values.from, values.startTime ?? ""),
@@ -88,7 +89,7 @@ export function parseLeaveRequestFormValues(
   const startDate = readIsoDate(record.startAt);
   const endDate = readIsoDate(record.endAt);
 
-  if (record.leaveType.unit === "hour") {
+  if (isTimeBasedLeaveUnit(record.leaveType.unit)) {
     return {
       from: startDate,
       to: startDate,
@@ -114,7 +115,7 @@ export function formatLeaveRequestRange(
 ): string {
   const timeLocale = resolveTimeLocale(locale);
 
-  if (unit === "hour") {
+  if (isTimeBasedLeaveUnit(unit)) {
     const start = new Date(startAt);
     const end = new Date(endAt);
 

@@ -78,6 +78,7 @@
     "noLeaveTypes": "No leave types are available yet.",
     "unitHintDay": "Choose the start and end dates for this leave.",
     "unitHintHour": "Choose the date and the hours you need away.",
+    "unitHintMin": "Choose the date and the minutes you need away.",
     "submitSuccess": "Leave request submitted.",
     "updateSuccess": "Leave request updated.",
     "notFoundTitle": "Request not found",
@@ -263,7 +264,8 @@
     },
     "units": {
       "days": "days",
-      "hours": "hrs"
+      "hours": "hrs",
+      "minutes": "mins"
     }
   }
 }

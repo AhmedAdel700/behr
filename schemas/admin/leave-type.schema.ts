@@ -3,7 +3,10 @@ import {
   emptyLocalizedText,
   trimLocalizedText,
 } from "@/lib/admin/branchLocalizedText";
-import type { LeaveTypePayload } from "@/types/LeaveTypesApiTypes";
+import {
+  serializeLeaveTypeUnit,
+  type LeaveTypePayload,
+} from "@/types/LeaveTypesApiTypes";
 
 export type LeaveTypeFormErrorMessages = {
   nameEnRequired: string;
@@ -40,7 +43,7 @@ export function createLeaveTypeSchema(errors: LeaveTypeFormErrorMessages) {
         en: z.string().min(1, { error: errors.descriptionEnRequired }),
         ar: z.string().min(1, { error: errors.descriptionArRequired }),
       }),
-      unit: z.enum(["day", "hour"], { error: errors.unitRequired }),
+      unit: z.enum(["day", "hour", "min"], { error: errors.unitRequired }),
       allocationType: z.enum(["yearly", "monthly", "none"], {
         error: errors.allocationTypeRequired,
       }),
@@ -114,7 +117,7 @@ export function toLeaveTypePayload(values: LeaveTypeFormValues): LeaveTypePayloa
   return {
     name: trimLocalizedText(values.name),
     description: trimLocalizedText(values.description),
-    unit: values.unit,
+    unit: serializeLeaveTypeUnit(values.unit),
     allocation_type: values.allocationType,
     allocation_amount: Number(values.allocationAmount),
     can_carry_forward: canCarryForward,

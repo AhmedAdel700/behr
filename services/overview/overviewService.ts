@@ -32,5 +32,5 @@ export async function fetchOverview(
     throw new OverviewApiError("Unexpected overview response.");
   }
 
-  return mapOverviewFromApi(data);
+  return mapOverviewFromApi(data, lang);
 }

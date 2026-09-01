@@ -16,7 +16,8 @@ export type {
   LocalizedTextPayload,
 };
 
-export type LeaveTypeUnit = "day" | "hour";
+export type LeaveTypeUnit = "day" | "hour" | "min";
+export type LeaveTypeApiUnit = "day" | "hr" | "min";
 export type LeaveTypeAllocationType = "yearly" | "monthly" | "none";
 export type LeaveTypeGenderRestriction = "none" | "female" | "male";
 
@@ -34,7 +35,31 @@ export function parseLeaveTypeUnit(value: unknown): LeaveTypeUnit {
     return "hour";
   }
 
+  if (
+    normalized === "min" ||
+    normalized === "minute" ||
+    normalized === "minutes"
+  ) {
+    return "min";
+  }
+
   return "day";
+}
+
+export function serializeLeaveTypeUnit(unit: LeaveTypeUnit): LeaveTypeApiUnit {
+  if (unit === "hour") {
+    return "hr";
+  }
+
+  if (unit === "min") {
+    return "min";
+  }
+
+  return "day";
+}
+
+export function isTimeBasedLeaveUnit(unit: LeaveTypeUnit): boolean {
+  return unit === "hour" || unit === "min";
 }
 
 export interface LeaveTypeApiRecord {
@@ -94,7 +119,7 @@ export type LeaveTypeApiResponse = ApiItemResponse<LeaveTypeApiRecord>;
 export interface LeaveTypePayload {
   name: LocalizedTextPayload;
   description: LocalizedTextPayload;
-  unit: LeaveTypeUnit;
+  unit: LeaveTypeApiUnit;
   allocation_type: LeaveTypeAllocationType;
   allocation_amount: number;
   can_carry_forward: boolean;

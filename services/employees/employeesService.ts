@@ -2,6 +2,7 @@ import {
   employeesCollectionUrl,
 } from "@services/employees/employeesPaths";
 import { userItemUrl } from "@services/users/usersPaths";
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import type {
@@ -48,7 +49,7 @@ function readId(value: unknown): string | null {
   return null;
 }
 
-function mapBranch(value: unknown): EmployeeBranchSummary | null {
+function mapBranch(value: unknown, lang: string): EmployeeBranchSummary | null {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
   if (!record || !id) {
@@ -57,8 +58,8 @@ function mapBranch(value: unknown): EmployeeBranchSummary | null {
 
   return {
     id,
-    name: typeof record.name === "string" ? record.name : "",
-    city: typeof record.city === "string" ? record.city : "",
+    name: parseLocalizedField(record.name, lang).display,
+    city: parseLocalizedField(record.city, lang).display,
   };
 }
 
@@ -77,7 +78,7 @@ function mapManager(value: unknown): EmployeeManagerSummary | null {
   };
 }
 
-function mapDepartment(value: unknown): EmployeeDepartmentSummary | null {
+function mapDepartment(value: unknown, lang: string): EmployeeDepartmentSummary | null {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
   if (!record || !id) {
@@ -86,12 +87,12 @@ function mapDepartment(value: unknown): EmployeeDepartmentSummary | null {
 
   return {
     id,
-    name: typeof record.name === "string" ? record.name : "",
+    name: parseLocalizedField(record.name, lang).display,
     manager: mapManager(record.manager),
   };
 }
 
-function mapJobPosition(value: unknown): EmployeeJobPositionSummary | null {
+function mapJobPosition(value: unknown, lang: string): EmployeeJobPositionSummary | null {
   const record = asRecord(value);
   const id = record ? readId(record.id) : null;
   if (!record || !id) {
@@ -100,11 +101,11 @@ function mapJobPosition(value: unknown): EmployeeJobPositionSummary | null {
 
   return {
     id,
-    name: typeof record.name === "string" ? record.name : "",
+    name: parseLocalizedField(record.name, lang).display,
   };
 }
 
-function mapEmployeeFromApi(record: EmployeeApiRecord): EmployeeRecord {
+function mapEmployeeFromApi(record: EmployeeApiRecord, lang: string): EmployeeRecord {
   return {
     id: String(record.id),
     fullName: normalizeText(record.full_name),
@@ -114,9 +115,9 @@ function mapEmployeeFromApi(record: EmployeeApiRecord): EmployeeRecord {
     image: resolveAvatarSrc(
       typeof record.image === "string" ? record.image : null,
     ),
-    branch: mapBranch(record.branch),
-    department: mapDepartment(record.department),
-    jobPosition: mapJobPosition(record.job_position),
+    branch: mapBranch(record.branch, lang),
+    department: mapDepartment(record.department, lang),
+    jobPosition: mapJobPosition(record.job_position, lang),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -174,7 +175,7 @@ export async function fetchEmployees(
   }
 
   return {
-    employees: data.filter(isEmployeeApiRecord).map(mapEmployeeFromApi),
+    employees: data.filter(isEmployeeApiRecord).map((record) => mapEmployeeFromApi(record, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -208,7 +209,7 @@ export async function fetchEmployee(
     throw new EmployeesApiError("Unexpected employee response.");
   }
 
-  return mapEmployeeFromApi(data);
+  return mapEmployeeFromApi(data, lang);
 }
 
 function toCreateEmployeeFormData(body: CreateEmployeePayload): FormData {
@@ -262,7 +263,7 @@ export async function createEmployeeRequest(
 
   return {
     message,
-    employee: mapEmployeeFromApi(data),
+    employee: mapEmployeeFromApi(data, lang),
   };
 }
 
@@ -305,7 +306,7 @@ export async function updateEmployeeRequest(
   if (isEmployeeApiRecord(data)) {
     return {
       message,
-      employee: mapEmployeeFromApi(data),
+      employee: mapEmployeeFromApi(data, lang),
     };
   }
 

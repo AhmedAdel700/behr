@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { MainButton } from "@/components/shared/MainButton";
 import { leaveTypeDotStyle } from "@/lib/employee/leaveTypeColors";
+import { isTimeBasedLeaveUnit } from "@/types/LeaveTypesApiTypes";
 import type { LeaveTypeRecord } from "@/types/LeaveTypesApiTypes";
 
 export async function RequestTypePicker({
@@ -57,9 +58,11 @@ export async function RequestTypePicker({
                     {leaveType.description.trim()
                       ? leaveType.description
                       : t(
-                          leaveType.unit === "hour"
-                            ? "unitHintHour"
-                            : "unitHintDay",
+                          leaveType.unit === "min"
+                            ? "unitHintMin"
+                            : isTimeBasedLeaveUnit(leaveType.unit)
+                              ? "unitHintHour"
+                              : "unitHintDay",
                         )}
                   </span>
                 </span>

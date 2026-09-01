@@ -4,6 +4,7 @@ import {
   registrationRequestRejectUrl,
   registrationRequestsCollectionUrl,
 } from "@services/registration-requests/registrationRequestsPaths";
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import { createApiHttp } from "@services/http/apiHttp";
 import { appendListQueryParams } from "@services/http/listQuery";
 import type {
@@ -40,7 +41,11 @@ function parseStatus(value: string): RegistrationRequestStatus {
 
 export function mapRegistrationRequestFromApi(
   record: RegistrationRequestApiRecord,
+  lang: string,
 ): RegistrationRequestRecord {
+  const branchName = parseLocalizedField(record.branch?.name, lang).display;
+  const branchCity = parseLocalizedField(record.branch?.city, lang).display;
+
   return {
     id: String(record.id),
     name: normalizeText(record.full_name),
@@ -50,9 +55,9 @@ export function mapRegistrationRequestFromApi(
     image: record.image,
     status: parseStatus(record.status),
     rejectionReason: normalizeText(record.rejection_reason),
-    branchName: normalizeText(record.branch?.name),
-    departmentName: normalizeText(record.department?.name),
-    positionName: normalizeText(record.job_position?.name),
+    branchName: branchCity ? `${branchName} · ${branchCity}` : branchName,
+    departmentName: parseLocalizedField(record.department?.name, lang).display,
+    positionName: parseLocalizedField(record.job_position?.name, lang).display,
     reviewerName: normalizeText(record.reviewer?.full_name),
     userName: normalizeText(record.user?.full_name),
     userEmail: normalizeText(record.user?.email),
@@ -65,6 +70,7 @@ export function mapRegistrationRequestFromApi(
 function parseReviewPayload(
   payload: unknown,
   fallbackMessage: string,
+  lang: string,
 ): RegistrationReviewResult {
   if (
     typeof payload !== "object" ||
@@ -87,7 +93,9 @@ function parseReviewPayload(
 
   return {
     message: api.parseApiMessage(payload, fallbackMessage),
-    request: response.data ? mapRegistrationRequestFromApi(response.data) : null,
+    request: response.data
+      ? mapRegistrationRequestFromApi(response.data, lang)
+      : null,
   };
 }
 
@@ -121,7 +129,7 @@ export async function fetchRegistrationRequests(
   }
 
   return {
-    requests: data.map(mapRegistrationRequestFromApi),
+    requests: data.map((record) => mapRegistrationRequestFromApi(record, lang)),
     meta: api.parsePaginationMeta(payload),
   };
 }
@@ -151,7 +159,7 @@ export async function fetchRegistrationRequestById(
     "Failed to load registration request.",
   );
 
-  return mapRegistrationRequestFromApi(data);
+  return mapRegistrationRequestFromApi(data, lang);
 }
 
 export async function acceptRegistrationRequest(
@@ -175,7 +183,11 @@ export async function acceptRegistrationRequest(
     );
   }
 
-  return parseReviewPayload(payload, "Failed to accept registration request.");
+  return parseReviewPayload(
+    payload,
+    "Failed to accept registration request.",
+    lang,
+  );
 }
 
 export async function rejectRegistrationRequest(
@@ -201,5 +213,9 @@ export async function rejectRegistrationRequest(
     );
   }
 
-  return parseReviewPayload(payload, "Failed to reject registration request.");
+  return parseReviewPayload(
+    payload,
+    "Failed to reject registration request.",
+    lang,
+  );
 }

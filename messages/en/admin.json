@@ -508,7 +508,8 @@
       "no": "No",
       "unit": {
         "day": "Day",
-        "hour": "Hour"
+        "hour": "Hour",
+        "min": "Minute"
       },
       "allocationType": {
         "yearly": "Yearly",

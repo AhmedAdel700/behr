@@ -1,3 +1,4 @@
+import { parseLocalizedField } from "@/lib/admin/branchLocalizedText";
 import type {
   OverviewApiData,
   OverviewCountsApi,
@@ -31,25 +32,27 @@ function mapCountsFromApi(counts: OverviewCountsApi): OverviewResult["counts"] {
 
 function mapLatestRegistrationRequestFromApi(
   record: OverviewLatestRegistrationRequestApi,
+  lang: string,
 ): OverviewLatestRegistrationRequest {
   return {
     id: String(record.id),
     fullName: normalizeText(record.full_name),
-    jobPosition: normalizeText(record.job_position),
-    department: normalizeText(record.department),
-    city: normalizeText(record.city),
+    jobPosition: parseLocalizedField(record.job_position, lang).display,
+    department: parseLocalizedField(record.department, lang).display,
+    city: parseLocalizedField(record.city, lang).display,
     createdAt: normalizeText(record.created_at),
   };
 }
 
 function mapLatestLeaveRequestFromApi(
   record: OverviewLatestLeaveRequestApi,
+  lang: string,
 ): OverviewLatestLeaveRequest {
   return {
     id: String(record.id),
     employeeName: normalizeText(record.employee_name),
-    leaveType: normalizeText(record.leave_type),
-    department: normalizeText(record.department),
+    leaveType: parseLocalizedField(record.leave_type, lang).display,
+    department: parseLocalizedField(record.department, lang).display,
     startAt: normalizeText(record.start_at),
     endAt: normalizeText(record.end_at),
     durationMinutes: normalizeCount(record.duration_minutes),
@@ -58,14 +61,14 @@ function mapLatestLeaveRequestFromApi(
   };
 }
 
-export function mapOverviewFromApi(data: OverviewApiData): OverviewResult {
+export function mapOverviewFromApi(data: OverviewApiData, lang: string): OverviewResult {
   return {
     counts: mapCountsFromApi(data.counts),
     latestRegistrationRequests: data.latest_registration_requests.map(
-      mapLatestRegistrationRequestFromApi,
+      (record) => mapLatestRegistrationRequestFromApi(record, lang),
     ),
-    latestLeaveRequests: data.latest_leave_requests.map(
-      mapLatestLeaveRequestFromApi,
+    latestLeaveRequests: data.latest_leave_requests.map((record) =>
+      mapLatestLeaveRequestFromApi(record, lang),
     ),
   };
 }

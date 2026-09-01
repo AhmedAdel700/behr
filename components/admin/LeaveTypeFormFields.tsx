@@ -45,6 +45,7 @@ export function LeaveTypeFormFields({
     () => [
       { value: "day", label: t("options.unit.day") },
       { value: "hour", label: t("options.unit.hour") },
+      { value: "min", label: t("options.unit.min") },
     ],
     [t],
   );
